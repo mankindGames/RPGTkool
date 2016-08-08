@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.0 2016/08/06 YEP_BattleEngineCoreとの競合改善
 // 1.0.0 2016/08/04 初版公開
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -24,13 +25,19 @@
  *
  * 簡単な使い方説明:
  *   初期準備として、まずは即死扱いとするステートを
- *   ツクール側で作成してください。
+ *   RPGツクールMV側で作成してください。
  *
  *   作成したステートのIDを、
  *   プラグインパラメーター[Default_InstantDeath_State_Id]に設定します。
  *
  *   即死攻撃を作るには、スキルの使用効果:ステート付与に
  *   即死ステート:100%を指定し、スキル発動の成功率を調整します。
+ *
+ *   ※重要※
+ *     プラグイン:YEP_BattleEngineCoreを本プラグインとともに
+ *     導入している場合は、
+ *     プラグインパラメーター[Default_YEP_BattleEngine]を
+ *     true に設定してください。
  *
  *
  * プラグインコマンド:
@@ -46,7 +53,7 @@
  *     制御文字は大文字/小文字を区別していません。
  *
  *   ・プラグインパラメーターの説明に、[初期値]と書かれているものは
- *     アクター/イベントのメモ欄で個別に設定が可能です。
+ *     メモ欄で個別に設定が可能です。
  *     設定した場合、[初期値]よりメモ欄の設定が
  *     優先されますのでご注意ください。
  *
@@ -75,6 +82,10 @@
  * @param Default_InstantDeath_State_Id
  * @desc 即死ステートのIDを指定します。
  * @default 15
+ *
+ * @param Default_YEP_BattleEngine
+ * @desc [競合対策] YEP_BattleEngineCore がONの場合はtrue、OFFの場合はfalseを入力してください。
+ * @default false
  *
  *
  * *
@@ -110,9 +121,6 @@
                         value = (isFinite(value))? parseInt(value, 10) : (def)? def : 0;
                     }
                     break;
-                case "string":
-                    value = value;
-                    break;
                 default:
                     throw new Error('Plugin parameter type is illegal: '+type);
                     break;
@@ -144,9 +152,6 @@
             case "num":
                 value = (isFinite(text))? parseInt(text, 10) : 0;
                 break;
-            case "string":
-                value = text;
-                break;
             default:
                 throw new Error('[CEC] Plugin parameter type is illegal: '+type);
                 break;
@@ -155,8 +160,36 @@
         return value;
     };
 
-    var DefInstantDeathStateId;
+    var DefInstantDeathStateId, DefYepBattleEngineUse;
     DefInstantDeathStateId = CheckParam("num", "Default_InstantDeath_State_Id", 99);
+    DefYepBattleEngineUse = CheckParam("bool", "Default_YEP_BattleEngine", false);
+
+
+    //=========================================================================
+    // BattleManager
+    //  即死ステートを定義します。
+    //
+    //=========================================================================
+    var _BattleManager_updateAction =BattleManager.updateAction;
+    BattleManager.updateAction = function() {
+        _BattleManager_updateAction.call(this);
+
+        var instantDeathStateId, yepBattleEngineUse;
+        instantDeathStateId = DefInstantDeathStateId[0];
+        yepBattleEngineUse = DefYepBattleEngineUse[0];
+
+        if(!yepBattleEngineUse) {
+            if(this._phase == "turn") {
+                $gameTroop.members().forEach(function(enemy) {
+                    if(enemy.isStateAffected(instantDeathStateId)) {
+                        enemy.die();
+                        enemy.performCollapse();
+                        enemy.hide();
+                    }
+                }, this)
+            }
+        }
+    }
 
 
     //=========================================================================
@@ -166,10 +199,11 @@
     //=========================================================================
     var _Game_BattlerBase_addNewState = Game_BattlerBase.prototype.addNewState;
     Game_BattlerBase.prototype.addNewState = function(stateId) {
-        var instantDeathStateId;
+        var instantDeathStateId, yepBattleEngineUse;
         instantDeathStateId = DefInstantDeathStateId[0];
+        yepBattleEngineUse = DefYepBattleEngineUse[0];
 
-        if (stateId === instantDeathStateId) {
+        if (yepBattleEngineUse && stateId === instantDeathStateId) {
             this.die();
         }
 
@@ -204,7 +238,6 @@
             }
             if (state.id === instantDeathStateId) {
                 var stateMsg = target.isActor() ? state.message1 : state.message2;
-                this.push('performCollapse', target);
                 if (stateMsg) {
                     this.push('popBaseLine');
                     this.push('pushBaseLine');
