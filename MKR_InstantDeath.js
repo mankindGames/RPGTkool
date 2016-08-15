@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.1 2016/08/15 行動状況により即死ステート付与後の動作がおかしい問題を解決
 // 1.1.0 2016/08/06 YEP_BattleEngineCoreとの競合改善
 // 1.0.0 2016/08/04 初版公開
 // ----------------------------------------------------------------------------
@@ -26,6 +27,10 @@
  * 簡単な使い方説明:
  *   初期準備として、まずは即死扱いとするステートを
  *   RPGツクールMV側で作成してください。
+ *   設定:
+ *     ・[SV]モーション を 戦闘不能 に設定してください。
+ *     ・メッセージ [アクターがこの状態になったとき]
+ *                  [敵キャラがこの状態になったとき] を設定してください。
  *
  *   作成したステートのIDを、
  *   プラグインパラメーター[Default_InstantDeath_State_Id]に設定します。
@@ -166,44 +171,16 @@
 
 
     //=========================================================================
-    // BattleManager
-    //  即死ステートを定義します。
-    //
-    //=========================================================================
-    var _BattleManager_updateAction =BattleManager.updateAction;
-    BattleManager.updateAction = function() {
-        _BattleManager_updateAction.call(this);
-
-        var instantDeathStateId, yepBattleEngineUse;
-        instantDeathStateId = DefInstantDeathStateId[0];
-        yepBattleEngineUse = DefYepBattleEngineUse[0];
-
-        if(!yepBattleEngineUse) {
-            if(this._phase == "turn") {
-                $gameTroop.members().forEach(function(enemy) {
-                    if(enemy.isStateAffected(instantDeathStateId)) {
-                        enemy.die();
-                        enemy.performCollapse();
-                        enemy.hide();
-                    }
-                }, this)
-            }
-        }
-    }
-
-
-    //=========================================================================
     // Game_BattlerBase
     //  即死ステートを定義します。
     //
     //=========================================================================
     var _Game_BattlerBase_addNewState = Game_BattlerBase.prototype.addNewState;
     Game_BattlerBase.prototype.addNewState = function(stateId) {
-        var instantDeathStateId, yepBattleEngineUse;
+        var instantDeathStateId;
         instantDeathStateId = DefInstantDeathStateId[0];
-        yepBattleEngineUse = DefYepBattleEngineUse[0];
 
-        if (yepBattleEngineUse && stateId === instantDeathStateId) {
+        if (stateId === instantDeathStateId) {
             this.die();
         }
 
@@ -212,49 +189,52 @@
 
 
     //=========================================================================
+    // Sprite_Actor
+    //  即死ステート付与時のアクターモーションを再定義します。
+    //
+    //=========================================================================
+    var _Sprite_Actor_refreshMotion = Sprite_Actor.prototype.refreshMotion;
+    Sprite_Actor.prototype.refreshMotion = function() {
+        var actor;
+        actor = this._actor;
+
+        if (actor && actor.isDead()) {
+            this._motion = null;
+        }
+
+        _Sprite_Actor_refreshMotion.call(this);
+    };
+
+
+    //=========================================================================
     // Window_BattleLog
     //  即死ステートを定義します。
     //
     //=========================================================================
-    var _Window_BattleLog_displayChangedStates = Window_BattleLog.prototype.displayChangedStates;
-    Window_BattleLog.prototype.displayChangedStates = function(target) {
-        this.displayAddedInstantDeathState(target);
-        _Window_BattleLog_displayChangedStates.call(this,target);
-    };
-
-    Window_BattleLog.prototype.displayAddedInstantDeathState = function(target) {
-        var instantDeathStateId, instantDeathFlag, deathStateNum,
-            state, cnt, i;
+    var _Window_BattleLog_displayAddedStates = Window_BattleLog.prototype.displayAddedStates;
+    Window_BattleLog.prototype.displayAddedStates = function(target) {
+        var instantDeathStateId, yepBattleEngineUse, stateMsg, state, cnt, i;
         instantDeathStateId = DefInstantDeathStateId[0];
-        instantDeathFlag = false;
-        deathStateNum = -1;
-        i = 0;
+        yepBattleEngineUse = DefYepBattleEngineUse[0];
 
-        cnt = target.result().addedStateObjects().length;
-        for(; i < cnt; i++) {
-            state = target.result().addedStateObjects()[i];
-            if(state.id === target.deathStateId()) {
-                deathStateNum = i;
-            }
-            if (state.id === instantDeathStateId) {
-                var stateMsg = target.isActor() ? state.message1 : state.message2;
-                if (stateMsg) {
-                    this.push('popBaseLine');
-                    this.push('pushBaseLine');
-                    this.push('addText', target.name() + stateMsg);
-                    this.push('waitForEffect');
-                }
-                instantDeathFlag = true;
-                if(deathStateNum > -1) {
+        if(!yepBattleEngineUse && target.result().isStateAdded(instantDeathStateId)) {
+            state = $dataStates[instantDeathStateId];
+            stateMsg = target.isActor() ? state.message1 : state.message2;
+
+            cnt = target.result().addedStateObjects().length;
+            for(i = 0; i < cnt; i++) {
+                state = target.result().addedStateObjects()[i];
+                if(state.id === target.deathStateId()) {
+                    target.result().addedStates.splice(i, 1);
                     break;
                 }
             }
-        }
 
-        if(deathStateNum > -1 && instantDeathFlag) {
-            target._result.addedStates.splice( deathStateNum, 1 ) ;
+            _Window_BattleLog_displayAddedStates.call(this, target);
+            this.push('performCollapse', target);
+        } else {
+            _Window_BattleLog_displayAddedStates.call(this, target);
         }
-
     };
 
 
