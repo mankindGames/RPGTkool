@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.2 2016/08/24 制御文字「\$[n]」を追加。
 // 1.1.1 2016/08/17 制御文字「\n」「\p」の表示に「\c」の色を自動で付与可能に。
 // 1.1.0 2016/07/27 制御文字「\.」「\|」のウェイト時間を指定可能に。
 // 1.0.1 2016/07/22 一部制御文字が動作しなくなるバグを修正。
@@ -30,7 +31,7 @@
  *       SE名は必須です。拡張子を抜いたSEファイル名を指定してください。
  *
  *       音量、ピッチ、位相は数値で指定、または
- *       制御文字の\v[n](変数n番の数値)を利用可能です。
+ *       制御文字の\v[n]を利用可能です。
  *
  *       なお、ここでの音量、ピッチ、位相設定は
  *       プラグインパラメータで指定できる初期値よりも優先されます。
@@ -38,6 +39,15 @@
  *       音量、ピッチ、位相を初期値のまま使用する場合は、
  *       SE名のみ指定してください。
  *       (音量のみを指定して、残りを初期設定値で再生させることも可能です)
+ *
+ *   \$[n]
+ *     ・メッセージ中に挿入すると、画面右上に所持金ウィンドウを表示します。
+ *       本プラグインでは、所持金ウィンドウの背景をメッセージウィンドウと
+ *       同じく選択可能にしました。
+ *
+ *       nに0～2の数値、または制御文字の\v[n]を指定してください。
+ *       nが0で所持金ウィンドウを通常表示(デフォルト設定)、
+ *       1で暗くして表示、2で透明表示します。
  *
  *
  * 機能を拡張した制御文字：
@@ -78,6 +88,15 @@
  *       本プラグインによる色変更を行わず、直前に記述されている
  *       色変更の制御文字に従い色が変更されます。
  *
+ *   \$
+ *     ・メッセージ中に挿入すると、画面右上に所持金ウィンドウを表示します。
+ *       本プラグインでは、プラグインパラメーター[Default_Gold_Background]に
+ *       指定されている数値または制御文字の\v[n]によって
+ *       ウィンドウの背景が自動的に変更されるようになります。
+ *
+ *       数値が0で所持金ウィンドウを通常表示(デフォルト設定)、
+ *       1で暗くして表示、2で透明表示します。
+ *
  *
  * 制御文字の設定例:
  *   \se[Cat,20,100,0]
@@ -89,6 +108,9 @@
  *   \SE[Coin,\v[20]]
  *     ・コインの効果音を音量[変数20番に格納されている数値]、
  *       他は初期値の設定を使い再生します。
+ *
+ *   \$[1]
+ *     ・所持金ウィンドウを背景を暗くした状態で画面右上に表示します。
  *
  *
  * プラグインコマンド:
@@ -156,6 +178,10 @@
  * @desc [変数可] 制御文字 \n または \p 使用時に名前部分につける色の番号です。番号でつく色は制御文字 \c を参考にしてください。
  * @default 2
  *
+ * @param Default_Gold_Background
+ * @desc [初期値:変数可] 制御文字 \$ 使用時に表示する所持金ウィンドウの背景を指定します。(0:ウィンドウ 1:暗くする 2:透明)
+ * @default 0
+ *
  *
  * *
 */
@@ -165,7 +191,6 @@
     var CheckParam = function(type, param, def, min, max) {
         var Parameters, regExp, value;
         Parameters = PluginManager.parameters("MKR_ControlCharacterEx");
-
 
         if(arguments.length < 4) {
             min = -Infinity;
@@ -180,28 +205,38 @@
             throw new Error('Plugin parameter not found: '+param);
         }
 
-        regExp = /^\x1bV\[\d+\]$/i;
+        regExp = /^\x1bV\[\d+\]|\x1bS\[\d+\]$/i;
         value = value.replace(/\\/g, '\x1b');
+        value = value.replace(/\x1b\x1b/g, '\\');
 
         if(!regExp.test(value)) {
             switch(type) {
                 case "bool":
                     if(value == "") {
                         value = (def)? true : false;
+                    } else {
+                        value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
                     }
-                    value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
                     break;
                 case "num":
                     if(value == "") {
-                        value = (def)? def : 0;
+                        value = (isFinite(def))? parseInt(def, 10) : 0;
                     } else {
-                        value = (isFinite(value))? parseInt(value, 10) : (def)? def : 0;
+                        value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
                         value = value.clamp(min, max);
                     }
                     break;
                 case "string":
                     if(value == "") {
-                        value = (def)? def : value;
+                        value = (def != "")? def : value;
+                    }
+                    break;
+                case "switch":
+                    if(value == "") {
+                        value = (def != "")? def : value;
+                    }
+                    if(!value.match(/^([A-D]|\d+)$/i)) {
+                        throw new Error('Plugin parameter value is not switch : '+param+' : '+value);
                     }
                     break;
                 default:
@@ -211,7 +246,7 @@
         }
 
         return [value, type, def, min, max];
-    }
+    };
 
     var CEC = function(params) {
         var text, value, type, def, min, max;
@@ -223,12 +258,12 @@
         min = params[3];
         max = params[4];
 
-        text = text.replace(/\x1bV\[(\d+)\]/gi, function() {
-            return $gameVariables.value(parseInt(arguments[1]));
-        }.bind(this));
 
-        text = text.replace(/\x1bV\[(\d+)\]/gi, function() {
-            return $gameVariables.value(parseInt(arguments[1]));
+        text = text.replace(/\x1bV\[\d+\]/i, function() {
+            return String(ConvVb(text));
+        }.bind(this));
+        text = text.replace(/\x1bS\[(\d+|[A-D])\]/i, function() {
+            return String(ConvSw(text));
         }.bind(this));
 
         switch(type) {
@@ -240,14 +275,22 @@
                 }
                 break;
             case "num":
-                value = (isFinite(text))? parseInt(text, 10) : (def)? def : 0;
+                value = (isFinite(text))? parseInt(text, 10) : (isFinite(def))? parseInt(def, 10) : 0;
                 value = value.clamp(min, max);
                 break;
             case "string":
                 if(text == "") {
-                    value = (def)? def : value;
+                    value = (def != "")? def : value;
                 } else {
                     value = text;
+                }
+                break;
+            case "switch":
+                if(value == "") {
+                    value = (def != "")? def : value;
+                }
+                if(!value.match(/^([A-D]|\d+)$/)) {
+                    throw new Error('Plugin parameter value is not switch : '+param+' : '+value);
                 }
                 break;
             default:
@@ -258,13 +301,58 @@
         return value;
     };
 
-    var DefSeVolume, DefSePitch, DefSePan, DefWaitPeriod, DefWaitLine, DefNameColor;
-    DefSeVolume = CheckParam("num", "Default_SE_Volume", 90, 0);
-    DefSePitch = CheckParam("num", "Default_SE_Pitch", 100, 0);
-    DefSePan = CheckParam("num", "Default_SE_Pan", 0, 0);
+    var ConvVb = function(text) {
+        var num;
+
+        if(typeof text == "string") {
+            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+                num = parseInt(arguments[1]);
+                return $gameVariables.value(num);
+            }.bind(this));
+            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+                num = parseInt(arguments[1]);
+                return $gameVariables.value(num);
+            }.bind(this));
+        }
+
+        return text;
+    };
+
+    var ConvSw = function(text, target) {
+        var num, key;
+
+        if(typeof text == "string") {
+            text = text.replace(/\x1bS\[(\d+)\]/i, function() {
+                num = parseInt(arguments[1]);
+                return $gameSwitches.value(num);
+            }.bind(this));
+            text = text.replace(/\x1bS\[([A-D])\]/i, function() {
+                if(target) {
+                    key = [target._mapId, target._eventId, arguments[1].toUpperCase()];
+                    return $gameSelfSwitches.value(key);
+                }
+                return false;
+            }.bind(this));
+
+            if(text === true || text.toLowerCase() === "true") {
+                text = 1;
+            } else {
+                text = 0;
+            }
+        }
+
+        return text;
+    };
+
+    var DefSeVolume, DefSePitch, DefSePan, DefWaitPeriod, DefWaitLine, DefNameColor,
+        DefGoldBackground;
+    DefSeVolume = CheckParam("num", "Default_SE_Volume", 90, 20, 100);
+    DefSePitch = CheckParam("num", "Default_SE_Pitch", 100, 50, 150);
+    DefSePan = CheckParam("num", "Default_SE_Pan", 0, -100, 100);
     DefWaitPeriod = CheckParam("num", "Default_Wait_Period", 15, 0);
     DefWaitLine = CheckParam("num", "Default_Wait_Line", 60, 0);
     DefNameColor = CheckParam("num", "Default_Name_Color", 0, 0);
+    DefGoldBackground = CheckParam("num", "Default_Gold_Background", 0, 0, 2);
 
 
     //=========================================================================
@@ -276,7 +364,7 @@
     Window_Base.prototype.obtainEscapeCode = function(textState) {
         var regExp, arr;
         textState.index++;
-        regExp = /^SE\[.*?\]/i;
+        regExp = /^(SE|\$)\[.*?\]/i;
         arr = regExp.exec(textState.text.slice(textState.index));
 
         if (arr) {
@@ -320,25 +408,34 @@
     //=========================================================================
     var _Window_Message_processEscapeCharacter = Window_Message.prototype.processEscapeCharacter;
     Window_Message.prototype.processEscapeCharacter = function(code, textState) {
-        var regExp, arr, res, se, seVolume, sePitch, sePan, waitPeriod, waitLine;
+        var regExp, arr, res, se, seVolume, sePitch, sePan, waitPeriod, waitLine,
+            goldBackground;
         se = {};
         seVolume = CEC(DefSeVolume);
         sePitch = CEC(DefSePitch);
         sePan = CEC(DefSePan);
         waitPeriod = CEC(DefWaitPeriod);
         waitLine = CEC(DefWaitLine);
-        regExp = /^(SE)\[(.*?)\]$/i;
+        goldBackground = CEC(DefGoldBackground);
+        regExp = /^(SE|\$)(\[.*?\])?$/i;
         arr = regExp.exec(code);
 
         if (arr) {
+            if(arr[2]) {
+                arr[2] = arr[2].replace(/[\[\]]/g, "");
+            }
             switch(arr[1].toUpperCase()) {
                 case "SE":
                     res = arr[2].split(",");
                     se["name"] = (res[0])? res[0].trim() : "";
-                    se["volume"] = (isFinite(res[1]))? parseInt(res[1],10) : seVolume;
-                    se["pitch"] = (isFinite(res[2]))? parseInt(res[2],10) : sePitch;
-                    se["pan"] = (isFinite(res[3]))? parseInt(res[3],10) : sePan;
+                    se["volume"] = (isFinite(res[1]))? parseInt(res[1], 10) : seVolume;
+                    se["pitch"] = (isFinite(res[2]))? parseInt(res[2], 10) : sePitch;
+                    se["pan"] = (isFinite(res[3]))? parseInt(res[3], 10) : sePan;
                     AudioManager.playSe(se);
+                    break;
+                case '$':
+                    goldBackground = (arr[2] && isFinite(arr[2]))? parseInt(arr[2], 10) : goldBackground;
+                    this._goldWindow.open(goldBackground);
                     break;
                 default:
                     _Window_Message_processEscapeCharacter.call(this, code, textState);
@@ -356,5 +453,21 @@
             }
         }
     };
+
+
+    //=========================================================================
+    // Window_Gold
+    //  所持金表示ウィンドウの背景を可変にします。
+    //
+    //=========================================================================
+    var Window_Gold_open = Window_Gold.prototype.open;
+    Window_Gold.prototype.open = function(background) {
+        if(background) {
+            this._background = background;
+            this.setBackgroundType(this._background);
+        }
+        Window_Gold_open.call(this);
+    };
+
 
 })();
