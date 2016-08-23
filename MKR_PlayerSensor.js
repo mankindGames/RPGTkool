@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.1 2016/08/23 ・プラグインパラメーター/メモ欄に変数/スイッチを
+//                    指定した場合、正しく値を取得できていなかった問題を修正。
 // 2.2.0 2016/08/21 ・探索者の視界範囲を変数で指定する場合の記述方法を変更。
 //                            変更前    :     変更後
 //                        <PsensorL:&5> : <PsensorL:\v[5]>
@@ -430,8 +432,12 @@
         min = params[3];
         max = params[4];
 
-        text = String(ConvVb(text));
-        text = String(ConvSw(text));
+        text = text.replace(/\x1bV\[\d+\]/i, function() {
+            return String(ConvVb(text));
+        }.bind(this));
+        text = text.replace(/\x1bS\[(\d+|[A-D])\]/i, function() {
+            return String(ConvSw(text));
+        }.bind(this));
 
         switch(type) {
             case "bool":
