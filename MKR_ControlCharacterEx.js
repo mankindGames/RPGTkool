@@ -6,10 +6,18 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.3 2016/08/24 ・制御文字「\$」で表示される
+//                    所持金ウィンドウの位置を変更可能に。
+//                  ・上記対応のためプラグインパラメーター追加。
+//
 // 1.1.2 2016/08/24 制御文字「\$[n]」を追加。
+//
 // 1.1.1 2016/08/17 制御文字「\n」「\p」の表示に「\c」の色を自動で付与可能に。
+//
 // 1.1.0 2016/07/27 制御文字「\.」「\|」のウェイト時間を指定可能に。
+//
 // 1.0.1 2016/07/22 一部制御文字が動作しなくなるバグを修正。
+//
 // 1.0.0 2016/07/21 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -40,14 +48,19 @@
  *       SE名のみ指定してください。
  *       (音量のみを指定して、残りを初期設定値で再生させることも可能です)
  *
- *   \$[n]
+ *   \$[X,Y]
  *     ・メッセージ中に挿入すると、画面右上に所持金ウィンドウを表示します。
  *       本プラグインでは、所持金ウィンドウの背景をメッセージウィンドウと
  *       同じく選択可能にしました。
  *
- *       nに0～2の数値、または制御文字の\v[n]を指定してください。
- *       nが0で所持金ウィンドウを通常表示(デフォルト設定)、
+ *       Xには0～2の数値、または制御文字の\v[n]を指定してください。
+ *       Xが0で所持金ウィンドウを通常表示(デフォルト設定)、
  *       1で暗くして表示、2で透明表示します。
+ *
+ *       Yには0～8の数値、または制御文字の\v[n]を指定してください。
+ *       Yが0で所持金ウィンドウを画面左上に表示、1で左中央、2で左下、
+ *       3で上中央、4で中央、5で下中央、6で右上(デフォルト)、
+ *       7で右中央、8で右下に表示されます。
  *
  *
  * 機能を拡張した制御文字：
@@ -90,12 +103,22 @@
  *
  *   \$
  *     ・メッセージ中に挿入すると、画面右上に所持金ウィンドウを表示します。
+ *
  *       本プラグインでは、プラグインパラメーター[Default_Gold_Background]に
  *       指定されている数値または制御文字の\v[n]によって
  *       ウィンドウの背景が自動的に変更されるようになります。
  *
  *       数値が0で所持金ウィンドウを通常表示(デフォルト設定)、
  *       1で暗くして表示、2で透明表示します。
+ *
+ *       また、プラグインパラメーター[Default_Gold_Potision]によって
+ *       ウィンドウの位置が変更可能です。
+ *
+ *       値は数値の0～8、または制御文字の\v[n]を指定してください。
+ *       0で所持金ウィンドウを画面左上に表示、1で左中央、2で左下、
+ *       3で上中央、4で中央、5で下中央、6で右上(デフォルト)、
+ *       7で右中央、8で右下に表示されます。
+ *
  *
  *
  * 制御文字の設定例:
@@ -181,6 +204,10 @@
  * @param Default_Gold_Background
  * @desc [初期値:変数可] 制御文字 \$ 使用時に表示する所持金ウィンドウの背景を指定します。(0:ウィンドウ 1:暗くする 2:透明)
  * @default 0
+ *
+ * @param Default_Gold_Position
+ * @desc [初期値:変数可] 制御文字 \$ 使用時に表示する所持金ウィンドウの位置を指定します。詳細はヘルプを確認してください。
+ * @default 6
  *
  *
  * *
@@ -345,7 +372,7 @@
     };
 
     var DefSeVolume, DefSePitch, DefSePan, DefWaitPeriod, DefWaitLine, DefNameColor,
-        DefGoldBackground;
+        DefGoldBackground, DefGoldPosition;
     DefSeVolume = CheckParam("num", "Default_SE_Volume", 90, 20, 100);
     DefSePitch = CheckParam("num", "Default_SE_Pitch", 100, 50, 150);
     DefSePan = CheckParam("num", "Default_SE_Pan", 0, -100, 100);
@@ -353,6 +380,7 @@
     DefWaitLine = CheckParam("num", "Default_Wait_Line", 60, 0);
     DefNameColor = CheckParam("num", "Default_Name_Color", 0, 0);
     DefGoldBackground = CheckParam("num", "Default_Gold_Background", 0, 0, 2);
+    DefGoldPosition = CheckParam("num", "Default_Gold_Position", 0, 0, 8);
 
 
     //=========================================================================
@@ -401,6 +429,7 @@
         return _Window_Base_convertEscapeCharacters.call(this,text);
     };
 
+
     //=========================================================================
     // Window_Messge
     //  制御文字を追加定義します。
@@ -409,7 +438,7 @@
     var _Window_Message_processEscapeCharacter = Window_Message.prototype.processEscapeCharacter;
     Window_Message.prototype.processEscapeCharacter = function(code, textState) {
         var regExp, arr, res, se, seVolume, sePitch, sePan, waitPeriod, waitLine,
-            goldBackground;
+            goldBackground, goldPosition;
         se = {};
         seVolume = CEC(DefSeVolume);
         sePitch = CEC(DefSePitch);
@@ -417,6 +446,7 @@
         waitPeriod = CEC(DefWaitPeriod);
         waitLine = CEC(DefWaitLine);
         goldBackground = CEC(DefGoldBackground);
+        goldPosition = CEC(DefGoldPosition);
         regExp = /^(SE|\$)(\[.*?\])?$/i;
         arr = regExp.exec(code);
 
@@ -426,7 +456,9 @@
             }
             switch(arr[1].toUpperCase()) {
                 case "SE":
-                    res = arr[2].split(",");
+                    if(arr[2]) {
+                        res = arr[2].split(",");
+                    }
                     se["name"] = (res[0])? res[0].trim() : "";
                     se["volume"] = (isFinite(res[1]))? parseInt(res[1], 10) : seVolume;
                     se["pitch"] = (isFinite(res[2]))? parseInt(res[2], 10) : sePitch;
@@ -434,8 +466,12 @@
                     AudioManager.playSe(se);
                     break;
                 case '$':
-                    goldBackground = (arr[2] && isFinite(arr[2]))? parseInt(arr[2], 10) : goldBackground;
-                    this._goldWindow.open(goldBackground);
+                    if(arr[2]) {
+                        res = arr[2].split(",");
+                        goldBackground = (res[0] && isFinite(res[0]))? parseInt(res[0], 10) : goldBackground;
+                        goldPosition = (res[1] && isFinite(res[1]))? parseInt(res[1], 10) : goldPosition;
+                    }
+                    this._goldWindow.open(goldBackground, goldPosition, $gameMessage.positionType());
                     break;
                 default:
                     _Window_Message_processEscapeCharacter.call(this, code, textState);
@@ -457,17 +493,44 @@
 
     //=========================================================================
     // Window_Gold
-    //  所持金表示ウィンドウの背景を可変にします。
+    //  所持金表示ウィンドウの背景/位置を変更可能にします。
     //
     //=========================================================================
-    var Window_Gold_open = Window_Gold.prototype.open;
-    Window_Gold.prototype.open = function(background) {
+    var _Window_Gold_open = Window_Gold.prototype.open;
+    Window_Gold.prototype.open = function(background, positionType, messagePositionType) {
+        var positionTypeX, positionTypeY;
         if(background) {
             this._background = background;
             this.setBackgroundType(this._background);
         }
-        Window_Gold_open.call(this);
+        if(positionType) {
+            this._positionType = positionType;
+            this.setPositionType(this._positionType);
+            positionTypeX = Math.floor(this._positionType / 3);
+            positionTypeY = (this._positionType > 2)? this._positionType - 3 * positionTypeX : this._positionType;
+            this.x = positionTypeX * (Graphics.boxWidth - this.width) / 2;
+            this.y = positionTypeY * (Graphics.boxHeight - this.height) / 2;
+        } else {
+            this._positionType = 0;
+            this.setPositionType(this._positionType);
+            this.x = 0;
+            this.y = 0;
+        }
+        _Window_Gold_open.call(this);
     };
 
+    var _Window_Gold_initialize = Window_Gold.prototype.initialize;
+    Window_Gold.prototype.initialize = function(x, y) {
+        _Window_Gold_initialize.call(this, x, y);
+        this._positionType = 0;
+    };
+
+    Window_Gold.prototype.positionType = function() {
+        return this._positionType;
+    };
+
+    Window_Gold.prototype.setPositionType = function(positionType) {
+        this._positionType = positionType;
+    };
 
 })();
