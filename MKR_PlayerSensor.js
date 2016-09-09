@@ -6,8 +6,16 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.2 2016/09/09 ・メモ欄の視界範囲マス数に変数を指定した場合に、
+//                    正常に機能していなかった問題を修正。
+//                  ・メモ欄に設定した(スイッチの使用可能な)オプションが
+//                    正常に機能していなかった問題を修正。
+//                  ・メモ欄のオプション値にセルフスイッチを指定した場合に
+//                    正常に機能していなかった問題を修正。
+//
 // 2.2.1 2016/08/23 ・プラグインパラメーター/メモ欄に変数/スイッチを
 //                    指定した場合、正しく値を取得できていなかった問題を修正。
+//
 // 2.2.0 2016/08/21 ・探索者の視界範囲を変数で指定する場合の記述方法を変更。
 //                            変更前    :     変更後
 //                        <PsensorL:&5> : <PsensorL:\v[5]>
@@ -38,11 +46,12 @@
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
+//    [Blog] http://mankind-games.blogspot.jp/
 //=============================================================================
 
 /*:
  *
- * @plugindesc プレイヤー探索プラグイン
+ * @plugindesc (v2.2.2) プレイヤー探索プラグイン
  * @author mankind
  *
  * @help
@@ -247,8 +256,8 @@
  *   PSS t_reset X Y ...
  *     ・このコマンドを実行した探索者を対象に、
  *       プラグインパラメーター[Default_Sensor_Switch]で
- *       指定したセルフスイッチ、
- *       またはメモ欄のSwオプションで指定したセルフスイッチの
+ *       指定した(セルフ)スイッチ、
+ *       またはメモ欄のSwオプションで指定した(セルフ)スイッチの
  *       どちらかをOFFにします。(メモ欄の設定が優先されます)
  *
  *     ・"X", "Y" はセルフスイッチを表し、ここに記載したセルフスイッチも
@@ -278,22 +287,22 @@
  *
  *   $gameSystem.onSensor(eventId)
  *     ・指定したイベントIDを持つ探索者を探索開始状態にします。
+ *       探索停止/無効状態の探索者に対し探索を再開させる場合に使用します。
  *
- *     ・実際に探索を開始させるためには
- *       事前にPSS startコマンドの実行が必要です。
+ *     ・探索を開始させるためには事前にPSS startコマンドの実行が必要です。
  *
  *   $gameSystem.offSensor(eventId)
  *     ・指定したイベントIDを持つ探索者に対し探索を停止させます。
  *
- *   $gameSystem.neutralSensor(eventId, ["A","B",...])
+ *   $gameSystem.neutralSensor(eventId, ["X","Y",...])
  *     ・現在のマップに存在する、指定したイベントIDを持つ探索者に対し、
- *       [Default_Sensor_Switch]で指定したセルフスイッチか、
+ *       [Default_Sensor_Switch]で指定した(セルフ)スイッチか、
  *       またはSwオプションで指定したセルフスイッチの
  *       どちらかをOFFにします。(メモ欄の設定が優先されます)
  *
- *     ・"A", "B" はセルフスイッチを表し、ここに記載したセルフスイッチも
+ *     ・"X", "Y" は(セルフ)スイッチを表し、ここに記載した(セルフ)スイッチも
  *       同様にOFFにします。まとめてOFFにしたい場合に指定してください。
- *       (セルフスイッチはカンマ区切りで記載してください)
+ *       (カンマ区切りで指定してください)
  *
  *
  * 補足：
@@ -475,14 +484,18 @@
     };
 
     var ConvVb = function(text) {
-        var num;
+        var num, regExp;
+        regExp = /^\x1bV\[(\d+)\]$/i;
 
         if(typeof text == "string") {
-            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+            text = text.replace(/\\/g, '\x1b');
+            text = text.replace(/\x1b\x1b/g, '\\');
+
+            text = text.replace(regExp, function() {
                 num = parseInt(arguments[1]);
                 return $gameVariables.value(num);
             }.bind(this));
-            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+            text = text.replace(regExp, function() {
                 num = parseInt(arguments[1]);
                 return $gameVariables.value(num);
             }.bind(this));
@@ -492,9 +505,13 @@
     }
 
     var ConvSw = function(text, target) {
-        var num, key;
+        var num, key, regExp;
+        regExp = /^\x1bV\[\d+\]$|^\x1bS\[\d+\]$/i;
 
         if(typeof text == "string") {
+            text = text.replace(/\\/g, '\x1b');
+            text = text.replace(/\x1b\x1b/g, '\\');
+
             text = text.replace(/\x1bS\[(\d+)\]/i, function() {
                 num = parseInt(arguments[1]);
                 return $gameSwitches.value(num);
@@ -507,13 +524,11 @@
                 return false;
             }.bind(this));
 
-
-            if(text === true || text.toLowerCase() === "true") {
+            if(text === true || text.toLowerCase() === "true" || text == "1") {
                 text = 1;
             } else {
                 text = 0;
             }
-
         }
 
         return text;
@@ -1062,7 +1077,7 @@
         ey = this.y;
 
         // currentRange初期化
-        this.setSensorRangeC(sensorRange);
+        //this.setSensorRangeC(sensorRange);
         sensorRangeC = sensorRange;
 
         // coordinate初期化
