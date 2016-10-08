@@ -16,7 +16,7 @@
 
 /*:
  *
- * @plugindesc 即死ステートを実装します。
+ * @plugindesc (v1.1.1) 即死ステートを実装します。
  * @author mankind
  *
  * @help
