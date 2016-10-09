@@ -6,6 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.3 2016/10/09 ・同じマップに、同じスイッチをONにする探索者が複数存在した
+//                    場合、イベントIDの一番大きな探索者でしかスイッチをOnに
+//                    できなかった問題を修正。
+//
 // 2.2.2 2016/09/09 ・メモ欄の視界範囲マス数に変数を指定した場合に、
 //                    正常に機能していなかった問題を修正。
 //                  ・メモ欄に設定した(スイッチの使用可能な)オプションが
@@ -51,7 +55,7 @@
 
 /*:
  *
- * @plugindesc (v2.2.2) プレイヤー探索プラグイン
+ * @plugindesc (v2.2.3) プレイヤー探索プラグイン
  * @author mankind
  *
  * @help
@@ -626,7 +630,7 @@
         _Game_System_initialize.call(this);
         this._sensorStart = false
         this._foundPlayer = 0;
-        this._sensorInfo  = {"mapId":0, "events":{}};
+        this._switchStatuses  = {};
     };
 
     Game_System.prototype.startSensor = function() {
@@ -726,6 +730,63 @@
             return event.getSensorStatus();
         } else {
             return null;
+        }
+    };
+
+    Game_System.prototype.getSwitchStatuses = function() {
+        return this._switchStatuses;
+    };
+
+    Game_System.prototype.setSwitchStatuses = function(sw, eventId) {
+        if(this._switchStatuses[sw]) {
+            if(this._switchStatuses[sw] instanceof Array && this._switchStatuses[sw].length > 0) {
+                if(!this._switchStatuses[sw].contains(eventId)) {
+                    this._switchStatuses[sw].push(eventId);
+                }
+            } else {
+                this._switchStatuses[sw] = [eventId];
+            }
+        } else {
+            this._switchStatuses[sw] = [eventId];
+        }
+    };
+
+    Game_System.prototype.isSwitchStatuses = function(sw, eventId) {
+        if(!sw || !isFinite(sw)) {
+            return false;
+        }
+        if(this._switchStatuses[sw]) {
+            if(eventId == null) {
+                return true;
+            } else {
+                if(this._switchStatuses[sw] instanceof Array && this._switchStatuses[sw].length > 0) {
+                    if(this._switchStatuses[sw].contains(eventId)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
+    Game_System.prototype.removeSwitchStatuses = function(sw, eventId) {
+        if(this._switchStatuses[sw]) {
+            if(!eventId) {
+                delete this._switchStatuses[sw];
+            } else {
+                if(this._switchStatuses[sw] instanceof Array && this._switchStatuses[sw].length > 0) {
+                    if(this._switchStatuses[sw].contains(eventId)) {
+                        this._switchStatuses[sw].some(function(v, i){
+                            if (v == eventId) {
+                                this._switchStatuses[sw].splice(i, 1);    
+                            }
+                        }, this);
+                    }
+                }
+                if(this._switchStatuses[sw].length == 0) {
+                    delete this._switchStatuses[sw];
+                }
+            }
         }
     };
 
@@ -1008,7 +1069,7 @@
     };
 
     Game_Event.prototype.sensorTarget = function() {
-        var mapId, eventId, sw, st, sensorSwitch;
+        var mapId, eventId, sw, key, st, sensorSwitch;
         sensorSwitch = DefSensorSwitch[0];
         // 探索中のイベントであること
         if(this.getSensorStatus() == 1){
@@ -1019,11 +1080,30 @@
                 sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
                 if(this.isFoundPlayer()) {
                     if(isFinite(sw)) {
-                        $gameSwitches.setValue(sw, true);
+                        if(!$gameSwitches.value(sw)) {
+                            $gameSwitches.setValue(sw, true);
+                        }
+                        $gameSystem.setSwitchStatuses(sw, eventId);
                     } else if(sw.match(/[a-dA-D]/)) {
-                        $gameSelfSwitches.setValue([mapId, eventId, sw.toUpperCase()], true);
+                        key = [mapId, eventId, sw.toUpperCase()];
+                        if(!$gameSelfSwitches.value(key)) {
+                            $gameSelfSwitches.setValue(key, true);
+                        }
                     }
                 } else {
+                    if(isFinite(sw)) {
+                        if($gameSwitches.value(sw) && !$gameSystem.isSwitchStatuses(sw)) {
+                            $gameSwitches.setValue(sw, false);
+                        }
+                        $gameSystem.removeSwitchStatuses(sw, eventId);
+                    } else if(sw.match(/[a-dA-D]/)) {
+                        key = [mapId, eventId, sw.toUpperCase()];
+                        if($gameSelfSwitches.value(key)) {
+                            $gameSelfSwitches.setValue(key, false);
+                        }
+                    }
+
+/*
                     st = false;
                     if(isFinite(sw)) {
                         st = $gameSwitches.value(sw);
@@ -1037,6 +1117,7 @@
                             $gameSelfSwitches.setValue([mapId, eventId, sw.toUpperCase()], false);
                         }
                     }
+*/
                 }
             //}
         }
