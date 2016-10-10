@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.4 2016/10/10 ・マップ描画時に自動的にプラグインコマンド[PSS start]を
+//                    実行させるためのプラグインパラメーターを追加。
+//
 // 2.2.3 2016/10/09 ・同じマップに、同じスイッチをONにする探索者が複数存在した
 //                    場合、イベントIDの一番大きな探索者でしかスイッチをOnに
 //                    できなかった問題を修正。
@@ -55,7 +58,7 @@
 
 /*:
  *
- * @plugindesc (v2.2.3) プレイヤー探索プラグイン
+ * @plugindesc (v2.2.4) プレイヤー探索プラグイン
  * @author mankind
  *
  * @help
@@ -370,6 +373,10 @@
  * @param Default_Range_Opacity
  * @desc 視界範囲を描画する際の不透明度を数字で指定してください。デフォルト:80(0-255)
  * @default 80
+ *
+ * @param Default_Auto_Sensor
+ * @desc マップ描画時に探索処理を自動的に有効にする場合はON、しない場合はOFFを指定してください。
+ * @default OFF
  * *
 */
 (function () {
@@ -540,13 +547,14 @@
 
     var DIR_UP, DIR_DOWN, DIR_RIGHT, DIR_LEFT,
         DefSensorSwitch, DefBothSensor, DefRangeVisible,
-        DefTerrainDecision, DefRangeColor, DefRangeOpacity;
+        DefTerrainDecision, DefRangeColor, DefRangeOpacity, DefAutoSensor;
     DefSensorSwitch = CheckParam("switch", "Default_Sensor_Switch", "D");
     DefBothSensor = CheckParam("bool", "Default_Both_Sensor", false);
     DefRangeVisible = CheckParam("bool", "Default_Range_Visible", true);
     DefTerrainDecision = CheckParam("bool", "Default_Terrain_Decision", false);
     DefRangeColor = CheckParam("string", "Default_Range_Color", "white");
     DefRangeOpacity = CheckParam("num", "Default_Range_Opacity", 80, 0, 255);
+    DefAutoSensor = CheckParam("bool", "Default_Auto_Sensor", false);
     DIR_UP = 8;
     DIR_DOWN = 2;
     DIR_RIGHT = 6;
@@ -778,7 +786,7 @@
                     if(this._switchStatuses[sw].contains(eventId)) {
                         this._switchStatuses[sw].some(function(v, i){
                             if (v == eventId) {
-                                this._switchStatuses[sw].splice(i, 1);    
+                                this._switchStatuses[sw].splice(i, 1);
                             }
                         }, this);
                     }
@@ -982,6 +990,19 @@
     Game_CharacterBase.prototype.getDirectionFixed = function() {
         return this._directionFixed;
     };
+
+
+    //=========================================================================
+    // Game_Map
+    //  探索開始処理の自動実行を定義します。
+    //=========================================================================
+    if(DefAutoSensor[0]) {
+        var _Game_Map_setupEvents = Game_Map.prototype.setupEvents;
+        Game_Map.prototype.setupEvents = function() {
+            _Game_Map_setupEvents.call(this);
+            $gameSystem.startSensor();
+        };
+    }
 
 
     //=========================================================================
