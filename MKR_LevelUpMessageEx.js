@@ -176,7 +176,7 @@
     //=========================================================================
     var _Game_Actor_displayLevelUp = Game_Actor.prototype.displayLevelUp;
     Game_Actor.prototype.displayLevelUp = function(newSkills) {
-        var statusMess, text, cnt, i, paramName, prevParam, currentParam,
+        var statusMess, text, cnt, i, j, paramName, prevParam, currentParam,
             viewParams;
         statusMess = DefStatusMess[0];
         viewParams = VisibleParams;
@@ -187,6 +187,7 @@
             text = "";
             cnt = this.currentClass().params.length;
 
+            j = 0;
             for(i = 0; i < cnt; i++){
                 if(viewParams[i][0]){
                     paramName = TextManager.param(i);
@@ -195,13 +196,14 @@
 
                     text += "%1 %2 ⇒ %3".format(paramName, prevParam, currentParam);
 
-                    if(i < cnt - 1) {
-                        if(i % 2) {
+                    if(j < cnt - 1) {
+                        if(j % 2) {
                             text += "\n";
                         } else {
                             text += "　";
                         }
                     }
+                    j++;
                 }
             }
 
