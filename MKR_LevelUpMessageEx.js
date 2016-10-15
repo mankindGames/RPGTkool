@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2016/10/15 レベルアップ時にどのステータスを表示するか選択可能に。
 // 1.0.0 2016/10/15 初版公開
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,7 +16,7 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) レベルアップ時にステータスの変化を
+ * @plugindesc (v1.0.1) レベルアップ時にステータスの変化を
  * ウィンドウに表示します。
  *
  * @author mankind
@@ -69,6 +70,37 @@
  * @desc レベルアップ時にアップステータス一覧のウィンドウを表示する場合はON、表示しない場合はOFFを指定してください。
  * @default ON
  *
+ * @param Default_Visible_Hp
+ * @desc レベルアップ時に[最大HP]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
+ * @default ON
+ *
+ * @param Default_Visible_Mp
+ * @desc レベルアップ時に[最大MP]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
+ * @default ON
+ *
+ * @param Default_Visible_Atk
+ * @desc レベルアップ時に[攻撃力]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
+ * @default ON
+ *
+ * @param Default_Visible_Grd
+ * @desc レベルアップ時に[防御力]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
+ * @default ON
+ *
+ * @param Default_Visible_mAtk
+ * @desc レベルアップ時に[魔法力]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
+ * @default ON
+ *
+ * @param Default_Visible_mGrd
+ * @desc レベルアップ時に[魔法防御力]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
+ * @default ON
+ *
+ * @param Default_Visible_Spd
+ * @desc レベルアップ時に[敏捷性]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
+ * @default ON
+ *
+ * @param Default_Visible_Luk
+ * @desc レベルアップ時に[運]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
+ * @default ON
  *
  * *
 */
@@ -124,8 +156,17 @@
         return [value, type, def, min, max];
     }
 
-    var DefStatusMess;
+    var DefStatusMess, VisibleParams;
+    VisibleParams = [];
     DefStatusMess = CheckParam("bool", "Default_Status_Message", true);
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Hp", true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Mp", true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Atk", true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Grd", true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_mAtk", true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_mGrd", true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Spd", true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Luk", true));
 
 
     //=========================================================================
@@ -135,8 +176,10 @@
     //=========================================================================
     var _Game_Actor_displayLevelUp = Game_Actor.prototype.displayLevelUp;
     Game_Actor.prototype.displayLevelUp = function(newSkills) {
-        var statusMess, text, cnt, i, paramName, prevParam, currentParam;
+        var statusMess, text, cnt, i, paramName, prevParam, currentParam,
+            viewParams;
         statusMess = DefStatusMess[0];
+        viewParams = VisibleParams;
 
         _Game_Actor_displayLevelUp.call(this, newSkills);
 
@@ -145,17 +188,19 @@
             cnt = this.currentClass().params.length;
 
             for(i = 0; i < cnt; i++){
-                paramName = TextManager.param(i);
-                prevParam = this.currentClass().params[i][this._level - 1];
-                currentParam = this.currentClass().params[i][this._level];
+                if(viewParams[i][0]){
+                    paramName = TextManager.param(i);
+                    prevParam = this.currentClass().params[i][this._level - 1];
+                    currentParam = this.currentClass().params[i][this._level];
 
-                text += "%1 %2 ⇒ %3".format(paramName, prevParam, currentParam);
+                    text += "%1 %2 ⇒ %3".format(paramName, prevParam, currentParam);
 
-                if(i < cnt - 1) {
-                    if(i % 2) {
-                        text += "\n";
-                    } else {
-                        text += "　";
+                    if(i < cnt - 1) {
+                        if(i % 2) {
+                            text += "\n";
+                        } else {
+                            text += "　";
+                        }
                     }
                 }
             }
