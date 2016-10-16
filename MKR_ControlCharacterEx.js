@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.4 2016/10/16 制御文字「\me[n]」を追加、文中でMEを再生可能に。
+//
 // 1.1.3 2016/08/24 ・制御文字「\$」で表示される
 //                    所持金ウィンドウの位置を変更可能に。
 //                  ・上記対応のためプラグインパラメーター追加。
@@ -26,7 +28,7 @@
 
 /*:
  *
- * @plugindesc (v1.1.3) メッセージ内で使用可能な制御文字を
+ * @plugindesc (v1.1.4) メッセージ内で使用可能な制御文字を
  * 追加/拡張します。
  * @author mankind
  *
@@ -37,7 +39,8 @@
  * 新規追加した制御文字:
  *   \SE[SE名,SE音量,SEピッチ,SE位相]
  *     ・メッセージ表示中にSEを演奏します。
- *       SE名は必須です。拡張子を抜いたSEファイル名を指定してください。
+ *       SE名は必須です。
+ *       audio/se/配下にあるSEファイル名(拡張子は除く)を指定してください。
  *
  *       音量、ピッチ、位相は数値で指定、または
  *       制御文字の\v[n]を利用可能です。
@@ -47,6 +50,21 @@
  *
  *       音量、ピッチ、位相を初期値のまま使用する場合は、
  *       SE名のみ指定してください。
+ *       (音量のみを指定して、残りを初期設定値で再生させることも可能です)
+ *
+ *   \ME[ME名,ME音量,MEピッチ,ME位相]
+ *     ・メッセージ表示中にMEを演奏します。
+ *       ME名は必須です。
+ *       audio/me/配下にあるMEファイル名(拡張子は除く)を指定してください。
+ *
+ *       音量、ピッチ、位相は数値で指定、または
+ *       制御文字の\v[n]を利用可能です。
+ *
+ *       なお、ここでの音量、ピッチ、位相設定は
+ *       プラグインパラメータで指定できる初期値よりも優先されます。
+ *
+ *       音量、ピッチ、位相を初期値のまま使用する場合は、
+ *       ME名のみ指定してください。
  *       (音量のみを指定して、残りを初期設定値で再生させることも可能です)
  *
  *   \$[X,Y]
@@ -124,14 +142,17 @@
  *
  * 制御文字の設定例:
  *   \se[Cat,20,100,0]
- *     ・猫の効果音を音量20、ピッチ100、位相0で再生します。
+ *     ・猫のSEを音量20、ピッチ100、位相0で再生します。
  *
  *   \SE[Bell1]
- *     ・ベル1の効果音を初期値の設定で再生します。
+ *     ・ベル1のSEを初期値の設定で再生します。
  *
  *   \SE[Coin,\v[20]]
- *     ・コインの効果音を音量[変数20番に格納されている数値]、
+ *     ・コインのSEを音量[変数20番に格納されている数値]、
  *       他は初期値の設定を使い再生します。
+ *
+ *   \ME[Fanfare1]
+ *     ・ファンファーレ1のMEを初期値の設定で再生します。
  *
  *   \$[1]
  *     ・所持金ウィンドウを背景を暗くした状態で画面右上に表示します。
@@ -209,6 +230,18 @@
  * @param Default_Gold_Position
  * @desc [初期値:変数可] 制御文字 \$ 使用時に表示する所持金ウィンドウの位置を指定します。詳細はヘルプを確認してください。
  * @default 6
+ *
+ * @param Default_ME_Volume
+ * @desc [初期値:変数可] 制御文字 \ME 使用時に再生するMEの音量です。
+ * @default 90
+ *
+ * @param Default_ME_Pitch
+ * @desc [初期値:変数可] 制御文字 \ME 使用時に再生するMEのピッチです。
+ * @default 100
+ *
+ * @param Default_ME_Pan
+ * @desc [初期値:変数可] 制御文字 \ME 使用時に再生するSEの位相です。
+ * @default 0
  *
  *
  * *
@@ -290,9 +323,6 @@
         text = text.replace(/\x1bV\[\d+\]/i, function() {
             return String(ConvVb(text));
         }.bind(this));
-        text = text.replace(/\x1bS\[(\d+|[A-D])\]/i, function() {
-            return String(ConvSw(text));
-        }.bind(this));
 
         switch(type) {
             case "bool":
@@ -346,34 +376,9 @@
         return text;
     };
 
-    var ConvSw = function(text, target) {
-        var num, key;
-
-        if(typeof text == "string") {
-            text = text.replace(/\x1bS\[(\d+)\]/i, function() {
-                num = parseInt(arguments[1]);
-                return $gameSwitches.value(num);
-            }.bind(this));
-            text = text.replace(/\x1bS\[([A-D])\]/i, function() {
-                if(target) {
-                    key = [target._mapId, target._eventId, arguments[1].toUpperCase()];
-                    return $gameSelfSwitches.value(key);
-                }
-                return false;
-            }.bind(this));
-
-            if(text === true || text.toLowerCase() === "true") {
-                text = 1;
-            } else {
-                text = 0;
-            }
-        }
-
-        return text;
-    };
-
     var DefSeVolume, DefSePitch, DefSePan, DefWaitPeriod, DefWaitLine, DefNameColor,
-        DefGoldBackground, DefGoldPosition;
+        DefGoldBackground, DefGoldPosition,
+        DefMeVolume, DefMePitch, DefMePan;
     DefSeVolume = CheckParam("num", "Default_SE_Volume", 90, 20, 100);
     DefSePitch = CheckParam("num", "Default_SE_Pitch", 100, 50, 150);
     DefSePan = CheckParam("num", "Default_SE_Pan", 0, -100, 100);
@@ -382,6 +387,9 @@
     DefNameColor = CheckParam("num", "Default_Name_Color", 0, 0);
     DefGoldBackground = CheckParam("num", "Default_Gold_Background", 0, 0, 2);
     DefGoldPosition = CheckParam("num", "Default_Gold_Position", 0, 0, 8);
+    DefMeVolume = CheckParam("num", "Default_ME_Volume", 90, 20, 100);
+    DefMePitch = CheckParam("num", "Default_ME_Pitch", 100, 50, 150);
+    DefMePan = CheckParam("num", "Default_ME_Pan", 0, -100, 100);
 
 
     //=========================================================================
@@ -393,7 +401,7 @@
     Window_Base.prototype.obtainEscapeCode = function(textState) {
         var regExp, arr;
         textState.index++;
-        regExp = /^(SE|\$)\[.*?\]/i;
+        regExp = /^(SE|\$|ME)\[.*?\]/i;
         arr = regExp.exec(textState.text.slice(textState.index));
 
         if (arr) {
@@ -439,16 +447,12 @@
     var _Window_Message_processEscapeCharacter = Window_Message.prototype.processEscapeCharacter;
     Window_Message.prototype.processEscapeCharacter = function(code, textState) {
         var regExp, arr, res, se, seVolume, sePitch, sePan, waitPeriod, waitLine,
-            goldBackground, goldPosition;
-        se = {};
-        seVolume = CEC(DefSeVolume);
-        sePitch = CEC(DefSePitch);
-        sePan = CEC(DefSePan);
+            goldBackground, goldPosition, me, meVolume, mePitch, mePan;
         waitPeriod = CEC(DefWaitPeriod);
         waitLine = CEC(DefWaitLine);
         goldBackground = CEC(DefGoldBackground);
         goldPosition = CEC(DefGoldPosition);
-        regExp = /^(SE|\$)(\[.*?\])?$/i;
+        regExp = /^(SE|\$|ME)(\[.*?\])?$/i;
         arr = regExp.exec(code);
 
         if (arr) {
@@ -457,6 +461,10 @@
             }
             switch(arr[1].toUpperCase()) {
                 case "SE":
+                    se = {};
+                    seVolume = CEC(DefSeVolume);
+                    sePitch = CEC(DefSePitch);
+                    sePan = CEC(DefSePan);
                     if(arr[2]) {
                         res = arr[2].split(",");
                     }
@@ -465,6 +473,20 @@
                     se["pitch"] = (isFinite(res[2]))? parseInt(res[2], 10) : sePitch;
                     se["pan"] = (isFinite(res[3]))? parseInt(res[3], 10) : sePan;
                     AudioManager.playSe(se);
+                    break;
+                case "ME":
+                    me = {};
+                    meVolume = CEC(DefMeVolume);
+                    mePitch = CEC(DefMePitch);
+                    mePan = CEC(DefMePan);
+                    if(arr[2]) {
+                        res = arr[2].split(",");
+                    }
+                    me["name"] = (res[0])? res[0].trim() : "";
+                    me["volume"] = (isFinite(res[1]))? parseInt(res[1], 10) : meVolume;
+                    me["pitch"] = (isFinite(res[2]))? parseInt(res[2], 10) : mePitch;
+                    me["pan"] = (isFinite(res[3]))? parseInt(res[3], 10) : mePan;
+                    AudioManager.playMe(me);
                     break;
                 case '$':
                     if(arr[2]) {
