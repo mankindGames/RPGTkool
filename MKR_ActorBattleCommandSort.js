@@ -6,7 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.0 2016/10/27 初版公開
+// 1.0.1 2016/10/27 処理方法を変更。
+// 1.0.0 2016/10/27 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -15,7 +16,7 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) アクターバトルコマンドの並びを
+ * @plugindesc (v1.0.1) アクターバトルコマンドの並びを
  *「攻撃」「防御」「スキル」「アイテム」に変更します。
  *
  * @author mankind
@@ -53,6 +54,35 @@
     'use strict';
 
     //=========================================================================
+    // Window_Command
+    //  ・コマンドリストを操作する処理を定義します。
+    //
+    //=========================================================================
+    // コマンドリスト内から指定したindexのコマンドを返す。
+    Window_Command.prototype.getCommand = function(index) {
+        if(index < this.maxItems()) {
+            return this._list[index];
+        } else {
+            return {};
+        }
+    };
+
+    // コマンドリスト内から指定したindexのコマンドを削除する。
+    Window_Command.prototype.deleteCommand = function(index) {
+        if(index < this.maxItems()) {
+            this._list.splice(index, 1);
+        }
+    };
+
+    // コマンドリストの指定した位置にコマンドを挿入する。
+    Window_Command.prototype.insertCommand = function(index, command) {
+        if(index < this.maxItems()) {
+            this._list.splice(index, 0, command);
+        }
+    };
+
+
+    //=========================================================================
     // Window_ActorCommand
     //  ・コマンドの並び順を変更します。
     //
@@ -62,10 +92,31 @@
     Window_ActorCommand.prototype.makeCommandList = function() {
         // 元の処理を呼び出し
         _Window_ActorCommand_makeCommandList.call(this);
-        // コマンドの再作成用関数呼び出し
-        this.remakeCommand();
+        // コマンドの順序変更関数呼び出し
+        // this.remakeCommand();
+        this.sortCommand();
     };
 
+    Window_ActorCommand.prototype.sortCommand = function() {
+        var command, i;
+
+        // コマンドリストに登録されているコマンドを走査し、
+        // 名前が「防御」であるコマンドの並び順を2番目に変更する。
+        for(i = 0; i < this.maxItems(); i++) {
+            if(this.commandName(i) == TextManager.guard) {
+                command = this._list[i];
+                this.deleteCommand(i);
+                this.insertCommand(1, command);
+                break;
+            }
+        }
+    }
+
+/*
+    // コマンドの順番を並び替えた状態のコマンドリストを作り、
+    // 末尾の追加コマンドを加える処理だったが、
+    // 作り直すよりコマンドリスト内で並び順を変更したほうが
+    // 柔軟に対応できそうだったのでボツにした関数
     Window_ActorCommand.prototype.remakeCommand = function() {
         var oldList, i;
         if(this.maxItems() > 0) {
@@ -90,5 +141,6 @@
             }
         }
     }
+*/
 
 })();
