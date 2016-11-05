@@ -6,6 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2016/11/05 ・プラグインコマンド
+//                    「HR_Actor」「HR_Enemy」「HR_Battler」を追加。
+//                    バトラーを水平方向に回転(向き変更)できるように。
+//
 // 1.0.0 2016/10/23 ・プラグインコマンドに変数(制御文字参照)を使用可能に。
 //                  ・プラグインコマンド[BR_Battler],[BR_Enemy]を追加。
 //                  ・バトラーの回転軸を画像中心に設定できるように。
@@ -19,13 +23,14 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) 戦闘中にバトラーの傾きを変更できるようにします。
+ * @plugindesc (v1.0.1) 戦闘中にバトラーの傾き、向きを変更できるようにします。
+ *
  * @author mankind
  *
  * @help
- * 戦闘中にプラグインコマンドを使用することでバトラーグラフィックの傾きを
- * 調整することができます。
- * 設定した傾きは次回のバトルに引き継がれません。
+ * 戦闘中にプラグインコマンドを使用することでバトラーグラフィックの傾き、
+ * 向きを調整することができます。
+ * 設定した傾き、向きは次回のバトルに引き継がれません。
  *
  *
  * 簡単な使い方説明:
@@ -35,7 +40,7 @@
  * プラグインコマンド:
  *   BR_Actor X Y Z
  *     ・アクターを傾けます。Xには戦闘参加パーティ内の並び順番号(1～)、
- *       または all を指定してください。(全アクターの角度が変わります。)
+ *       または all を指定してください。(全アクターの角度が変わります)
  *     ・Yには傾ける角度を指定してください(0～360)。
  *     ・Zにはアクターを回転させるときの軸位置を番号で指定してください。
  *       0で画像の中央下(デフォルト)、1で画像の中央を軸位置とします。
@@ -43,7 +48,7 @@
  *
  *   BR_Enemy X Y Z
  *     ・エネミーを傾けます。Xには戦闘参加エネミー内の並び順番号(1～)、
- *       または all を指定してください。(全エネミーの角度が変わります。)
+ *       または all を指定してください。(全エネミーの角度が変わります)
  *     ・Yには傾ける角度を指定してください(0～360)。
  *     ・Zにはエネミーを回転させるときの軸位置を番号で指定してください。
  *       0で画像の中央下(デフォルト)、1で画像の中央を軸位置とします。
@@ -55,7 +60,7 @@
  *     ・Yには傾ける角度を指定してください(0～360)。
  *     ・Zにはバトラーを回転させるときの軸位置を番号で指定してください。
  *       0で画像の中央下(デフォルト)、1で画像の中央を軸位置とします。
- *       Yには変数を表す制御文字の\V[n]が使用可能です。
+ *     ・Yには変数を表す制御文字の\V[n]が使用可能です。
  *
  *   ※ Yanfly氏のプラグイン
  *      「YEP_BattleEngineCore.js」を導入しているときに
@@ -64,6 +69,27 @@
  *      予め「YEP_BattleEngineCore.js」の
  *      プラグインパラメーター[Default Y Anchor]を
  *      0.5 に設定する必要があります。(デフォルト値は1.0)
+ *
+ *   HR_Actor X Y
+ *     ・アクターの向きを変更します。Xには戦闘参加パーティ内の並び順番号(1～)、
+ *       または all を指定してください。(全アクターの向きが変わります)
+ *     ・Yには向きを指定してください。
+ *       (0で反転、1で右向き、2で左向きになります)
+ *     ・XとYには変数を表す制御文字の\V[n]が使用可能です。
+ *
+ *   BR_Enemy X Y
+ *     ・エネミーの向きを変更します。Xには戦闘参加エネミー内の並び順番号(1～)、
+ *       または all を指定してください。(全エネミーの向きが変わります)
+ *     ・Yには向きを指定してください。
+ *       (0で反転、1で右向き、2で左向きになります)
+ *     ・XとYには変数を表す制御文字の\V[n]が使用可能です。
+ *
+ *   BR_Battler X Y
+ *     ・バトラーの向きを変更します。Xには0か-1の数字が入ります。
+ *       Xが0で攻撃側のバトラー、Xが-1で攻撃対象のバトラーを傾けます。
+ *     ・Yには向きを指定してください。
+ *       (0で反転、1で右向き、2で左向きになります)
+ *     ・Yには変数を表す制御文字の\V[n]が使用可能です。
  *
  *
  * スクリプトコマンド:
@@ -90,7 +116,7 @@
  *     バージョンアップにより本プラグインの仕様が変更される可能性があります。
  *     ご了承ください。
  *
- * *
+ *
 */
 
 var Imported = Imported || {};
@@ -121,18 +147,18 @@ Imported.MKR_BattlerRotation = true;
 
     //=========================================================================
     // Game_Interpreter
-    //  ・バトラーの傾き変更コマンドを定義します。
+    //  ・バトラースプライトの操作コマンドを定義します。
     //=========================================================================
     var _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
-        var rotation, anchor, target, i;
+        var rotation, anchor, direction, target, i;
 
         _Game_Interpreter_pluginCommand.call(this, command, args);
-        if (command.toLowerCase() === "br_actor") {
+        if(command.toLowerCase() === "br_actor") {
             $gameParty.rotation(args);
-        } else if (command.toLowerCase() === "br_enemy") {
+        }else if(command.toLowerCase() === "br_enemy") {
             $gameTroop.rotation(args);
-        } else if (command.toLowerCase() === "br_battler") {
+        }else if(command.toLowerCase() === "br_battler") {
             rotation = ConvVb(args[1]);
             anchor = ConvVb(args[2]);
             if(args[0] == 0) {
@@ -140,10 +166,28 @@ Imported.MKR_BattlerRotation = true;
             } else if(args[0] == -1) {
                 for(i = 0; i < BattleManager._targets.length; i++) {
                     target = BattleManager._targets[i];
-                    if(target instanceof Game_Actor) {
-                        target.setRotation(rotation, anchor);
-                    } else if(target instanceof Game_Enemy) {
-                        target.setRotation(rotation, anchor);
+                    if(target) {
+                        if(target instanceof Game_Actor) {
+                            target.setRotation(rotation, anchor);
+                        } else if(target instanceof Game_Enemy) {
+                            target.setRotation(rotation, anchor);
+                        }
+                    }
+                }
+            }
+        }else if(command.toLowerCase() === "hr_actor") {
+            $gameParty.horizonalRotation(args);
+        }else if(command.toLowerCase() === "hr_enemy") {
+            $gameTroop.horizonalRotation(args);
+        }else if(command.toLowerCase() === "hr_battler") {
+            direction = ConvVb(args[1]);
+            if(args[0] == 0) {
+                BattleManager._subject.setHorizonalRotation(direction);
+            } else if(args[0] == -1) {
+                for(i = 0; i < BattleManager._targets.length; i++) {
+                    target = BattleManager._targets[i];
+                    if(target) {
+                        target.setHorizonalRotation(direction);
                     }
                 }
             }
@@ -153,7 +197,7 @@ Imported.MKR_BattlerRotation = true;
 
     //=========================================================================
     // Game_Unit
-    //  ・バトラーの傾き変更処理を定義します。
+    //  ・バトラーの傾き、向きを変更する処理を定義します。
     //=========================================================================
     Game_Unit.prototype.rotation = function() {
         var index, rotation, anchor, i;
@@ -174,6 +218,24 @@ Imported.MKR_BattlerRotation = true;
         }
     };
 
+    Game_Unit.prototype.horizonalRotation = function() {
+        var index, direction, i;
+
+        index = ConvVb(arguments[0][0]);
+        direction = ConvVb(arguments[0][1]);
+
+        if(index == "all"){
+            for(i = 0; i < this.members().length; i++) {
+                this.members()[i].setHorizonalRotation(direction);
+            }
+        }
+
+        index--;
+        if(index >= 0 && index < this.members().length){
+            this.members()[index].setHorizonalRotation(direction);
+        }
+    };
+
 
     //=========================================================================
     // Game_Battler
@@ -183,6 +245,13 @@ Imported.MKR_BattlerRotation = true;
         var sprite = this.getBattlerSprite();
         if(sprite) {
             sprite.setRotation(rotation, anchor);
+        }
+    };
+
+    Game_Battler.prototype.setHorizonalRotation = function(direction) {
+        var sprite = this.getBattlerSprite();
+        if(sprite) {
+            sprite.setHorizonalRotation(direction);
         }
     };
 
@@ -196,6 +265,31 @@ Imported.MKR_BattlerRotation = true;
         }
         return $gameTemp.getBattlerSprite(id);
     };
+
+
+    //=========================================================================
+    // Sprite_Battler
+    //  ・バトラーの向きを定義します。
+    //=========================================================================
+    Sprite_Battler.prototype.setHorizonalRotation = function(direction) {
+        if(this._battler.isActor()) {
+            if(direction == 0) {// 反転
+                this.scale.x = this.scale.x * -1;
+            } else if(direction == 1) {// 右
+                this.scale.x = Math.abs(this.scale.x) * -1;
+            } else if(direction == 2) {// 左
+                this.scale.x = Math.abs(this.scale.x);
+            }
+        } else if(this._battler.isEnemy()) {
+            if(direction == 0) {// 反転
+                this.scale.x = this.scale.x * -1;
+            } else if(direction == 1) {// 右
+                this.scale.x = Math.abs(this.scale.x);
+            } else if(direction == 2) {// 左
+                this.scale.x = Math.abs(this.scale.x) * -1;
+            }
+        }
+    }
 
 
     //=========================================================================
@@ -236,7 +330,7 @@ Imported.MKR_BattlerRotation = true;
 
     //=========================================================================
     // Sprite_Enemy
-    //  ・エネミーの傾き、位置を定義します。
+    //  ・エネミーの傾きを定義します。
     //=========================================================================
     Sprite_Enemy.prototype.setRotation = function(rotation, anchor) {
         if(anchor == 1) {
