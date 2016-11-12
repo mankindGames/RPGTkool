@@ -6,6 +6,11 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.5 2016/11/12 ・探索者の視界範囲がマップ上イベントオブジェクトの影響を
+//                    受けるかどうか設定可能に。
+//                  ・探索者の視界範囲がマップ上リージョンタイルの影響を
+//                    受けるかどうか設定可能に。
+//
 // 2.2.4 2016/10/10 ・マップ描画時に自動的にプラグインコマンド[PSS start]を
 //                    実行させるためのプラグインパラメーターを追加。
 //
@@ -58,8 +63,8 @@
 
 /*:
  *
- * @plugindesc (v2.2.4) プレイヤー探索プラグイン
- * @author mankind
+ * @plugindesc (v2.2.5) プレイヤー探索プラグイン
+ * @author マンカインド
  *
  * @help
  * 対象イベント(以下、探索者)の視界の範囲を描画し、
@@ -103,9 +108,9 @@
  *     ・この形状の場合、地形の通行可能状態を無視します。
  *       (常にTdオプションが1の状態となります)
  *
- *   <PsensorL:\V[N]>
+ *   <PsensorL:\V[n]>
  *     ・視界範囲マス数を指定する部分には、
- *       変数を表す制御文字である \V[N] が使用可能です。
+ *       変数を表す制御文字である \V[n] が使用可能です。
  *       変数番号N番の変数に格納されている値を
  *       範囲値として使用します。
  *       (変数の変更はリアルタイムに反映されます)
@@ -133,28 +138,29 @@
  *       Sw10 : スイッチ番号10番のスイッチをONにします。
  *       SwC  : 探索者のセルフスイッチCをONにします。
  *
- *   Bo[0～1の数字、または\S[N]]
+ *   Bo[0～1の数字、または\S[n]]
  *     ・探索者の両隣を探索範囲としない(0)/する(1)。
  *       1 の場合、探索者の左右マスが探索範囲となります。
  *
- *     ・\S[N]はスイッチの状態を取得する制御文字です。
+ *     ・\S[n]はスイッチの状態を取得する制御文字です。
  *       Nには数値かA～Dのアルファベットが入ります。(A～Dはセルフスイッチです)
  *       スイッチNの状態がON = 1を指定したことと同じです。
  *
  *     ・指定しない場合は初期値の設定を使用します。
  *
- *   Rv[0～1の数字、または\S[N]]
+ *   Rv[0～1の数字、または\S[n]]
  *     ・探索者の視界範囲を描画しない(0)/する(1)。
  *       0 の場合、探索者の視界範囲が画面に描画されません。
+ *       (視覚的に見えなくなるだけで探索は行われます)
  *
- *     ・\S[N]はスイッチの状態を取得する制御文字です。
+ *     ・\S[n]はスイッチの状態を取得する制御文字です。
  *       Nには数値かA～Dのアルファベットが入ります。(A～Dはセルフスイッチです)
  *       スイッチNの状態がON = 1を指定したことと同じです。
  *
  *     ・指定しない場合は初期値の設定を使用します。
  *
- *   Td[0または1、または\S[N]]
- *     ・視界範囲の算出に視界範囲内の地形に対する
+ *   Td[0または1、または\S[n]]
+ *     ・視界範囲の算出に視界範囲内の地形/イベントに対する
  *       通行可能状態を考慮しない(0)/する(1)。
  *       1 の場合、視界範囲内に通行不可マスがあると視界範囲が変化します。
  *
@@ -163,7 +169,7 @@
  *       探索者から見て通行不可マスがあることによって
  *       死角になるマスも視覚範囲の対象になりません。
  *
- *     ・\S[N]はスイッチの状態を取得する制御文字です。
+ *     ・\S[n]はスイッチの状態を取得する制御文字です。
  *       Nには数値かA～Dのアルファベットが入ります。(A～Dはセルフスイッチです)
  *       スイッチNの状態がON = 1を指定したことと同じです。
  *
@@ -172,6 +178,28 @@
  *   Di[U,R,L,Dどれか1文字]
  *     ・探索者の向きを考慮せず、探索方向を固定します。
  *       Uは上、Rは右、Lは左、Dは下を表します。
+ *
+ *   Ev[0または1、または\S[n]]
+ *     ・探索者の視界範囲がマップ上の通行不可能なイベント
+ *       (プライオリティ:通常キャラと同じ)の影響を受ける(1)/受けない(0)。
+ *       1 の場合、視界範囲内に通行不可能なマップイベントがあると
+ *       視界範囲が変化します。
+ *
+ *     ・視界範囲内の通行可能状態を考慮しない設定になっている場合、
+ *       この設定は無視されます。
+ *
+ *     ・指定しない場合は初期値の設定を使用します。
+ *
+ *   Rg[リージョン番号、または\V[n]]
+ *     ・指定した場合探索者の視界範囲がマップ上のリージョンタイルの
+ *       影響を受けます。
+ *       例えば 1 を指定すると、リージョン番号1番タイルが置かれたマスが
+ *       壁扱いとなり、視界範囲外となります。
+ *
+ *     ・視界範囲内の通行可能状態を考慮しない設定になっている場合、
+ *       この設定は無視されます。
+ *
+ *     ・指定しない場合は初期値の設定を使用します。
  *
  *
  * メモ欄の設定例:
@@ -229,6 +257,11 @@
  *   <PsensorF:7 DiU>
  *     ・探索者を頂点に、上3マス左右に3マスの点を
  *       結んでできる三角形の図形の範囲内を探索します。
+ *
+ *   <PsensorL:10 Ev1 Rg10>
+ *     ・探索者の前方10マスの範囲を探索しますが、
+ *       視界範囲内のマップイベントの存在を考慮します。
+ *       さらにリージョン番号10番のタイルを壁として認識します。
  *
  *
  * プラグインコマンド:
@@ -322,12 +355,12 @@
  *     優先されますのでご注意ください。
  *
  *   ・プラグインパラメーターの説明に、[変数可]と書かれているものは
- *     設定値に変数を表す制御文字である\V[N]を使用可能です。
+ *     設定値に変数を表す制御文字である\V[n]を使用可能です。
  *     変数を設定した場合、そのパラメーターの利用時に変数の値を
  *     参照するため、パラメーターの設定をゲーム中に変更できます。
  *
  *   ・プラグインパラメーターの説明に、[スイッチ可]と書かれているものは
- *     設定値にスイッチを表す制御文字の\S[N]を使用可能です。(Nは数値)
+ *     設定値にスイッチを表す制御文字の\S[n]を使用可能です。(Nは数値)
  *     指定したスイッチがONの場合はプラグインパラメーターに
  *     ONまたは1,trueを指定したことと同じとなります。
  *     スイッチを設定した場合、そのパラメーターの利用時にスイッチの値を
@@ -377,7 +410,15 @@
  * @param Default_Auto_Sensor
  * @desc マップ描画時に探索処理を自動的に有効にする場合はON、しない場合はOFFを指定してください。
  * @default OFF
- * *
+ *
+ * @param Default_Event_Decision
+ * @desc [初期値:スイッチ可] 視界範囲にマップイベントの存在を考慮させる場合はON、しない場合はOFFを指定してください。
+ * @default OFF
+ *
+ * @param Default_Region_Decision01
+ * @desc [初期値:変数可] 視界範囲外(壁扱い)とするリージョン番号を指定してください。(0でリージョンを考慮しません)
+ * @default 0
+ *
 */
 (function () {
     'use strict';
@@ -547,7 +588,8 @@
 
     var DIR_UP, DIR_DOWN, DIR_RIGHT, DIR_LEFT,
         DefSensorSwitch, DefBothSensor, DefRangeVisible,
-        DefTerrainDecision, DefRangeColor, DefRangeOpacity, DefAutoSensor;
+        DefTerrainDecision, DefRangeColor, DefRangeOpacity,
+        DefAutoSensor, DefEventDecision, DefRegionDecisions;
     DefSensorSwitch = CheckParam("switch", "Default_Sensor_Switch", "D");
     DefBothSensor = CheckParam("bool", "Default_Both_Sensor", false);
     DefRangeVisible = CheckParam("bool", "Default_Range_Visible", true);
@@ -555,6 +597,9 @@
     DefRangeColor = CheckParam("string", "Default_Range_Color", "white");
     DefRangeOpacity = CheckParam("num", "Default_Range_Opacity", 80, 0, 255);
     DefAutoSensor = CheckParam("bool", "Default_Auto_Sensor", false);
+    DefEventDecision = CheckParam("bool", "Default_Event_Decision", false);
+    DefRegionDecisions = [];
+    DefRegionDecisions.push(CheckParam("num", "Default_Region_Decision01", 0));
     DIR_UP = 8;
     DIR_DOWN = 2;
     DIR_RIGHT = 6;
@@ -830,6 +875,8 @@
         this._rangeVisible = -1;
         this._terrainDecision = -1;
         this._directionFixed = -1;
+        this._eventDecision = -1;
+        this._regionDecision = "";
     };
 
     var _Game_CharacterBaseMoveStraight = Game_CharacterBase.prototype.moveStraight;
@@ -965,6 +1012,22 @@
         return parseInt(ConvSw(this._terrainDecision, this), 10);
     };
 
+    Game_CharacterBase.prototype.setEventDecision = function(eventDecision) {
+        this._eventDecision = eventDecision;
+    };
+
+    Game_CharacterBase.prototype.getEventDecision = function() {
+        return parseInt(ConvSw(this._eventDecision, this), 10);
+    };
+
+    Game_CharacterBase.prototype.setRegionDecision = function(regionDecision) {
+        this._regionDecision = String(regionDecision);
+    };
+
+    Game_CharacterBase.prototype.getRegionDecision = function() {
+        return this._regionDecision;
+    };
+
     Game_CharacterBase.prototype.setDirectionFixed = function(directionFixed) {
         var direction;
 
@@ -989,6 +1052,34 @@
 
     Game_CharacterBase.prototype.getDirectionFixed = function() {
         return this._directionFixed;
+    };
+
+    Game_CharacterBase.prototype.isMapPassableEx = function(x, y, d) {
+        var x2, y2, d2, passableFlag, events, eventDecision, regionDecisions;
+        x2 = $gameMap.roundXWithDirection(x, d);
+        y2 = $gameMap.roundYWithDirection(y, d);
+        d2 = this.reverseDir(d);
+        eventDecision = CEC(DefEventDecision);
+        regionDecisions = getRegionIds(DefRegionDecisions, this.getRegionDecision());
+        passableFlag = true;
+
+
+        if($gameMap.isPassable(x, y, d) && $gameMap.isPassable(x2, y2, d2)) {
+            if(this.getEventDecision() == 1
+                    || (this.getEventDecision() == -1 && eventDecision)) {
+                events = $gameMap.eventsXyNt(x2, y2);
+                passableFlag = !events.some(function(event) {
+                    return event.isNormalPriority();
+                });
+            }
+            if(regionDecisions.length > 0) {
+                passableFlag = !regionDecisions.contains($gameMap.regionId(x2, y2));
+            }
+        } else {
+            passableFlag = false;
+        }
+
+        return passableFlag;
     };
 
 
@@ -1022,7 +1113,7 @@
         var event, pattern, match, note, cnt, i, n, m,
             options, op, value;
         event = this.event();
-        pattern = /<(.?)(?:psensor)(l|f|s|d)?(?:\:)(\\v\[\d+\]|\d+)([ 0-9a-z\[\]\\]*)?>/
+        pattern = /<(.?)(?:psensor)(l|f|s|d)?(?:\:)(\\v\[\d+\]|\d+)([ 0-9a-z\[\]\\]*)?>/i
 
         if(event.note) {
             note = event.note.toLowerCase();
@@ -1072,9 +1163,15 @@
                             } else if(op.match(/^td([0-1]|\x1bs\[(\d+|[a-d])\])$/)) { // 地形考慮指定
                                 m = op.match(/^td([0-1]|\x1bs\[(\d+|[a-d])\])$/);
                                 this.setTerrainDecision(m[1]);
-                            } else if(op.match(/^di([urld]|\x1bs\[(\d+|[a-d])\])$/)) { // 探索方向固定
-                                m = op.match(/^di([urld]|\x1bs\[(\d+|[a-d])\])$/);
+                            } else if(op.match(/^di([urld])$/)) { // 探索方向固定
+                                m = op.match(/^di([urld])$/);
                                 this.setDirectionFixed(m[1]);
+                            } else if(op.match(/^ev([0-1]|\x1bs\[(\d+|[a-d])\])$/)) { // イベント考慮指定
+                                m = op.match(/^ev([0-1]|\x1bs\[(\d+|[a-d])\])$/);
+                                this.setRegionDecision(m[1]);
+                            } else if(op.match(/^rg(\d+|\x1bv\[(\d+)\])$/)) { // リージョン考慮指定
+                                m = op.match(/^rg(\d+|\x1bv\[(\d+)\])$/);
+                                this.setRegionDecision(m[1]);
                             }
                         }, this);
                     }
@@ -1193,6 +1290,9 @@
                 // 正面範囲確定
                 this.rangeSearch(strDir, 0, 0, 0, -1, sensorRange);
 
+                // 隣接マス探索
+                if(this.isSideSearch(diagoDir, this.reverseDir(diagoDir), -1, 0)) return true;
+
                 // プレイヤー範囲探索
                 coordinates = this.getCoordinate();
                 cnt = coordinates.length;
@@ -1207,8 +1307,6 @@
                         }
                     }
                 }
-                // 隣接マス探索
-                if(this.isSideSearch(diagoDir, this.reverseDir(diagoDir), -1, 0)) return true;
 
                 break;
             case 6:// 右向き(x>0)
@@ -1217,6 +1315,9 @@
 
                 // 正面範囲確定
                 this.rangeSearch(strDir, 0, 0, 1, 0, sensorRange);
+
+                // 隣接マス探索
+                if(this.isSideSearch(diagoDir, this.reverseDir(diagoDir), 0, -1)) return true;
 
                 // プレイヤー範囲探索
                 coordinates = this.getCoordinate();
@@ -1232,8 +1333,6 @@
                         }
                     }
                 }
-                // 隣接マス探索
-                if(this.isSideSearch(diagoDir, this.reverseDir(diagoDir), 0, -1)) return true;
 
                 break;
             case 4:// 左向き(x<0)
@@ -1242,6 +1341,9 @@
 
                 // 正面範囲確定
                 this.rangeSearch(strDir, 0, 0, -1, 0, sensorRange);
+
+                // 隣接マス探索
+                if(this.isSideSearch(diagoDir, this.reverseDir(diagoDir), 0, 1)) return true;
 
                 // プレイヤー範囲探索
                 coordinates = this.getCoordinate();
@@ -1257,8 +1359,6 @@
                         }
                     }
                 }
-                // 隣接マス探索
-                if(this.isSideSearch(diagoDir, this.reverseDir(diagoDir), 0, 1)) return true;
 
                 break;
             case 2:// 下向き(y>0)
@@ -1267,6 +1367,9 @@
 
                 // 正面範囲確定
                 this.rangeSearch(strDir, 0, 0, 0, 1, sensorRange);
+
+                // 隣接マス探索
+                if(this.isSideSearch(diagoDir, this.reverseDir(diagoDir), 1, 0)) return true;
 
                 // プレイヤー範囲探索
                 coordinates = this.getCoordinate();
@@ -1282,8 +1385,6 @@
                         }
                     }
                 }
-                // 隣接マス探索
-                if(this.isSideSearch(diagoDir, this.reverseDir(diagoDir), 1, 0)) return true;
 
                 break;
         }
@@ -1342,10 +1443,10 @@
                         }
                         if(this.getTerrainDecision() == 1
                                 || (this.getTerrainDecision() == -1 && terrainDecision)) {
-                            if(!this.isMapPassable(ex + j * sign, ey - j, diagoDir)
-                                    || !this.isMapPassable(ex + j * sign, ey - j, strDir)
-                                    || !this.isMapPassable(ex + j * sign, ey - j - 1, diagoDir)
-                                    || !this.isMapPassable(ex + (j + 1) * sign, ey - j, strDir)) {
+                            if(!this.isMapPassableEx(ex + j * sign, ey - j, diagoDir)
+                                    || !this.isMapPassableEx(ex + j * sign, ey - j, strDir)
+                                    || !this.isMapPassableEx(ex + j * sign, ey - j - 1, diagoDir)
+                                    || !this.isMapPassableEx(ex + (j + 1) * sign, ey - j, strDir)) {
                                 break;
                             }
                         }
@@ -1362,6 +1463,9 @@
                         diagoDir = this.reverseDir(diagoDir);
                     }
                 }
+
+                // 隣接マス探索
+                if(this.isSideSearch(this.reverseDir(diagoDir), diagoDir, -1, 0)) return true;
 
                 // プレイヤー範囲探索
                 coordinates = this.getCoordinate();
@@ -1380,8 +1484,6 @@
                         return true;
                     }
                 }
-                // 隣接マス探索
-                if(this.isSideSearch(this.reverseDir(diagoDir), diagoDir, -1, 0)) return true;
 
                 break;
             case DIR_RIGHT:// 右向き(x>0)
@@ -1410,10 +1512,10 @@
                         }
                         if(this.getTerrainDecision() == 1
                                 || (this.getTerrainDecision() == -1 && terrainDecision)) {
-                            if(!this.isMapPassable(ex + j, ey + j * sign, diagoDir)
-                                    || !this.isMapPassable(ex + j, ey + j * sign, strDir)
-                                    || !this.isMapPassable(ex + j + 1, ey + j * sign, diagoDir)
-                                    || !this.isMapPassable(ex + j, ey + (j + 1) * sign, strDir)) {
+                            if(!this.isMapPassableEx(ex + j, ey + j * sign, diagoDir)
+                                    || !this.isMapPassableEx(ex + j, ey + j * sign, strDir)
+                                    || !this.isMapPassableEx(ex + j + 1, ey + j * sign, diagoDir)
+                                    || !this.isMapPassableEx(ex + j, ey + (j + 1) * sign, strDir)) {
                                 break;
                             }
                         }
@@ -1430,6 +1532,9 @@
                         diagoDir = this.reverseDir(diagoDir);
                     }
                 }
+
+                // 隣接マス探索
+                if(this.isSideSearch(this.reverseDir(diagoDir), diagoDir, 0, -1)) return true;
 
                 // プレイヤー範囲探索
                 coordinates = this.getCoordinate();
@@ -1448,8 +1553,6 @@
                         return true;
                     }
                 }
-                // 隣接マス探索
-                if(this.isSideSearch(this.reverseDir(diagoDir), diagoDir, 0, -1)) return true;
 
                 break;
             case DIR_LEFT:// 左向き(x<0)
@@ -1478,10 +1581,10 @@
                         }
                         if(this.getTerrainDecision() == 1
                                 || (this.getTerrainDecision() == -1 && terrainDecision)) {
-                            if(!this.isMapPassable(ex - j, ey + j * sign, diagoDir)
-                                    || !this.isMapPassable(ex - j, ey + j * sign, strDir)
-                                    || !this.isMapPassable(ex - j - 1, ey + j * sign, diagoDir)
-                                    || !this.isMapPassable(ex - j, ey + (j + 1) * sign, strDir)) {
+                            if(!this.isMapPassableEx(ex - j, ey + j * sign, diagoDir)
+                                    || !this.isMapPassableEx(ex - j, ey + j * sign, strDir)
+                                    || !this.isMapPassableEx(ex - j - 1, ey + j * sign, diagoDir)
+                                    || !this.isMapPassableEx(ex - j, ey + (j + 1) * sign, strDir)) {
                                 break;
                             }
                         }
@@ -1498,6 +1601,9 @@
                         diagoDir = this.reverseDir(diagoDir);
                     }
                 }
+
+                // 隣接マス探索
+                if(this.isSideSearch(this.reverseDir(diagoDir), diagoDir, 0, 1)) return true;
 
                 // プレイヤー範囲探索
                 coordinates = this.getCoordinate();
@@ -1516,8 +1622,6 @@
                         return true;
                     }
                 }
-                // 隣接マス探索
-                if(this.isSideSearch(this.reverseDir(diagoDir), diagoDir, 0, 1)) return true;
 
                 break;
             case DIR_DOWN:// 下向き(y>0)
@@ -1546,10 +1650,10 @@
                         }
                         if(this.getTerrainDecision() == 1
                                 || (this.getTerrainDecision() == -1 && terrainDecision)) {
-                            if(!this.isMapPassable(ex + j * sign, ey + j, diagoDir)
-                                    || !this.isMapPassable(ex + j * sign, ey + j, strDir)
-                                    || !this.isMapPassable(ex + j * sign, ey + j + 1, diagoDir)
-                                    || !this.isMapPassable(ex + (j + 1) * sign, ey + j, strDir)) {
+                            if(!this.isMapPassableEx(ex + j * sign, ey + j, diagoDir)
+                                    || !this.isMapPassableEx(ex + j * sign, ey + j, strDir)
+                                    || !this.isMapPassableEx(ex + j * sign, ey + j + 1, diagoDir)
+                                    || !this.isMapPassableEx(ex + (j + 1) * sign, ey + j, strDir)) {
                                 break;
                             }
                         }
@@ -1566,6 +1670,9 @@
                         diagoDir = this.reverseDir(diagoDir);
                     }
                 }
+
+                // 隣接マス探索
+                if(this.isSideSearch(this.reverseDir(diagoDir), diagoDir, 1, 0)) return true;
 
                 // プレイヤー範囲探索
                 coordinates = this.getCoordinate();
@@ -1584,8 +1691,6 @@
                         return true;
                     }
                 }
-                // 隣接マス探索
-                if(this.isSideSearch(this.reverseDir(diagoDir), diagoDir, 1, 0)) return true;
 
                 break;
         }
@@ -1659,8 +1764,8 @@
         if(this.getBothSensor() == -1 && bothSensor) {
             if(this.getTerrainDecision() == 1
                     || (this.getTerrainDecision() == -1 && terrainDecision)) {
-                this.setBothSensorRight(this.isMapPassable(ex, ey, directionR));
-                this.setBothSensorLeft(this.isMapPassable(ex, ey, directionL));
+                this.setBothSensorRight(this.isMapPassableEx(ex, ey, directionR));
+                this.setBothSensorLeft(this.isMapPassableEx(ex, ey, directionL));
             } else {
                 this.setBothSensorRight(true);
                 this.setBothSensorLeft(true);
@@ -1668,8 +1773,8 @@
         } else if(this.getBothSensor() == 1) {
             if(this.getTerrainDecision() == 1
                     || (this.getTerrainDecision() == -1 && terrainDecision)) {
-                this.setBothSensorRight(this.isMapPassable(ex, ey, directionR));
-                this.setBothSensorLeft(this.isMapPassable(ex, ey, directionL));
+                this.setBothSensorRight(this.isMapPassableEx(ex, ey, directionR));
+                this.setBothSensorLeft(this.isMapPassableEx(ex, ey, directionL));
             } else {
                 this.setBothSensorRight(true);
                 this.setBothSensorLeft(true);
@@ -1708,7 +1813,7 @@
             cy = ry + j * signY;
             if(this.getTerrainDecision() == 1
                     || (this.getTerrainDecision() == -1 && terrainDecision)) {
-                if(!this.isMapPassable(ex + cx, ey + cy, strDir) && j < sensorRange) {
+                if(!this.isMapPassableEx(ex + cx, ey + cy, strDir) && j < sensorRange) {
                     obstacle = j + Math.abs(rx);
                     status = "Line";
                     break;
@@ -2473,6 +2578,33 @@
     //=========================================================================
     function signChange(sign) {
         return sign * -1;
+    }
+
+    function getRegionIds() {
+        var ArrayRegionId, results, i, argCount, ary;
+        ArrayRegionId = [];
+
+        if(arguments && arguments.length > 0) {
+            argCount = arguments.length;
+            for(i = 0; i < argCount; i++) {
+                if(Array.isArray(arguments[i])) {
+                    ArrayRegionId.push(CEC(arguments[i][0]));
+                } else if(typeof arguments[i] == "string") {
+                    ary = arguments[i].split("_").filter(function(val){
+                        return val != "" && val != "0";
+                    }).map(function(val) {
+                        return parseInt(ConvVb(val), 10);
+                    });
+                    Array.prototype.push.apply(ArrayRegionId, ary);
+                } else if(isFinite(arguments[i])) {
+                    ArrayRegionId.push(parseInt(arguments[i], 10));
+                }
+            }
+        }
+
+        return ArrayRegionId.filter(function(val, i, self) {
+            return self.indexOf(val) === i && val > 0;
+        });
     }
 
 })();
