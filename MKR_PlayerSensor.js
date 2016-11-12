@@ -66,7 +66,7 @@
 
 /*:
  *
- * @plugindesc (v2.2.5) プレイヤー探索プラグイン
+ * @plugindesc (v2.2.6) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help
