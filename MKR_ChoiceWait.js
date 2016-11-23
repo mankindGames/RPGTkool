@@ -1,0 +1,242 @@
+//=============================================================================
+// MKR_ChoiceWait.js
+//=============================================================================
+// Copyright (c) 2016 マンカインド
+// This software is released under the MIT License.
+// http://opensource.org/licenses/mit-license.php
+// ----------------------------------------------------------------------------
+// Version
+// 1.0.0 2016/11/23 初版公開
+// ----------------------------------------------------------------------------
+// [Twitter] https://twitter.com/mankind_games/
+//  [GitHub] https://github.com/mankindGames/
+//    [Blog] http://mankind-games.blogspot.jp/
+//=============================================================================
+
+/*:
+ *
+ * @plugindesc (v 1.0.0) デフォルト選択肢ウェイトプラグイン
+ * @author マンカインド
+ *
+ * @help
+ * 選択肢の表示時に、デフォルトの選択肢が選択されるまでの時間を
+ * 指定したフレーム数の分だけ遅らせます。
+ *
+ * 簡単な使い方説明:
+ *   プラグインを導入するだけでデフォルトの選択肢が選択されるまでの時間が
+ *   60フレーム(1秒) 遅れます。
+ *
+ *   方向キーによる選択動作が発生した場合、
+ *   即座にデフォルトの選択肢が選択されます。
+ *
+ *   プラグインパラメーターを設定することで
+ *   デフォルトの選択肢が選択されるまでの時間は変更可能です。
+ *
+ *
+ * プラグインコマンド:
+ *   ありません。
+ *
+ *
+ * スクリプトコマンド:
+ *   ありません。
+ *
+ *
+ * 補足：
+ *   ・このプラグインに関するメモ欄の設定、プラグインコマンド/パラメーター、
+ *     制御文字は大文字/小文字を区別していません。
+ *
+ *   ・プラグインパラメーターの説明に、[初期値]と書かれているものは
+ *     アクター/イベントのメモ欄で個別に設定が可能です。
+ *     設定した場合、[初期値]よりメモ欄の設定が
+ *     優先されますのでご注意ください。
+ *
+ *   ・プラグインパラメーターの説明に、[変数可]と書かれているものは
+ *     設定値に変数を表す制御文字である\v[n]を使用可能です。
+ *     変数を設定した場合、そのパラメーターの利用時に変数の値を
+ *     参照するため、パラメーターの設定をゲーム中に変更できます。
+ *
+ *   ・プラグインパラメーターの説明に、[スイッチ可]と書かれているものは
+ *     設定値にスイッチを表す制御文字である\s[n]を使用可能です。
+ *     スイッチを設定した場合、そのパラメーターの利用時にスイッチの値を
+ *     参照するため、パラメーターの設定をゲーム中に変更できます。
+ *
+ *
+ * 利用規約:
+ *   ・作者に無断で本プラグインの改変、再配布が可能です。
+ *     (ただしヘッダーの著作権表示部分は残してください。)
+ *
+ *   ・利用形態(フリーゲーム、商用ゲーム、R-18作品等)に制限はありません。
+ *     ご自由にお使いください。
+ *
+ *   ・本プラグインを使用したことにより発生した問題について作者は一切の責任を
+ *     負いません。
+ *
+ *   ・要望などがある場合、本プラグインのバージョンアップを行う
+ *     可能性がありますが、
+ *     バージョンアップにより本プラグインの仕様が変更される可能性があります。
+ *     ご了承ください。
+ *
+ *
+ * @param Choice_Wait
+ * @desc [変数可]デフォルトの選択肢が選択されるまでのフレーム数です。(60フレーム=1秒)
+ * @default 60
+ *
+*/
+(function () {
+    'use strict';
+    var PN = "MKR_ChoiceWait";
+
+    var CheckParam = function(type, param, def, min, max) {
+        var Parameters, regExp, value;
+        Parameters = PluginManager.parameters(PN);
+
+        if(arguments.length < 4) {
+            min = -Infinity;
+            max = Infinity;
+        }
+        if(arguments.length < 5) {
+            max = Infinity;
+        }
+        if(param in Parameters) {
+            value = String(Parameters[param]);
+        } else {
+            throw new Error("[CheckParam] プラグインパラメーターがありません: " + param);
+        }
+
+        value = value.replace(/\\/g, '\x1b');
+        value = value.replace(/\x1b\x1b/g, '\\');
+
+        regExp = /^\x1bV\[\d+\]$/i;
+        if(!regExp.test(value)) {
+            switch(type) {
+                case "num":
+                    if(value == "") {
+                        value = (isFinite(def))? parseInt(def, 10) : 0;
+                    } else {
+                        value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
+                        value = value.clamp(min, max);
+                    }
+                    break;
+                default:
+                    throw new Error("[CheckParam] " + param + "のタイプが不正です: " + type);
+                    break;
+            }
+        }
+
+        return [value, type, def, min, max, param];
+    }
+
+    var CEC = function(params) {
+        var text, value, type, def, min, max, param;
+        type = params[1];
+        text = String(params[0]);
+        text = text.replace(/\\/g, '\x1b');
+        text = text.replace(/\x1b\x1b/g, '\\');
+        type = params[1];
+        def = params[2];
+        min = params[3];
+        max = params[4];
+        param = params[5];
+
+        text = convertEscapeCharacters(text)
+
+        switch(type) {
+            case "num":
+                value = (isFinite(text))? parseInt(text, 10) : (isFinite(def))? parseInt(def, 10) : 0;
+                value = value.clamp(min, max);
+                break;
+            default:
+                throw new Error("[CEC] " + param + "のタイプが不正です: " + type);
+                break;
+        }
+
+        return value;
+    };
+
+    var convertEscapeCharacters = function(text) {
+        var windowChild;
+
+        if(typeof text == "string") {
+            if(SceneManager._scene) {
+                windowChild = SceneManager._scene._windowLayer.children[0];
+                text = windowChild ? windowChild.convertEscapeCharacters(text) : text;
+            } else {
+                text = ConvVb(text);
+            }
+        }
+
+        return text;
+    };
+
+    var ConvVb = function(text) {
+        var num;
+
+        if(typeof text == "string") {
+            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+                num = parseInt(arguments[1]);
+                return $gameVariables.value(num);
+            }.bind(this));
+            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+                num = parseInt(arguments[1]);
+                return $gameVariables.value(num);
+            }.bind(this));
+        }
+
+        return text;
+    }
+
+    var Choice_Wait;
+    Choice_Wait = CheckParam("num", "Choice_Wait", 60, 0);
+
+
+    //=========================================================================
+    // Window_ChoiceList
+    //  ・選択肢の表示ウィンドウの機能を拡張します。
+    //
+    //=========================================================================
+    var _Window_ChoiceList_start = Window_ChoiceList.prototype.start;
+    Window_ChoiceList.prototype.start = function() {
+        _Window_ChoiceList_start.call(this);
+
+        this.select(-1);
+    };
+
+    Window_ChoiceList.prototype.update = function() {
+        Window_Selectable.prototype.update.call(this);
+
+        var waitCount = CEC(Choice_Wait);
+
+        if(this.isOpen()) {
+            if(this._index == -1 && this._stayCount >= waitCount) {
+                this.selectDefault();
+            }
+        }
+    };
+
+    Window_ChoiceList.prototype.cursorUp = function(wrap) {
+        var index = this.index();
+        var maxItems = this.maxItems();
+        var maxCols = this.maxCols();
+        if (index >= maxCols || (wrap && maxCols === 1)) {
+            if(index == -1) {
+                this.selectDefault();
+            } else {
+                this.select((index - maxCols + maxItems) % maxItems);
+            }
+        }
+    };
+
+    Window_Selectable.prototype.cursorDown = function(wrap) {
+        var index = this.index();
+        var maxItems = this.maxItems();
+        var maxCols = this.maxCols();
+        if (index < maxItems - maxCols || (wrap && maxCols === 1)) {
+            if(index == -1) {
+                this.selectDefault();
+            } else {
+                this.select((index + maxCols) % maxItems);
+            }
+        }
+    };
+
+})();
