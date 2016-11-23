@@ -6,7 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.2 2016/11/23 バグ修正
+//
 // 1.0.1 2016/11/23 プラグインコマンドを追加。本機能をON/OFFできるように。
+//
 // 1.0.0 2016/11/23 初版公開
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -16,7 +19,7 @@
 
 /*:
  *
- * @plugindesc (v 1.0.1) デフォルト選択肢ウェイトプラグイン
+ * @plugindesc (v 1.0.2) デフォルト選択肢ウェイトプラグイン
  * @author マンカインド
  *
  * @help
@@ -287,7 +290,7 @@
         }
     };
 
-    Window_Selectable.prototype.cursorDown = function(wrap) {
+    Window_ChoiceList.prototype.cursorDown = function(wrap) {
         var index, maxItems, maxCols;
         index = this.index();
         maxItems = this.maxItems();
