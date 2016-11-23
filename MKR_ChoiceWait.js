@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2016/11/23 プラグインコマンドを追加。本機能をON/OFFできるように。
 // 1.0.0 2016/11/23 初版公開
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,7 +16,7 @@
 
 /*:
  *
- * @plugindesc (v 1.0.0) デフォルト選択肢ウェイトプラグイン
+ * @plugindesc (v 1.0.1) デフォルト選択肢ウェイトプラグイン
  * @author マンカインド
  *
  * @help
@@ -34,7 +35,12 @@
  *
  *
  * プラグインコマンド:
- *   ありません。
+ *   ChoiceWait ON
+ *     ・本プラグインの機能を有効にします。
+ *       (初期状態では有効になっています)
+ *
+ *   ChoiceWait OFF
+ *     ・本プラグインの機能を無効にします。
  *
  *
  * スクリプトコマンド:
@@ -190,6 +196,53 @@
 
 
     //=========================================================================
+    // Game_Interpreter
+    //  ・デフォルト選択肢ウェイト制御プラグインコマンドを定義します
+    //=========================================================================
+    var _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
+    Game_Interpreter.prototype.pluginCommand = function(command, args) {
+        _Game_Interpreter_pluginCommand.call(this, command, args);
+        if (command.toLowerCase() === "choicewait") {
+            switch (args[0].toLowerCase()) {
+                case "on":// 機能有効
+                    $gameSystem.onChoiceWait();
+                    break;
+                case "off":// 機能無効
+                    $gameSystem.offChoiceWait();
+                    break;
+            }
+        }
+    };
+
+
+    //=========================================================================
+    // Game_System
+    //  ・デフォルト選択肢ウェイト制御を定義
+    //=========================================================================
+    var _Game_System_initialize = Game_System.prototype.initialize;
+    Game_System.prototype.initialize = function(){
+        _Game_System_initialize.call(this);
+        this._choiceWait = true;
+    };
+
+    Game_System.prototype.onChoiceWait = function(choiceWait) {
+        if(!this.isChoiceWait()) {
+            this._choiceWait = true;
+        }
+    };
+
+    Game_System.prototype.offChoiceWait = function(choiceWait) {
+        if(this.isChoiceWait()) {
+            this._choiceWait = false;
+        }
+    };
+
+    Game_System.prototype.isChoiceWait = function() {
+        return this._choiceWait;
+    };
+
+
+    //=========================================================================
     // Window_ChoiceList
     //  ・選択肢の表示ウィンドウの機能を拡張します。
     //
@@ -198,7 +251,9 @@
     Window_ChoiceList.prototype.start = function() {
         _Window_ChoiceList_start.call(this);
 
-        this.select(-1);
+        if($gameSystem.isChoiceWait()) {
+            this.select(-1);
+        }
     };
 
     Window_ChoiceList.prototype.update = function() {
@@ -206,7 +261,7 @@
 
         var waitCount = CEC(Choice_Wait);
 
-        if(this.isOpen()) {
+        if(this.isOpen() && $gameSystem.isChoiceWait()) {
             if(this._index == -1 && this._stayCount >= waitCount) {
                 this.selectDefault();
             }
@@ -214,28 +269,40 @@
     };
 
     Window_ChoiceList.prototype.cursorUp = function(wrap) {
-        var index = this.index();
-        var maxItems = this.maxItems();
-        var maxCols = this.maxCols();
-        if (index >= maxCols || (wrap && maxCols === 1)) {
-            if(index == -1) {
-                this.selectDefault();
-            } else {
-                this.select((index - maxCols + maxItems) % maxItems);
+        var index, maxItems, maxCols;
+        index = this.index();
+        maxItems = this.maxItems();
+        maxCols = this.maxCols();
+
+        if($gameSystem.isChoiceWait()) {
+            if (index >= maxCols || (wrap && maxCols === 1)) {
+                if(index == -1) {
+                    this.selectDefault();
+                } else {
+                    this.select((index - maxCols + maxItems) % maxItems);
+                }
             }
+        } else {
+            Window_Selectable.prototype.cursorUp.call(this, wrap);
         }
     };
 
     Window_Selectable.prototype.cursorDown = function(wrap) {
-        var index = this.index();
-        var maxItems = this.maxItems();
-        var maxCols = this.maxCols();
-        if (index < maxItems - maxCols || (wrap && maxCols === 1)) {
-            if(index == -1) {
-                this.selectDefault();
-            } else {
-                this.select((index + maxCols) % maxItems);
+        var index, maxItems, maxCols;
+        index = this.index();
+        maxItems = this.maxItems();
+        maxCols = this.maxCols();
+
+        if($gameSystem.isChoiceWait()) {
+            if (index < maxItems - maxCols || (wrap && maxCols === 1)) {
+                if(index == -1) {
+                    this.selectDefault();
+                } else {
+                    this.select((index + maxCols) % maxItems);
+                }
             }
+        } else {
+            Window_Selectable.prototype.cursorDown.call(this, wrap);
         }
     };
 
