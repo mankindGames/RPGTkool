@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.4 2016/11/26 キーボードで選択する際に、
+//                  2番目の選択肢が初回選択になってしまう不具合を修正
+//
 // 1.0.3 2016/11/26 キーボードで選択肢を選択できないことがある不具合を修正
 //
 // 1.0.2 2016/11/23 不具合修正
@@ -21,7 +24,7 @@
 
 /*:
  *
- * @plugindesc (v 1.0.2) デフォルト選択肢ウェイトプラグイン
+ * @plugindesc (v 1.0.4) デフォルト選択肢ウェイトプラグイン
  * @author マンカインド
  *
  * @help
@@ -286,10 +289,10 @@
         if($gameSystem.isChoiceWait()) {
             if (index >= maxCols || (wrap && maxCols === 1)) {
                 if(index == -1) {
-                    if($gameMessage.choiceDefaultType() > 0) {
+                    if($gameMessage.choiceDefaultType() > -1) {
                         this.selectDefault();
                     } else {
-                        this.select(1);
+                        this.select(0);
                     }
                 } else {
                     this.select((index - maxCols + maxItems) % maxItems);
@@ -309,10 +312,10 @@
         if($gameSystem.isChoiceWait()) {
             if (index < maxItems - maxCols || (wrap && maxCols === 1)) {
                 if(index == -1) {
-                    if($gameMessage.choiceDefaultType() > 0) {
+                    if($gameMessage.choiceDefaultType() > -1) {
                         this.selectDefault();
                     } else {
-                        this.select(1);
+                        this.select(0);
                     }
                 } else {
                     this.select((index + maxCols) % maxItems);
