@@ -6,7 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.2 2016/11/23 バグ修正
+// 1.0.3 2016/11/26 キーボードで選択肢を選択できないことがある不具合を修正
+//
+// 1.0.2 2016/11/23 不具合修正
 //
 // 1.0.1 2016/11/23 プラグインコマンドを追加。本機能をON/OFFできるように。
 //
@@ -241,7 +243,11 @@
     };
 
     Game_System.prototype.isChoiceWait = function() {
-        return this._choiceWait;
+        if('_choiceWait' in this) {
+            return this._choiceWait;
+        } else {
+            return true;
+        }
     };
 
 
@@ -280,7 +286,11 @@
         if($gameSystem.isChoiceWait()) {
             if (index >= maxCols || (wrap && maxCols === 1)) {
                 if(index == -1) {
-                    this.selectDefault();
+                    if($gameMessage.choiceDefaultType() > 0) {
+                        this.selectDefault();
+                    } else {
+                        this.select(1);
+                    }
                 } else {
                     this.select((index - maxCols + maxItems) % maxItems);
                 }
@@ -299,7 +309,11 @@
         if($gameSystem.isChoiceWait()) {
             if (index < maxItems - maxCols || (wrap && maxCols === 1)) {
                 if(index == -1) {
-                    this.selectDefault();
+                    if($gameMessage.choiceDefaultType() > 0) {
+                        this.selectDefault();
+                    } else {
+                        this.select(1);
+                    }
                 } else {
                     this.select((index + maxCols) % maxItems);
                 }
