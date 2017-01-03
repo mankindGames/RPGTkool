@@ -6,6 +6,11 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.7 2016.01.03 ・探索者がプレイヤー発見時に条件を満たすイベントページに
+//                    設定された画像の向きにより、
+//                    探索者がプレイヤーの方を向いていない
+//                    状態で有効になったイベントが実行されていた問題を修正。
+//
 // 2.2.6 2016/11/12 ・メモ欄にEvとRgを一緒に指定した場合、Rgが正常に機能しない
 //                    問題を修正。
 //
@@ -66,7 +71,7 @@
 
 /*:
  *
- * @plugindesc (v2.2.6) プレイヤー探索プラグイン
+ * @plugindesc (v2.2.7) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help
@@ -867,10 +872,14 @@
     //    0 = 描画停止
     //    1 = 描画更新
     //    2 = 描画新規
+    //  発見状態：
+    //    0 = 未発見
+    //    1 = 発見済み
     //=========================================================================
     var _Game_CharacterBaseInitMembers = Game_CharacterBase.prototype.initMembers;
     Game_CharacterBase.prototype.initMembers = function() {
         _Game_CharacterBaseInitMembers.call(this);
+        this._foundStatus = 0;
         this._sensorStatus = -2;
         this._sensorType = null;
         this._sensorRange = 0;
@@ -923,6 +932,14 @@
 
     Game_CharacterBase.prototype.getSensorStatus = function() {
         return this._sensorStatus;
+    };
+
+    Game_CharacterBase.prototype.setFoundStatus = function(foundStatus) {
+        this._foundStatus = foundStatus;
+    };
+
+    Game_CharacterBase.prototype.getFoundStatus = function() {
+        return this._foundStatus;
     };
 
     Game_CharacterBase.prototype.setSensorType = function(sensorType) {
@@ -1116,6 +1133,9 @@
         if(this.getSensorStatus() == -2) {
             this.setupSensor();
         }
+        if($gameSystem.isFoundPlayer() == this.eventId()) {
+            this.turnTowardPlayer();
+        }
     };
 
     Game_Event.prototype.setupSensor = function() {
@@ -1200,8 +1220,8 @@
         sensorSwitch = DefSensorSwitch[0];
         // 探索中のイベントであること
         if(this.getSensorStatus() == 1){
-            // マップ/イベント実行中でないこと、プレイヤーを発見していること
-            //if(!$gameMap.isEventRunning() && !this.isStarting()) {
+            // マップイベント実行中でないこと
+            if(!this.isStarting()) {
                 mapId = $gameMap.mapId();
                 eventId = this.eventId();
                 sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
@@ -1246,7 +1266,7 @@
                     }
 */
                 }
-            //}
+            }
         }
     };
 
@@ -1266,7 +1286,9 @@
                 result = this.sensorDiamond();
                 break;
         }
-        if(result) $gameSystem.setFoundPlayer(this.id);
+        if(result) {
+            $gameSystem.setFoundPlayer(this.eventId());
+        }
         return result;
     };
 
