@@ -460,10 +460,6 @@ Imported.MKR_ActorTension = true;
         color2 = this.tensionGaugeColor2();
         width = width || 186;
 
-        console.log("color1:"+color1);
-        console.log("color2:"+color2);
-        console.log("rate:"+actor.tensionRate());
-
         this.drawGauge(x, y, width, actor.tensionRate(), color1, color2);
         this.changeTextColor(this.systemColor());
         this.drawText(Params.TenNameA[0], x, y, 44);
