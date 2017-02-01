@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/02/01 テンション値とともに操作される変数の動作を変更。
 // 1.0.0 2017/01/29 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -47,8 +48,8 @@
  *       アクター毎に指定します。
  *
  *   vNo[数値]
- *     ・アクターのテンション値と同期させる変数の番号を
- *       アクター毎に指定します。
+ *     ・アクターのテンション値が増減されたとき、一緒に増減させる
+ *       変数の番号をアクター毎に指定します。
  *
  *   ※ 初期設定値よりオプション設定が優先されますのでご注意ください。
  *
@@ -68,7 +69,7 @@
  *
  *   <Tension:50 vNo20>
  *     ・アクターの初期テンション値を50に設定します。
- *       また、変数20番にアクターのテンション値が代入されるようになります。
+ *       また、変数20番にアクターのテンション値増減分が反映されるようになります。
  *
  *
  * プラグインコマンド:
@@ -256,7 +257,7 @@ Imported.MKR_ActorTension = true;
 
 (function () {
     'use strict';
-    var PN, Params, Metas;
+    var PN, Params;
     PN = "MKR_ActorTension";
 
     var CheckParam = function(type, param, def, min, max) {
@@ -651,7 +652,8 @@ Imported.MKR_ActorTension = true;
                                 m = op.match(/^vno(\d+)$/);
                                 if(isFinite(m[1]) && parseInt(m[1], 10) > 0) {
                                     this._syncNo = parseInt(m[1], 10);
-                                    $gameVariables._data[this.tensionSyncNo()] = this._tension;
+                                    // ver 1.0.1 : テンション値は同期させない
+                                    // $gameVariables._data[this.tensionSyncNo()] = this._tension;
                                 }
                             }
                         }, this);
@@ -661,17 +663,42 @@ Imported.MKR_ActorTension = true;
         }
     };
 
-    Game_Actor.prototype.setTension = function(tension) {
-        if(tension < 0) {
-            this._tension = 0;
-        } else if(tension > this.maxTen()) {
-            this._tension = this.maxTen();
+    Game_Actor.prototype.setTension = function(tension, value) {
+        var tmpTension;
+
+        if(!Number.isNaN(value) && value !== undefined) {
+            tmpTension = tension + value;
+            if(tmpTension < 0) {
+                this._tension = 0;
+            } else if(tmpTension > this.maxTen()) {
+                this._tension = this.maxTen();
+            } else {
+                this._tension = tmpTension;
+            }
+            if(this.tensionSyncNo() > 0) {
+                // ver 1.0.1 : テンションの増減分を変数に反映させる
+                if (this.tensionSyncNo() > 0 && this.tensionSyncNo() < $dataSystem.variables.length) {
+                    if (typeof value === 'number') {
+                        value = Math.floor(value);
+                    }
+                    if($gameVariables._data[this.tensionSyncNo()] === undefined) {
+                        $gameVariables._data[this.tensionSyncNo()] = value;
+                    } else {
+                        $gameVariables._data[this.tensionSyncNo()] += value;
+                    }
+                }
+            }
         } else {
-            this._tension = tension;
+            tmpTension = tension;
+            if(tmpTension < 0) {
+                this._tension = 0;
+            } else if(tmpTension > this.maxTen()) {
+                this._tension = this.maxTen();
+            } else {
+                this._tension = tmpTension;
+            }
         }
-        if(this.tensionSyncNo() > 0) {
-            $gameVariables._data[this.tensionSyncNo()] = tension;
-        }
+
         this.refresh();
     };
 
@@ -703,11 +730,11 @@ Imported.MKR_ActorTension = true;
 
     Game_Actor.prototype.gainTension = function(value) {
         this._result.tensionDamage = -value;
-        this.setTension(this.tension + value);
+        this.setTension(this.tension, value);
     };
 
     Game_Actor.prototype.gainSilentTension = function(value) {
-        this.setTension(this.tension + value);
+        this.setTension(this.tension, value);
     };
 
     Game_Actor.prototype.tensionLowThreshold = function() {
@@ -739,7 +766,7 @@ Imported.MKR_ActorTension = true;
         if(this.isActor() && Params.ActorDieTenDownEnable[0]) {
             $gameParty.battleMembers().forEach(function(actor) {
                 if(actor._hp > 0) {
-                    actor.setTension(actor.tension - Params.ActorDieTenDown[0]);
+                    actor.setTension(actor.tension, -Params.ActorDieTenDown[0]);
                 }
             });
         }
@@ -770,7 +797,7 @@ Imported.MKR_ActorTension = true;
         if(Params.BattleWinTenUpEnable[0]) {
             $gameParty.battleMembers().forEach(function(actor) {
                 if(actor.isAlive()) {
-                    actor.setTension(actor.tension + Params.BattleWinTenUp[0]);
+                    actor.setTension(actor.tension, Params.BattleWinTenUp[0]);
                 }
             });
         }
@@ -784,7 +811,7 @@ Imported.MKR_ActorTension = true;
         if(success && Params.BattleGetawayTenDownEnable[0]) {
             $gameParty.battleMembers().forEach(function(actor) {
                 if(actor.isAlive()) {
-                    actor.setTension(actor.tension - Params.BattleGetawayTenDown[0]);
+                    actor.setTension(actor.tension, Params.BattleGetawayTenDown[0]);
                 }
             });
         }
@@ -795,7 +822,8 @@ Imported.MKR_ActorTension = true;
 
     //=========================================================================
     // DataManager
-    //  ・プラグイン導入前のセーブデータをロードしたとき用処理を再定義します。
+    //  ・プラグイン導入前のセーブデータをロードしたときのエラー回避用に
+    //    処理を再定義します。
     //
     //=========================================================================
     var _DataManager_extractSaveContents = DataManager.extractSaveContents;
