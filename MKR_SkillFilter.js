@@ -6,7 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.0 2017/01/14 初版公開
+// 1.0.0 2017/02/05 スキルタイプの判定を無視していたため修正。
+//
+// 1.0.0 2017/01/14 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -15,7 +17,7 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) 表示スキルフィルタープラグイン
+ * @plugindesc (v1.0.1) 表示スキルフィルタープラグイン
  * @author マンカインド
  *
  * @help
@@ -78,14 +80,10 @@
     //=========================================================================
     var _Window_BattleSkill_includes = Window_BattleSkill.prototype.includes;
     Window_BattleSkill.prototype.includes = function(item) {
-        var result, wtypeId1, wtypeId2;
+        var result;
         result = _Window_BattleSkill_includes.apply(this, arguments);
-        if(item && this._actor) {
-            if(this._actor.isSkillWtypeOk(item)) {
-                result = true;
-            } else {
-                result = false;
-            }
+        if(item && this._actor && result && !this._actor.isSkillWtypeOk(item)) {
+            result = false;
         }
         return result;
     };
