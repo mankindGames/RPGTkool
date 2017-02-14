@@ -6,6 +6,13 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.0 2017/02/14 ・プラグインコマンドの対象を実行したイベントのみに変更。
+//                  ・スクリプトコマンドの[イベントID]に
+//                    実行したイベント自身を表す0を指定可能に。
+//                  ・プラグイン/スクリプトコマンドの一部に変数を使用可能に。
+//                  ・プラグインパラメーターでゲージの不透明度を指定可能に。
+//                  ・上記修正に合わせてプラグイン説明文を修正。
+//
 // 1.0.2 2017/02/14 メニューの開閉でゲージが非表示になることがある問題を修正。
 //
 // 1.0.1 2017/02/14 スクリプトによるコマンドが一部動作していなかったため修正。
@@ -19,13 +26,16 @@
 
 /*:
  *
- * @plugindesc (v1.0.2) イベントゲージプラグイン
+ * @plugindesc (v1.1.0) イベントゲージプラグイン
  * @author マンカインド
  *
  * @help = イベントゲージプラグイン =
  *
  * 指定したイベントの足元にゲージを表示します。(表示位置は調節が可能)
- * ゲージ残量はメモ欄で指定した変数の値に対応しており、
+ * ゲージの最大値はイベント生成(マップ移動)時に
+ * イベント_メモ欄で指定した変数の値で設定されます。
+ *
+ * ゲージ残量は変数の値に対応しており、
  * 変数の値とゲージ残量が同期します。
  * (ただし、ゲージ残量は最大値より上になることは無く、
  *  0より小さくなることもありません)
@@ -33,9 +43,14 @@
  * ゲージはイベントの透明化によって非表示になり、
  * 透明化を解除すると再表示されます。
  *
- * ただし、後述するプラグイン/スクリプトコマンドでゲージを非表示にした場合は
- * 透明化の有無に関わらず、プラグイン/スクリプトコマンドで
- * ゲージを明示的に表示させる必要があります。
+ * イベント画像が設定されていないイベント(ページ)の場合、ゲージは表示されません。
+ *
+ * ただし、後述するプラグイン/スクリプトコマンドで
+ * ゲージを非表示設定にした場合は透明化や画像設定の有無に関わらず、
+ * プラグイン/スクリプトコマンドでゲージを表示設定にする必要があります。
+ *
+ * イベントコマンド[イベントの一時消去]が実行されると、そのイベントに紐づく
+ * ゲージも一緒に消去されます。
  *
  *
  * [コピペ用使用例、メモ欄設定・コマンド]
@@ -46,19 +61,26 @@
  *   イベント_メモ欄:
  *     <Egauge:vr10>
  *
- *   プラグインコマンド:
- *     Egauge show 1
- *     Egauge hide 1
- *     Egauge add 1 3
- *     Egauge set 1 5
- *     Egauge maxset 1 5
+ *   プラグインコマンド(実行したイベント対象で効果を発揮):
+ *     Egauge show
+ *     Egauge hide
+ *     Egauge add 3
+ *     Egauge set 5
+ *     Egauge maxset 5
+ *     Egauge add \V[10]
+ *     Egauge set \V[15]
+ *     Egauge maxset \V[20]
  *
- *   スクリプトコマンド:
+ *   スクリプトコマンド(イベントIDを指定して効果を発揮):
  *     $gameMap.showGaugeWindow(1);
  *     $gameMap.hideGaugeWindow(1);
+ *     $gameMap.isHideGaugeWindow(1);
  *     $gameMap.addGaugeValue(1, 3);
  *     $gameMap.setGaugeValue(1, 5);
  *     $gameMap.setGaugeMaxValue(1, 5);
+ *     $gameMap.addGaugeValue(1, $gameVariables.value(10));
+ *     $gameMap.setGaugeValue(1, $gameVariables.value(15));
+ *     $gameMap.setGaugeMaxValue(1, $gameVariables.value(20));
  *
  *
  * ゲージの色について:
@@ -99,10 +121,9 @@
  *       ゲージの表示は変数10番の値が反映されます。
  *
  *
- * コマンド:　※使用する際は、[]を実際の値に置き換えてください。
- *   プラグイン → Egauge show [イベントID]
- *   スクリプト → $gameMap.showGaugeWindow([イベントID]);
- *     ・指定した[イベントID]のゲージを表示設定にします。
+ * プラグインコマンド:　※使用する際は、[]を実際の値に置き換えてください。
+ *   Egauge show
+ *     ・実行したイベントのゲージを表示設定にします。
  *
  *     ・イベントが透明、イベント画像が未設定のとき、コマンドを実行しても
  *       ゲージは表示されません。
@@ -112,19 +133,20 @@
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
- *   プラグイン → Egauge hide [イベントID]
- *   スクリプト → $gameMap.hideGaugeWindow([イベントID]);
- *     ・指定した[イベントID]のゲージを非表示設定にします。
+ *   Egauge hide
+ *     ・実行したイベントのゲージを非表示設定にします。
  *
  *     ・イベントが透明ではない、イベント画像が設定されているとき、
  *       コマンドの実行によりゲージが非表示になります。
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
- *   プラグイン → Egauge add [イベントID] [数字]
- *   スクリプト → $gameMap.addGaugeValue([イベントID], [数字]);
- *     ・指定した[イベントID]のゲージ残量を指定した[数字]分、
+ *   Egauge add [数字]
+ *     ・実行したイベントのゲージ残量を指定した[数字]分、
  *       増加/減少させます。([数字]がマイナス値だと減少します)
+ *
+ *     ・[数字]の代わりに制御文字\V[n]を使うことで、変数n番の値を
+ *       増加/減少させることができます。
  *
  *     ・変数によってゲージ残量が決められている場合、このコマンドによって
  *       変数の値が変化します。
@@ -134,21 +156,25 @@
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
- *   プラグイン → Egauge set [イベントID] [数字]
- *   スクリプト → $gameMap.setGaugeValue([イベントID], [数字]);
- *     ・指定した[イベントID]のゲージ残量を指定した[数字]に設定します。
+ *   Egauge set [数字]
+ *     ・実行したイベントのゲージ残量を指定した[数字]に設定します。
  *       ([数字]は0以上の値を指定してください。
  *        また、ゲージ最大値より残量が多くなることはありません)
+ *
+ *     ・[数字]の代わりに制御文字\V[n]を使うことで、変数n番の値を
+ *       ゲージ残量に設定することができます。
  *
  *     ・変数によってゲージ残量が決められている場合、このコマンドによって
  *       変数の値が変化する場合があります。
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
- *   プラグイン → Egauge maxset [イベントID] [数字]
- *   スクリプト → $gameMap.setGaugeMaxValue([イベントID], [数字]);
- *     ・指定した[イベントID]のゲージ最大値を指定した[数字]に設定します。
+ *   Egauge maxset [数字]
+ *     ・実行したイベントのゲージ最大値を指定した[数字]に設定します。
  *       ([数字]は0より大きい値を指定してください)
+ *
+ *     ・[数字]の代わりに制御文字\V[n]を使うことで、変数n番の値を
+ *       ゲージ最大値に設置することができます。
  *
  *     ・ゲージ最大値がゲージ残量を下回る場合、このコマンドによって
  *       ゲージ残量がゲージ最大値と同じになります。
@@ -159,14 +185,108 @@
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
  *
+ * スクリプトコマンド:　※使用する際は、[]を実際の値やスクリプトに置き換えてください。
+ *   $gameMap.showGaugeWindow([イベントID]);
+ *     ・指定した[イベントID]のゲージを表示設定にします。
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・イベントが透明、イベント画像が未設定のとき、コマンドを実行しても
+ *       ゲージは表示されません。
+ *
+ *     ・ゲージが非表示設定になっている場合、
+ *       このコマンドで表示設定にすることが可能です。
+ *
+ *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
+ *
+ *   $gameMap.hideGaugeWindow([イベントID]);
+ *     ・指定した[イベントID]のゲージを非表示設定にします。
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・イベントが透明ではない、イベント画像が設定されているとき、
+ *       コマンドの実行によりゲージが非表示になります。
+ *
+ *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
+ *
+ *   $gameMap.isHideGaugeWindow([イベントID]);
+ *     ・指定した[イベントID]のゲージが非表示設定であればtrue、
+ *       表示設定であればfalseを返します。
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・イベント_メモ欄にゲージ表示が設定されていない場合、falseが返ります。
+ *
+ *   $gameMap.addGaugeValue([イベントID], [数字]);
+ *     ・指定した[イベントID]のゲージ残量を指定した[数字]分、
+ *       増加/減少させます。([数字]がマイナス値だと減少します)
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・[数字]の代わりにスクリプト$gameVariables.value(n)を使うことで、
+ *       変数n番の値を増加/減少させることができます。
+ *
+ *     ・変数によってゲージ残量が決められている場合、このコマンドによって
+ *       変数の値が変化します。
+ *
+ *     ・ゲージ残量は最大値より多くなることはなく、
+ *       0より小さくなることもありません。
+ *
+ *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
+ *
+ *   $gameMap.setGaugeValue([イベントID], [数字]);
+ *     ・指定した[イベントID]のゲージ残量を指定した[数字]に設定します。
+ *       ([数字]は0以上の値を指定してください。
+ *        また、ゲージ最大値より残量が多くなることはありません)
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・[数字]の代わりにスクリプト$gameVariables.value(n)を使うことで、
+ *       変数n番の値をゲージ残量に設定することができます。
+ *
+ *     ・変数によってゲージ残量が決められている場合、このコマンドによって
+ *       変数の値が変化する場合があります。
+ *
+ *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
+ *
+ *   $gameMap.setGaugeMaxValue([イベントID], [数字]);
+ *     ・指定した[イベントID]のゲージ最大値を指定した[数字]に設定します。
+ *       ([数字]は0より大きい値を指定してください)
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・[数字]の代わりにスクリプト$gameVariables.value(n)を使うことで、
+ *       変数n番の値をゲージ最大値に設定することができます。
+ *
+ *     ・ゲージ最大値がゲージ残量を下回る場合、このコマンドによって
+ *       ゲージ残量がゲージ最大値と同じになります。
+ *
+ *     ・変数によってゲージ残量が決められている場合、このコマンドによって
+ *       変数の値が変化する場合があります。
+ *
+ *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
+ *
+ *   $gameMap.getGaugeValue([イベントID]);
+ *     ・指定した[イベントID]のゲージ残量を返します。
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・変数によってゲージ残量が決められている場合、
+ *       返ってくる値は変数の値と同じものです。
+ *
+ *     ・イベント_メモ欄にゲージ表示が設定されていない場合、-1を返します。
+ *
+ *   $gameMap.getGaugeMaxValue([イベントID]);
+ *     ・指定した[イベントID]のゲージ最大値を返します。
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・イベント_メモ欄にゲージ表示が設定されていない場合、-1を返します。
+ *
+ *
  * 補足：
  *   ・このプラグインに関するメモ欄の設定、プラグインコマンド/パラメーター、
  *     制御文字は大文字/小文字を区別していません。
- *
- *   ・プラグインパラメーターの説明に、[初期値]と書かれているものは
- *     アクター/イベントのメモ欄で個別に設定が可能です。
- *     設定した場合、[初期値]よりメモ欄の設定が
- *     優先されますのでご注意ください。
  *
  *
  * 利用規約:
@@ -216,6 +336,10 @@
  * @param Gauge_Back_Color
  * @desc ゲージ背景の表示色番号を指定してください。(ゲージ全体が背景色で塗られ、残量分がゲージ表示色で塗られます)
  * @default 19
+ *
+ * @param Gauge_Opacity
+ * @desc ゲージの不透明度(0～255)を指定してください。(0でゲージが透明になります)
+ * @default 255
  *
 */
 
@@ -274,6 +398,38 @@ Imported.MKR_EventGauge = true;
         return [value, type, def, min, max, param];
     };
 
+    var convertEscapeCharacters = function(text) {
+        var windowChild;
+
+        if(typeof text == "string") {
+            if(SceneManager._scene) {
+                windowChild = SceneManager._scene._windowLayer.children[0];
+                text = windowChild ? windowChild.convertEscapeCharacters(text) : ConvVb(text);
+            } else {
+                text = ConvVb(text);
+            }
+        }
+
+        return text;
+    };
+
+    var ConvVb = function(text) {
+        var num;
+
+        if(typeof text == "string") {
+            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+                num = parseInt(arguments[1]);
+                return $gameVariables.value(num);
+            }.bind(this));
+            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+                num = parseInt(arguments[1]);
+                return $gameVariables.value(num);
+            }.bind(this));
+        }
+
+        return text;
+    }
+
     var GetMeta = function(meta, name, sep) {
         var value, values, i, count;
         value = "";
@@ -309,6 +465,7 @@ Imported.MKR_EventGauge = true;
         "GaugeColor1" : CheckParam("num", "Gauge_Color_1", 20, 0,31),
         "GaugeColor2" : CheckParam("num", "Gauge_Color_2", 21, 0, 31),
         "GaugeBackColor" : CheckParam("num", "Gauge_Back_Color", 19, 0, 31),
+        "GaugeOpacity" : CheckParam("num", "Gauge_Opacity", 255, 0, 255),
     };
 
 
@@ -322,8 +479,8 @@ Imported.MKR_EventGauge = true;
         var eventId, value;
         _Game_Interpreter_pluginCommand.call(this, command, args);
         if (command.toLowerCase() === "egauge") {
-            eventId = isFinite(args[1]) ? parseInt(args[1], 10) : 0;
-            value = args[2];
+            eventId = this.eventId();
+            value = args[1];
             switch (args[0].toLowerCase()) {
                 case "show":
                     $gameMap.showGaugeWindow(eventId);
@@ -380,6 +537,7 @@ Imported.MKR_EventGauge = true;
         this._gaugeNum = $gameMap.countGaugeWindow();
         this._hide = false;
         this.opacity = 0;
+        this.contents.paintOpacity = Params.GaugeOpacity[0];
     };
 
     Window_Gauge.prototype.hideGauge = function() {
@@ -506,7 +664,7 @@ Imported.MKR_EventGauge = true;
     }
 
     Game_Map.prototype.getGaugeWindow = function(index) {
-        if(index < 0 || index > this._gaugeWindows.length) {
+        if(index < 0 || index >= this.countGaugeWindow()) {
             return null;
         }
         return this._gaugeWindows[index];
@@ -521,58 +679,155 @@ Imported.MKR_EventGauge = true;
 
     Game_Map.prototype.addGaugeWindow = function(gaugeWindow) {
         this._gaugeWindows.push(gaugeWindow);
-        return this._gaugeWindows.length - 1;
+        return this.countGaugeWindow() - 1;
     }
 
     Game_Map.prototype.delGaugeWindow = function(index) {
-        if(index >= 0 && index < this._gaugeWindows.length) {
+        if(index >= 0 && index < this.countGaugeWindow()) {
             this._gaugeWindows[index].getCharacter().delMember();
             this._gaugeWindows[index] = null;
         }
     }
 
     Game_Map.prototype.showGaugeWindow = function(eventId) {
-        var gaugeNum;
+        var gaugeNum, gaugeWindow;
         gaugeNum = -1;
+        gaugeWindow = null;
 
-        if(eventId > 0) {
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
             gaugeNum = this.event(eventId).getGaugeNum();
-            this.getGaugeWindow(gaugeNum).showGauge();
+            gaugeWindow = this.getGaugeWindow(gaugeNum);
+            if(gaugeWindow) {
+                gaugeWindow.showGauge();
+            }
         }
     }
 
     Game_Map.prototype.hideGaugeWindow = function(eventId) {
-        var gaugeNum;
+        var gaugeNum, gaugeWindow;
         gaugeNum = -1;
+        gaugeWindow = null;
 
-        if(eventId > 0) {
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
             gaugeNum = this.event(eventId).getGaugeNum();
-            this.getGaugeWindow(gaugeNum).hideGauge();
+            gaugeWindow = this.getGaugeWindow(gaugeNum);
+            if(gaugeWindow) {
+                gaugeWindow.hideGauge();
+            }
         }
     }
 
+    Game_Map.prototype.isHideGaugeWindow = function(eventId) {
+        var gaugeNum, gaugeWindow, result;
+        gaugeNum = -1;
+        gaugeWindow = null;
+        result = false;
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
+            gaugeNum = this.event(eventId).getGaugeNum();
+            gaugeWindow = this.getGaugeWindow(gaugeNum);
+            if(gaugeWindow) {
+                result = gaugeWindow.isHideGauge();
+            }
+        }
+
+        return result;
+    }
+
     Game_Map.prototype.addGaugeValue = function(eventId, value) {
-        if(eventId > 0) {
+        value = String(value).replace(/\\/g, '\x1b');
+        value = value.replace(/\x1b\x1b/g, '\\');
+        if(/\x1bV\[\d+\]/i.test(value)) {
+            value = ConvVb(value);
+        }
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).addGaugeValue(value);
         }
     }
 
     Game_Map.prototype.setGaugeValue = function(eventId, value) {
-        if(eventId > 0) {
+        value = String(value).replace(/\\/g, '\x1b');
+        value = value.replace(/\x1b\x1b/g, '\\');
+        if(/\x1bV\[\d+\]/i.test(value)) {
+            value = ConvVb(value);
+        }
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeValue(value);
         }
     }
 
+    Game_Map.prototype.getGaugeValue = function(eventId) {
+        var value;
+        value = -1;
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
+            value = this.event(eventId).getGaugeValue();
+        }
+
+        return value;
+    }
+
     Game_Map.prototype.setGaugeMaxValue = function(eventId, value) {
-        if(eventId > 0) {
+        value = String(value).replace(/\\/g, '\x1b');
+        value = value.replace(/\x1b\x1b/g, '\\');
+        if(/\x1bV\[\d+\]/i.test(value)) {
+            value = ConvVb(value);
+        }
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeMaxValue(value);
         }
+    }
+
+    Game_Map.prototype.getGaugeMaxValue = function(eventId) {
+        var value;
+        value = -1;
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
+            value = this.event(eventId).getGaugeMaxValue();
+        }
+
+        return value;
     }
 
 
     //=========================================================================
     // Game_Event
-    //  ・イベントの追加メンバーを定義します。
+    //  ・イベントの追加メンバーと関連メソッドを定義します。
     //
     //=========================================================================
     var _Game_Event_initialize = Game_Event.prototype.initialize;
@@ -636,7 +891,7 @@ Imported.MKR_EventGauge = true;
 
     Game_Event.prototype.getGaugeNum = function() {
         var value;
-        value = 0;
+        value = -1;
 
         if(this.gaugeEnable()) {
             value = this._gaugeNum;
@@ -645,15 +900,23 @@ Imported.MKR_EventGauge = true;
     }
 
     Game_Event.prototype.addGaugeValue = function(value) {
-        var gameValue;
+        var gameValue, result;
         value = isFinite(value) ? parseInt(value, 10) : 0;
 
         if(this.gaugeEnable()) {
             gameValue = this.getGaugeValue();
 
-            if(value != 0 && gameValue + value >= 0 && gameValue + value <= this.getGaugeMaxValue() ) {
+            if(value != 0) {
+                console.log("ok");
+                result = gameValue + value;
+                gameValue = this.getGaugeMaxValue();
+                if(result < 0) {
+                    result = 0;
+                } else if(result > gameValue) {
+                    result = gameValue;
+                }
                 if(this._gaugeType == "vr") {
-                    $gameVariables.setValue(this._gaugeVr, gameValue + value);
+                    $gameVariables.setValue(this._gaugeVr, result);
                 }
             }
         }
@@ -676,7 +939,7 @@ Imported.MKR_EventGauge = true;
 
     Game_Event.prototype.getGaugeValue = function() {
         var value;
-        value = 0;
+        value = -1;
 
         if(this.gaugeEnable()) {
             if(this._gaugeType == "vr") {
@@ -706,7 +969,7 @@ Imported.MKR_EventGauge = true;
 
     Game_Event.prototype.getGaugeMaxValue = function() {
         var value;
-        value = 0;
+        value = -1;
 
         if(this.gaugeEnable()) {
             value = this._gaugeMax
