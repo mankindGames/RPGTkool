@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.2 2017/02/14 メニューの開閉でゲージが非表示になることがある問題を修正。
+//
 // 1.0.1 2017/02/14 スクリプトによるコマンドが一部動作していなかったため修正。
 //
 // 1.0.0 2017/02/13 初版公開。
@@ -17,7 +19,7 @@
 
 /*:
  *
- * @plugindesc (v1.0.1) イベントゲージプラグイン
+ * @plugindesc (v1.0.2) イベントゲージプラグイン
  * @author マンカインド
  *
  * @help = イベントゲージプラグイン =
@@ -388,6 +390,10 @@ Imported.MKR_EventGauge = true;
         this._hide = false;
     };
 
+    Window_Gauge.prototype.isHideGauge = function() {
+        return this._hide;
+    };
+
     Window_Gauge.prototype.windowWidth = function() {
         return Params.GaugeW[0] + this.standardPadding() * 2;
     };
@@ -460,13 +466,27 @@ Imported.MKR_EventGauge = true;
     };
 
     Spriteset_Map.prototype.createGaugeWindow = function() {
-        var index;
+        var index, gaugeNum, gaugeWindow;
+        index = -1;
+        gaugeNum = -1;
+        gaugeWindow = null;
 
         $gameMap.events().forEach(function(event) {
             if(event && GetMeta(event.event().meta, "egauge") != "") {
-                index = $gameMap.addGaugeWindow(new Window_Gauge(event));
-                event.setGaugeNum(index);
-                this.addChild($gameMap.getGaugeWindow(index));
+                gaugeNum = event.getGaugeNum();
+                if(gaugeNum >= 0) {
+                    gaugeWindow = $gameMap.getGaugeWindow(gaugeNum);
+                    if(gaugeWindow !== undefined && gaugeWindow !== null) {
+                        this.addChild(gaugeWindow);
+                        if(!gaugeWindow.isHideGauge()) {
+                            gaugeWindow.showGauge();
+                        }
+                    }
+                } else {
+                    index = $gameMap.addGaugeWindow(new Window_Gauge(event));
+                    event.setGaugeNum(index);
+                    this.addChild($gameMap.getGaugeWindow(index));
+                }
             }
         }, this);
     };
