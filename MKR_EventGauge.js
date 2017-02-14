@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/02/14 スクリプトによるコマンドが一部動作していなかったため修正。
+//
 // 1.0.0 2017/02/13 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -315,23 +317,26 @@ Imported.MKR_EventGauge = true;
     //=========================================================================
     var _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
+        var eventId, value;
         _Game_Interpreter_pluginCommand.call(this, command, args);
         if (command.toLowerCase() === "egauge") {
+            eventId = isFinite(args[1]) ? parseInt(args[1], 10) : 0;
+            value = args[2];
             switch (args[0].toLowerCase()) {
                 case "show":
-                    $gameMap.showGaugeWindow(args);
+                    $gameMap.showGaugeWindow(eventId);
                     break;
                 case "hide":
-                    $gameMap.hideGaugeWindow(args);
+                    $gameMap.hideGaugeWindow(eventId);
                     break;
                 case "add":
-                    $gameMap.addGaugeValue(args);
+                    $gameMap.addGaugeValue(eventId, value);
                     break;
                 case "set":
-                    $gameMap.setGaugeValue(args);
+                    $gameMap.setGaugeValue(eventId, value);
                     break;
                 case "maxset":
-                    $gameMap.setGaugeMaxValue(args);
+                    $gameMap.setGaugeMaxValue(eventId, value);
                     break;
             }
         }
@@ -506,9 +511,8 @@ Imported.MKR_EventGauge = true;
         }
     }
 
-    Game_Map.prototype.showGaugeWindow = function(args) {
-        var eventId, gaugeNum;
-        eventId = isFinite(args[1]) ? parseInt(args[1], 10) : 0;
+    Game_Map.prototype.showGaugeWindow = function(eventId) {
+        var gaugeNum;
         gaugeNum = -1;
 
         if(eventId > 0) {
@@ -517,9 +521,8 @@ Imported.MKR_EventGauge = true;
         }
     }
 
-    Game_Map.prototype.hideGaugeWindow = function(args) {
-        var eventId, gaugeNum;
-        eventId = isFinite(args[1]) ? parseInt(args[1], 10) : 0;
+    Game_Map.prototype.hideGaugeWindow = function(eventId) {
+        var gaugeNum;
         gaugeNum = -1;
 
         if(eventId > 0) {
@@ -528,31 +531,19 @@ Imported.MKR_EventGauge = true;
         }
     }
 
-    Game_Map.prototype.addGaugeValue = function(args) {
-        var eventId, value;
-        eventId = isFinite(args[1]) ? parseInt(args[1], 10) : 0;
-        value = args[2];
-
+    Game_Map.prototype.addGaugeValue = function(eventId, value) {
         if(eventId > 0) {
             this.event(eventId).addGaugeValue(value);
         }
     }
 
-    Game_Map.prototype.setGaugeValue = function(args) {
-        var eventId, value;
-        eventId = isFinite(args[1]) ? parseInt(args[1], 10) : 0;
-        value = args[2];
-
+    Game_Map.prototype.setGaugeValue = function(eventId, value) {
         if(eventId > 0) {
             this.event(eventId).setGaugeValue(value);
         }
     }
 
-    Game_Map.prototype.setGaugeMaxValue = function(args) {
-        var eventId, value;
-        eventId = isFinite(args[1]) ? parseInt(args[1], 10) : 0;
-        value = args[2];
-
+    Game_Map.prototype.setGaugeMaxValue = function(eventId, value) {
         if(eventId > 0) {
             this.event(eventId).setGaugeMaxValue(value);
         }
