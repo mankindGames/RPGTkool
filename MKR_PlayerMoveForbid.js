@@ -1,11 +1,13 @@
 //=============================================================================
 // MKR_PlayerMoveForbid.js
 //=============================================================================
-// Copyright (c) 2016 mankind
+// Copyright (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.2 2017/02/19 移動禁止の間、メニュー開閉を行えるかのフラグを追加
+//
 // 1.0.1 2016/09/04 未使用のコードを削除しファイル容量を小さくした。
 //                  デフォルト値の設定が不適切だったので修正。
 //
@@ -17,10 +19,10 @@
 
 /*:
  *
- * @plugindesc (v1.0.1) 指定された番号のスイッチがONの間、
+ * @plugindesc (v1.0.2) 指定された番号のスイッチがONの間、
  * プレイヤー操作によるキャラの移動を禁止します。
  *
- * @author mankind
+ * @author マンカインド
  *
  * @help
  * 指定された番号のスイッチがONの間、
@@ -29,9 +31,9 @@
  *
  * 簡単な使い方説明:
  * プラグインパラメーター[Default_Move_Flag]にスイッチ番号を指定します。
- * ゲーム中、指定された番号のスイッチがONになっている間
+ * 指定された番号のスイッチがONになっている間、
  * プレイヤー操作によるキャラの移動ができなくなります。
- * ([移動ルートの設定]などで移動させることは可能です)
+ * ([移動ルートの設定]コマンドなどで移動させることは可能です)
  *
  *
  * プラグインコマンド:
@@ -62,15 +64,21 @@
  * @desc プレイヤーの移動を禁止するスイッチの番号を指定します。
  * @default 10
  *
+ * @param Default_Menu_Flag
+ * @desc プレイヤーの移動を禁止している間、メニューの開閉を許可するか指定します。(許可する:true / 許可しない:false)
+ * @default true
+ *
  *
  * *
 */
 (function () {
     'use strict';
 
+    var PN = "MKR_PlayerMoveForbid";
+
     var CheckParam = function(type, param, def, min, max) {
         var Parameters, regExp, value;
-        Parameters = PluginManager.parameters("MKR_PlayerMoveForbid");
+        Parameters = PluginManager.parameters(PN);
 
         if(arguments.length < 4) {
             min = -Infinity;
@@ -82,50 +90,58 @@
         if(param in Parameters) {
             value = String(Parameters[param]);
         } else {
-            throw new Error('Plugin parameter not found: '+param);
+            throw new Error("[CheckParam] プラグインパラメーターがありません: " + param);
         }
 
-        regExp = /^\x1bV\[\d+\]$/i;
-        value = value.replace(/\\/g, '\x1b');
-        value = value.replace(/\x1b\x1b/g, '\\');
-
-
-        if(!regExp.test(value)) {
-            switch(type) {
-                case "num":
-                    if(value == "") {
-                        value = (isFinite(def))? parseInt(def, 10) : 0;
-                    } else {
-                        value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
-                        value = value.clamp(min, max);
-                    }
-                    break;
-                default:
-                    throw new Error('Plugin parameter type is illegal: '+type);
-                    break;
-            }
+        switch(type) {
+            case "bool":
+                if(value == "") {
+                    value = (def)? true : false;
+                }
+                value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
+                break;
+            case "num":
+                if(value == "") {
+                    value = (isFinite(def))? parseInt(def, 10) : 0;
+                } else {
+                    value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
+                    value = value.clamp(min, max);
+                }
+                break;
+            default:
+                throw new Error("[CheckParam] " + param + "のタイプが不正です: " + type);
+                break;
         }
 
-        return [value, type, def, min, max];
+        return [value, type, def, min, max, param];
     }
 
-    var DefMoveFlag;
-    DefMoveFlag = CheckParam("num", "Default_Move_Flag", 10);
+    var Params = {
+        "MoveSwitch" : CheckParam("num", "Default_Move_Flag", 10, 1),
+        "MenuFlg" : CheckParam("bool", "Default_Move_Flag", true),
+    };
+
+
+    //=========================================================================
+    // Game_System
+    //  ・メニュー開閉許可処理を再定義します。
+    //
+    //=========================================================================
+    var _Game_System_isMenuEnabled = Game_System.prototype.isMenuEnabled;
+    Game_System.prototype.isMenuEnabled = function() {
+        return _Game_System_isMenuEnabled.call(this)
+            && ($gameSwitches.value(Params.MoveSwitch[0]) ? Params.MenuFlg[0] : true);
+    };
 
 
     //=========================================================================
     // Game_Player
-    //  ・プレイヤーの移動実行処理を再定義します。
+    //  ・プレイヤーの移動処理を再定義します。
     //
     //=========================================================================
-    var _Game_Player_executeMove = Game_Player.prototype.executeMove;
-    Game_Player.prototype.executeMove = function(direction) {
-        var moveFlag;
-        moveFlag = DefMoveFlag[0];
-
-        if(!$gameSwitches.value(moveFlag)) {
-            _Game_Player_executeMove.call(this, direction);
-        }
+    var _Game_Player_canMove = Game_Player.prototype.canMove;
+    Game_Player.prototype.canMove = function() {
+        return _Game_Player_canMove.call(this) && !$gameSwitches.value(Params.MoveSwitch[0]);
     };
 
 })();
