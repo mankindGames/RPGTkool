@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/0３/05 描画処理を微調整。
 // 1.0.0 2017/0３/05 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,7 +16,7 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) バトル画面レイアウトプラグイン その1
+ * @plugindesc (v1.0.1) バトル画面レイアウトプラグイン その1
  * @author マンカインド
  *
  * @help = バトル画面レイアウトプラグイン その1 =
@@ -255,7 +256,7 @@ Imported.MKR_BtlCustom_1 = true;
     Window_BattleStatus.prototype.windowWidth = function() {
         var ret;
 
-        ret = _Window_BattleStatus_windowWidth.call(this) - Window_Base._faceWidth - Params.MarginL[0];
+        ret = _Window_BattleStatus_windowWidth.call(this) - (Window_Base._faceWidth + this.standardPadding() * 2) - Params.MarginL[0];
         if(ret < 0) {
             ret += Window_Base._faceWidth + Params.MarginL[0];
         }
@@ -317,7 +318,7 @@ Imported.MKR_BtlCustom_1 = true;
     var _Window_BattleStatus_drawBasicArea = Window_BattleStatus.prototype.drawBasicArea;
     Window_BattleStatus.prototype.drawBasicArea = function(rect, actor) {
         var lineHeight = this.lineHeight();
-        this.drawActorLevel(actor, rect.x, rect.y + lineHeight * 0);
+        this.drawActorLevel(actor, rect.x, rect.y + lineHeight * 0, rect.width);
         this.drawActorName(actor, rect.x, rect.y + lineHeight * 1, rect.width);
         // this.drawActorIcons(actor, rect.x + 156, rect.y, rect.width - 156);
     };
@@ -338,27 +339,18 @@ Imported.MKR_BtlCustom_1 = true;
     };
 
     var _Window_BattleStatus_drawActorLevel = Window_BattleStatus.prototype.drawActorLevel;
-    Window_BattleStatus.prototype.drawActorLevel = function(actor, x, y) {
+    Window_BattleStatus.prototype.drawActorLevel = function(actor, x, y, width) {
         var dw1, dw2;
         dw1 = this.textWidth(TextManager.levelA);
         dw2 = this.textWidth(actor.maxLevel()) + this.standardFontSize();
+
+        dw1 = (width / 2 < dw1) ? width / 2 : dw1;
+        dw2 = (width / 2 < dw2) ? width / 2 : dw2;
 
         this.changeTextColor(this.systemColor());
         this.drawText(TextManager.levelA, x, y, dw1);
         this.resetTextColor();
         this.drawText(actor.level, x + dw1, y, dw2, 'right');
-    };
-
-    var _Window_BattleStatus_drawActorHp = Window_BattleStatus.prototype.drawActorHp;
-    Window_BattleStatus.prototype.drawActorHp = function(actor, x, y, width) {
-        // width = width || 186;
-        var color1 = this.hpGaugeColor1();
-        var color2 = this.hpGaugeColor2();
-        this.drawGauge(x, y, width, actor.hpRate(), color1, color2);
-        this.changeTextColor(this.systemColor());
-        this.drawText(TextManager.hpA, x, y, 44);
-        this.drawCurrentAndMax(actor.hp, actor.mhp, x, y, width,
-                               this.hpColor(actor), this.normalColor());
     };
 
 
