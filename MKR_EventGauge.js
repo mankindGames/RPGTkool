@@ -6,6 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.2 2017/03/05 ・メモ欄の記述にオプション設定を追加
+//                  ・ゲージをメモリキャッシュへと登録するように
+//                    (一部のメモリ解放系プラグインへの対応)
+//
 // 1.1.1 2017/02/17 ・ゲージ設定に変数ではなく数字を使う方式を追加。
 //                  ・メモ欄の記述にオプション設定を追加
 //
@@ -29,7 +33,7 @@
 
 /*:
  *
- * @plugindesc (v1.1.1) イベントゲージプラグイン
+ * @plugindesc (v1.1.2) イベントゲージプラグイン
  * @author マンカインド
  *
  * @help = イベントゲージプラグイン =
@@ -89,7 +93,7 @@
  *
  *
  * ゲージの色について:
- *   このプラグインでは、ゲージの色番号をプラグインパラメーターで
+ *   このプラグインでは、ゲージの色番号をプラグインパラメーターまたはメモ欄で
  *   指定する必要があります。
  *
  *   色番号はsystem/Window.pngの右下側にある
@@ -160,6 +164,18 @@
  *         1 : 画面左側、デフォルト設定でゲージ左辺との余白が20pxになります。
  *         2 : 画面中央、デフォルト設定でゲージの長さを考慮して画面中央に表示されます。
  *         3 : 画面右側、デフォルト設定でゲージ右辺との余白が20pxになります。
+ *
+ *   Fc[数字]
+ *     ・ゲージカラー1を数字で指定します。
+ *       (プラグインパラメーターのGauge_Color_1設定より優先されます)
+ *
+ *   Sc[数字]
+ *     ・ゲージカラー2を数字で指定します。
+ *       (プラグインパラメーターのGauge_Color_2設定より優先されます)
+ *
+ *   Bc[数字]
+ *     ・ゲージ背景カラーを数字で指定します。
+ *       (プラグインパラメーターのGauge_Back_Color設定より優先されます)
  *
  *
  * イベント_メモ欄の設定例:
@@ -398,11 +414,11 @@
  * @default ON
  *
  * @param Gauge_Color_1
- * @desc ゲージの表示色番号を指定してください。(実際に表示される色はsystem/Window.pngを参照してください)
+ * @desc [初期値] ゲージの表示色番号を指定してください。(実際に表示される色はsystem/Window.pngを参照してください)
  * @default 20
  *
  * @param Gauge_Color_2
- * @desc ゲージの表示色番号を指定してください。(この項目はグラデーション用です)
+ * @desc [初期値] ゲージの表示色番号を指定してください。(この項目はグラデーション用です)
  * @default 21
  *
  * @param Gauge_Back_Color
@@ -587,7 +603,7 @@ Imported.MKR_EventGauge = true;
     Window_Gauge.prototype.constructor = Window_Gauge;
 
     Window_Gauge.prototype.initialize = function(character) {
-        var x, y, width, height, option;
+        var x, y, width, height, option, bitmap, key;
 
         this.setCharacter(character);
 
@@ -596,8 +612,17 @@ Imported.MKR_EventGauge = true;
         x = this.windowX();
         y = this.windowY();
         option = null;
+        bitmap = null;
 
         Window_Base.prototype.initialize.call(this, x, y, width, height);
+
+        key = String.randomStr(12);
+        bitmap = ImageManager.cache.getItem(key);
+        if (!bitmap) {
+            bitmap = new Bitmap(width - this.standardPadding() * 2, height - this.standardPadding() * 2);
+            ImageManager.cache.setItem(key, bitmap);
+        }
+        this.contents = bitmap;
 
         this.initMembers();
 
@@ -767,12 +792,25 @@ Imported.MKR_EventGauge = true;
     };
 
     Window_Gauge.prototype.updateGauge = function() {
-        var color1, color2, backColor, width, height, fillW;
+        var color1, color2, backColor, width, height, fillW, option;
         width = this.contents.width;
         height = this.contents.height;
+
         color1 = this.textColor(Params.GaugeColor1[0]);
         color2 = this.textColor(Params.GaugeColor2[0]);
         backColor = this.textColor(Params.GaugeBackColor[0]);
+        if(this._character) {
+            option = this._character.getGaugeOption();
+            if(option["Color1"] != null) {
+                color1 = this.textColor(option["Color1"]);
+            }
+            if(option["Color2"] != null) {
+                color2 = this.textColor(option["Color2"]);
+            }
+            if(option["BackC"] != null) {
+                backColor = this.textColor(option["BackC"]);
+            }
+        }
 
         if(this._character) {
             fillW = Math.floor(width * this._character.gaugeRate());
@@ -1037,6 +1075,9 @@ Imported.MKR_EventGauge = true;
             "OffsetY" : null,
             "Fix"     : null,
             "Visible" : null,
+            "Color1"  : null,
+            "Color2"  : null,
+            "BackC"   : null,
         };
 
         metas = GetMeta(this.event().meta, "egauge", " ");
@@ -1075,13 +1116,13 @@ Imported.MKR_EventGauge = true;
                         this._gaugeOption["Height"] = value;
                     }
                 }
-                if(/^xs(-?[\d]+)$/.test(meta)) {
+                if(/^xs(-?\d+)$/.test(meta)) {
                     value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
                     if(value != null) {
                         this._gaugeOption["OffsetX"] = value;
                     }
                 }
-                if(/^ys(-?[\d]+)$/.test(meta)) {
+                if(/^ys(-?\d+)$/.test(meta)) {
                     value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
                     if(value != null) {
                         this._gaugeOption["OffsetY"] = value;
@@ -1094,6 +1135,24 @@ Imported.MKR_EventGauge = true;
                 if(/^vs([0-1])$/.test(meta)) {
                     value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
                     this._gaugeOption["Visible"] = value;
+                }
+                if(/^fc(\d+)$/.test(meta)) {
+                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
+                    if(value >= 0 && value <= 31) {
+                        this._gaugeOption["Color1"] = value;
+                    }
+                }
+                if(/^sc(\d+)$/.test(meta)) {
+                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
+                    if(value >= 0 && value <= 31) {
+                        this._gaugeOption["Color2"] = value;
+                    }
+                }
+                if(/^bc(\d+)$/.test(meta)) {
+                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
+                    if(value >= 0 && value <= 31) {
+                        this._gaugeOption["BackC"] = value;
+                    }
                 }
             }, this);
         }
@@ -1239,5 +1298,25 @@ Imported.MKR_EventGauge = true;
             delete this._gaugeOption;
         }
     }
+
+
+    //=========================================================================
+    // String
+    //  ・ランダムな文字列を生成する処理を定義します。
+    //
+    //=========================================================================
+    String.randomStr = function(length) {
+        var str, random, i;
+        str = "";
+        length = length || 32;
+
+        for (i = 0; i < length; i++) {
+            random = Math.random() * 16 | 0;
+            str += (i == 12 ? 4 : (i == 16 ? (random & 3 | 8) : random)).toString(16);
+        }
+
+        return str;
+    }
+
 
 })();
