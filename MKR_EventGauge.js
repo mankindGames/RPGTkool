@@ -6,6 +6,11 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.3 2017/03/11 ・ゲージのoffsetX/Yをプラグイン/スクリプトコマンドで
+//                    変更可能に。
+//                  ・ゲージをピクチャーの上に描画可能に。
+//                    (プラグインパラメーターの追加)
+//
 // 1.1.2 2017/03/05 ・メモ欄の記述にオプション設定を追加
 //                  ・ゲージをメモリキャッシュへと登録するように
 //                    (一部のメモリ解放系プラグインへの対応)
@@ -33,7 +38,7 @@
 
 /*:
  *
- * @plugindesc (v1.1.2) イベントゲージプラグイン
+ * @plugindesc (v1.1.3) イベントゲージプラグイン
  * @author マンカインド
  *
  * @help = イベントゲージプラグイン =
@@ -69,6 +74,9 @@
  *     <Egauge:vr10>
  *     <Egauge:15>
  *     <Egauge:3 Wh20 Ht6>
+ *     <Egauge:vr12 Wh100 Ht10 Fx3 Vs0>
+ *     <Egauge:5 Ys-50>
+ *     <Egauge:vr5 Xs10 Ys10 Fx1 Fc3 Sc11 Bc7>
  *
  *   プラグインコマンド(実行したイベント対象で効果を発揮):
  *     Egauge show
@@ -76,6 +84,8 @@
  *     Egauge add 3
  *     Egauge set 5
  *     Egauge maxset 5
+ *     Egauge setx 20
+ *     Egauge sety 40
  *     Egauge add \V[10]
  *     Egauge set \V[15]
  *     Egauge maxset \V[20]
@@ -87,6 +97,8 @@
  *     $gameMap.addGaugeValue(1, 3);
  *     $gameMap.setGaugeValue(1, 5);
  *     $gameMap.setGaugeMaxValue(1, 5);
+ *     $gameMap.setGaugeOffsetX(1, 20);
+ *     $gameMap.setGaugeOffsetY(1, 40);
  *     $gameMap.addGaugeValue(1, $gameVariables.value(10));
  *     $gameMap.setGaugeValue(1, $gameVariables.value(15));
  *     $gameMap.setGaugeMaxValue(1, $gameVariables.value(20));
@@ -130,9 +142,10 @@
  *
  *     ・ゲージ最大値に使用する[数字]は0より大きい値を入れてください。
  *
- *   ※ ゲージの指定に変数と数字を使う方法がありますが、
+ *   ※ ゲージの値指定に変数と数字を使う2パターンを用意しましたが、
  *      両方指定した場合は変数設定が優先されます。
- *      イベント毎に指定方法を変えることは可能ですので、
+ *
+ *      イベント毎に値指定方法を変えることは可能ですので、
  *      どちらか片方を使い設定を行ってください。
  *
  *
@@ -203,6 +216,13 @@
  *     ・ゲージの長さを300px、高さを10px、
  *       X座標をデフォルト-10px、Y座標をデフォルト-10pxで表示します。
  *
+ *   <Egauge:vr5 Xs10 Ys10 Fx1 Fc3 Sc11 Bc7>
+ *     ・画面下、右側固定でゲージを表示します。
+ *       ゲージの表示は変数5番の値が反映されます。
+ *     ・ゲージの長さ、高さはデフォルト、
+ *       X座標をデフォルト+10px、Y座標をデフォルト+10pxで表示します。
+ *     ・ゲージのカラー1を3番、カラー2を11番、ゲージ背景を7番の色で描画します。
+ *
  *
  * プラグインコマンド:　※使用する際は、[]を実際の値に置き換えてください。
  *   Egauge show
@@ -257,7 +277,7 @@
  *       ([数字]は0より大きい値を指定してください)
  *
  *     ・[数字]の代わりに制御文字\V[n]を使うことで、変数n番の値を
- *       ゲージ最大値に設置することができます。
+ *       ゲージ最大値に設定することができます。
  *
  *     ・ゲージ最大値がゲージ残量を下回る場合、このコマンドによって
  *       ゲージ残量がゲージ最大値と同じになります。
@@ -266,6 +286,22 @@
  *       変数の値が変化する場合があります。
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
+ *
+ *   Egauge setx [数字]
+ *     ・実行したイベントのゲージX座標オフセットを指定した[数字]に設定します。
+ *       オフセットが指定されたゲージは指定された[数字]分、
+ *       本来の描画位置から横方向にズレて表示されます。
+ *
+ *     ・[数字]の代わりに制御文字\V[n]を使うことで、変数n番の値を
+ *       ゲージオフセットに設定することができます。
+ *
+ *   Egauge sety [数字]
+ *     ・実行したイベントのゲージY座標オフセットを指定した[数字]に設定します。
+ *       オフセットが指定されたゲージは指定された[数字]分、
+ *       本来の描画位置から縦方向にズレて表示されます。
+ *
+ *     ・[数字]の代わりに制御文字\V[n]を使うことで、変数n番の値を
+ *       ゲージオフセットに設定することができます。
  *
  *
  * スクリプトコマンド:　※使用する際は、[]を実際の値やスクリプトに置き換えてください。
@@ -366,6 +402,26 @@
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、-1を返します。
  *
+ *   $gameMap.setGaugeOffsetX([イベントID], [数字]);
+ *     ・指定した[イベントID]のゲージX座標オフセットを指定した[数字]に設定します。
+ *       オフセットが指定されたゲージは指定された[数字]分、
+ *       本来の描画位置から横方向にズレて表示されます。
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・[数字]の代わりにスクリプト$gameVariables.value(n)を使うことで、
+ *       変数n番の値をゲージオフセットに設定することができます。
+ *
+ *   $gameMap.setGaugeOffsetY([イベントID], [数字]);
+ *     ・指定した[イベントID]のゲージY座標オフセットを指定した[数字]に設定します。
+ *       オフセットが指定されたゲージは指定された[数字]分、
+ *       本来の描画位置から縦方向にズレて表示されます。
+ *
+ *     ・[イベントID]を0にすることで、コマンドを実行したイベントを対象にします。
+ *
+ *     ・[数字]の代わりにスクリプト$gameVariables.value(n)を使うことで、
+ *       変数n番の値をゲージオフセットに設定することができます。
+ *
  *
  * 補足：
  *   ・このプラグインに関するメモ欄の設定、プラグインコマンド/パラメーター、
@@ -428,6 +484,10 @@
  * @param Gauge_Opacity
  * @desc ゲージの不透明度(0～255)を指定してください。(0でゲージが透明になります)
  * @default 255
+ *
+ * @param Gauge_In_Picture
+ * @desc 指定したピクチャー番号(0以上の数字)のピクチャーよりゲージを上に表示します。(0の場合、ゲージは全ピクチャーの下に表示)
+ * @default 0
  *
 */
 
@@ -554,6 +614,7 @@ Imported.MKR_EventGauge = true;
         "GaugeColor2" : CheckParam("num", "Gauge_Color_2", 21, 0, 31),
         "GaugeBackColor" : CheckParam("num", "Gauge_Back_Color", 19, 0, 31),
         "GaugeOpacity" : CheckParam("num", "Gauge_Opacity", 255, 0, 255),
+        "GaugeInPict" : CheckParam("num", "Gauge_In_Picture", 0, 0),
     };
 
 
@@ -584,6 +645,12 @@ Imported.MKR_EventGauge = true;
                     break;
                 case "maxset":
                     $gameMap.setGaugeMaxValue(eventId, value);
+                    break;
+                case "setx":
+                    $gameMap.setGaugeOffsetX(eventId, value);
+                    break;
+                case "sety":
+                    $gameMap.setGaugeOffsetY(eventId, value);
                     break;
             }
         }
@@ -696,36 +763,21 @@ Imported.MKR_EventGauge = true;
             option = this._character.getGaugeOption();
             switch(option["Fix"]) {
                 case 1:
-                    if(option["OffsetX"] != null) {
-                        value += option["OffsetX"];
-                    } else {
-                        value += Params.GaugeOX[0];
-                    }
                     break;
                 case 2:
                     value = Graphics.boxWidth / 2 - this.width / 2;
-                    if(option["OffsetX"] != null) {
-                        value += option["OffsetX"];
-                    } else {
-                        value += Params.GaugeOX[0];
-                    }
                     break;
                 case 3:
                     value = Graphics.boxWidth - this.width;
-                    if(option["OffsetX"] != null) {
-                        value += option["OffsetX"];
-                    } else {
-                        value += Params.GaugeOX[0];
-                    }
                     break;
                 default:
                     value = this._character.screenX() - this.width / 2;
-                    if(option["OffsetX"] > 0) {
-                        value += option["OffsetX"];
-                    } else {
-                        value += Params.GaugeOX[0];
-                    }
                     break;
+            }
+            if(option["OffsetX"] != null) {
+                value += option["OffsetX"];
+            } else {
+                value += Params.GaugeOX[0];
             }
         }
 
@@ -740,18 +792,13 @@ Imported.MKR_EventGauge = true;
             option = this._character.getGaugeOption();
             if(option["Fix"] != null) {
                 value = Graphics.boxHeight - this.height;
-                if(option["OffsetY"] != null) {
-                    value += option["OffsetY"];
-                } else {
-                    value += Params.GaugeOY[0];
-                }
             } else {
                 value = this._character.screenY();
-                if(option["OffsetY"] != null) {
-                    value += option["OffsetY"];
-                } else {
-                    value += Params.GaugeOY[0];
-                }
+            }
+            if(option["OffsetY"] != null) {
+                value += option["OffsetY"];
+            } else {
+                value += Params.GaugeOY[0];
             }
         }
 
@@ -838,15 +885,21 @@ Imported.MKR_EventGauge = true;
     //  ・イベントにゲージウィンドウを追加する処理を定義します。
     //
     //=========================================================================
-    var _Spriteset_Map_createLowerLayer = Spriteset_Map.prototype.createLowerLayer;
-    Spriteset_Map.prototype.createLowerLayer = function() {
-        _Spriteset_Map_createLowerLayer.call(this);
-        this.createGaugeWindow();
+    var _Spriteset_Map_createUpperLayer = Spriteset_Map.prototype.createUpperLayer;
+    Spriteset_Map.prototype.createUpperLayer = function() {
+        if(Params.GaugeInPict[0] > 0) {
+            _Spriteset_Map_createUpperLayer.call(this);
+            this.createGaugeWindow();
+        } else {
+            this.createGaugeWindow();
+            _Spriteset_Map_createUpperLayer.call(this);
+        }
     };
 
     Spriteset_Map.prototype.createGaugeWindow = function() {
-        var index, gaugeNum, gaugeWindow;
-        index = -1;
+        var gaugeIdx, gaugeNum, gaugeWindow, i;
+        i = 0;
+        gaugeIdx = -1;
         gaugeNum = -1;
         gaugeWindow = null;
 
@@ -856,15 +909,22 @@ Imported.MKR_EventGauge = true;
                 if(gaugeNum >= 0) {
                     gaugeWindow = $gameMap.getGaugeWindow(gaugeNum);
                     if(gaugeWindow !== undefined && gaugeWindow !== null) {
-                        this.addChild(gaugeWindow);
                         if(!gaugeWindow.isHideGauge()) {
                             gaugeWindow.showGauge();
                         }
                     }
                 } else {
-                    index = $gameMap.addGaugeWindow(new Window_Gauge(event));
-                    event.setGaugeNum(index);
-                    this.addChild($gameMap.getGaugeWindow(index));
+                    gaugeIdx = $gameMap.addGaugeWindow(new Window_Gauge(event));
+                    event.setGaugeNum(gaugeIdx);
+                    gaugeWindow = $gameMap.getGaugeWindow(gaugeIdx);
+                }
+                if(gaugeWindow != null) {
+                    if(Params.GaugeInPict[0] > 0) {
+                        this._pictureContainer.addChildAt(gaugeWindow, Params.GaugeInPict[0] + i);
+                        i++;
+                    } else {
+                        this.addChild(gaugeWindow);
+                    }
                 }
             }
         }, this);
@@ -1043,6 +1103,38 @@ Imported.MKR_EventGauge = true;
         }
 
         return value;
+    }
+
+    Game_Map.prototype.setGaugeOffsetX = function(eventId, value) {
+        value = String(value).replace(/\\/g, '\x1b');
+        value = value.replace(/\x1b\x1b/g, '\\');
+        if(/\x1bV\[\d+\]/i.test(value)) {
+            value = ConvVb(value);
+        }
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
+            this.event(eventId).setGaugeOffsetX(value);
+        }
+    }
+
+    Game_Map.prototype.setGaugeOffsetY = function(eventId, value) {
+        value = String(value).replace(/\\/g, '\x1b');
+        value = value.replace(/\x1b\x1b/g, '\\');
+        if(/\x1bV\[\d+\]/i.test(value)) {
+            value = ConvVb(value);
+        }
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
+            this.event(eventId).setGaugeOffsetY(value);
+        }
     }
 
 
@@ -1272,6 +1364,22 @@ Imported.MKR_EventGauge = true;
         }
 
         return value;
+    }
+
+    Game_Event.prototype.setGaugeOffsetX = function(value) {
+        value = isFinite(value) ? parseInt(value, 10) : null;
+
+        if(this.gaugeEnable() && value !== null) {
+            this._gaugeOption["OffsetX"] = value;
+        }
+    }
+
+    Game_Event.prototype.setGaugeOffsetY = function(value) {
+        value = isFinite(value) ? parseInt(value, 10) : null;
+
+        if(this.gaugeEnable() && value !== null) {
+            this._gaugeOption["OffsetY"] = value;
+        }
     }
 
     Game_Event.prototype.getGaugeOption = function() {
