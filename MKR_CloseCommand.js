@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/04/30 ・プラグインパラメーターを追加。
+//                  ・メニュー画面でも「閉じる」コマンドが表示可能になった。
+//
 // 1.0.0 2017/04/30 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,17 +18,17 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) 閉じるコマンド追加プラグイン
+ * @plugindesc (v1.0.1) 閉じるコマンド追加プラグイン
  * @author マンカインド
  *
  * @help
- * 以下のウィンドウに「閉じる」コマンドを追加し、
- * 選択・決定することでウィンドウを閉じることができるようになります。
+ * 以下の画面に「閉じる」コマンドを追加し、
+ * 選択・決定することで該当画面から抜ける(画面を閉じる)ことが可能になります。
  *
- *   ・オプションウィンドウ
+ *   ・オプション画面
+ *   ・メニュー画面
  *
- *
- * モバイルなどのキャンセル動作が分かりづらい環境や、視覚的に「閉じる」動作を
+ * モバイルなどの閉じる動作が分かりづらい環境や、視覚的に「閉じる」動作を
  * 表示させたい場合にご使用ください。
  *
  *
@@ -63,11 +66,19 @@
  * @default mkrClose
  *
  * @param close_option
- * @desc オプションウィンドウに「閉じる」コマンドを追加する場合はONを指定してください。(ON/OFF)
+ * @desc オプション画面にコマンドを追加する場合はON、モバイル環境でのみ追加する場合はMOBILEを指定します。(ON/OFF/MOBILE)
  * @default ON
  *
  * @param close_option_name
- * @desc オプションウィンドウ追加する「閉じる」コマンドの名称を指定してください。
+ * @desc オプション画面に追加する「閉じる」コマンドの名称を指定してください。
+ * @default 閉じる
+ *
+ * @param close_menu
+ * @desc メニュー画面にコマンドを追加する場合はON、モバイル環境でのみ追加する場合はMOBILEを指定します。(ON/OFF/MOBILE)
+ * @default ON
+ *
+ * @param close_menu_name
+ * @desc メニュー画面に追加する「閉じる」コマンドの名称を指定してください。
  * @default 閉じる
  *
 */
@@ -117,8 +128,10 @@ Imported.MKR_CloseCommand = true;
 
     var Params = {
         "CS" : CheckParam("string", "command_symbol", "mkrClose"),
-        "CloseOp" : CheckParam("bool", "close_option", "ON"),
+        "CloseOp" : CheckParam("string", "close_option", "ON"),
         "CloseOpN" : CheckParam("string", "close_option_name", "閉じる"),
+        "CloseMenu" : CheckParam("string", "close_menu", "ON"),
+        "CloseMenuN" : CheckParam("string", "close_menu_name", "閉じる"),
     };
 
 
@@ -127,7 +140,7 @@ Imported.MKR_CloseCommand = true;
     //  ・閉じるコマンドを定義します。
     //
     //=========================================================================
-    if(Params.CloseOp[0]) {
+    if(isCloseVisible(Params.CloseOp[0])) {
         var _Window_Options_makeCommandList = Window_Options.prototype.makeCommandList;
         Window_Options.prototype.makeCommandList = function() {
             _Window_Options_makeCommandList.call(this);
@@ -160,16 +173,55 @@ Imported.MKR_CloseCommand = true;
             index = this.index();
             symbol = this.commandSymbol(index);
 
-            if(this.isCloseSymbol(symbol)) {
+            if(isCloseSymbol(symbol)) {
                 this.processCancel();
             } else {
                 _Window_Options_processOk.call(this);
             }
         };
+    }
 
-        Window_Options.prototype.isCloseSymbol = function(symbol) {
-            return symbol.contains(Params.CS[0]);
+
+    //=========================================================================
+    // Window_MenuCommand
+    //  ・閉じるコマンドを定義します。
+    //
+    //=========================================================================
+    if(isCloseVisible(Params.CloseMenu[0])) {
+        var _Window_MenuCommand_makeCommandList = Window_MenuCommand.prototype.makeCommandList
+        Window_MenuCommand.prototype.makeCommandList = function() {
+            _Window_MenuCommand_makeCommandList.call(this);
+            this.addCloseCommand();
+        };
+
+        Window_MenuCommand.prototype.addCloseCommand = function() {
+            this.addCommand(Params.CloseMenuN[0], Params.CS[0]);
+        };
+
+        var _Window_MenuCommand_processOk = Window_MenuCommand.prototype.processOk
+        Window_MenuCommand.prototype.processOk = function() {
+
+            if(isCloseSymbol(this.currentSymbol())){
+                Window_MenuCommand._lastCommandSymbol = this.commandSymbol(0);
+                this.processCancel();
+            } else {
+                _Window_MenuCommand_processOk.call(this);
+            }
         };
     }
+
+
+    //=========================================================================
+    // Utility
+    //  ・汎用的な処理を定義します。
+    //
+    //=========================================================================
+    function isCloseVisible(status) {
+        return status.toUpperCase() === "ON" || (status.toUpperCase() === "MOBILE" && Utils.isMobileDevice());
+    }
+
+    function isCloseSymbol(symbol) {
+        return symbol.contains(Params.CS[0]);
+    };
 
 })();
