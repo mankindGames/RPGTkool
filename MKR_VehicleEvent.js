@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/05/21 コード、プラグインヘルプを整備
 // 1.0.0 2017/05/16 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,24 +16,23 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) 乗り物イベントプラグイン
+ * @plugindesc (v1.0.1) 乗り物イベントプラグイン
  * @author マンカインド
  *
- * @help =乗り物イベントプラグイン=
- *
- * メモ欄を設定したイベントの通行設定を小型船または大型船として扱い、
- * 深海、海の上を自由に移動させることができるようになります。
- * (イベントへの接触や決定キーでそのイベントを起動することが可能です)
- *
- * なお、大型船は深海、海タイルの上を、
- * 小型船は海タイル(深海は不可)の上を移動できます。
+ * @help = 乗り物イベントプラグイン =
+ * イベントのメモ欄を設定することで、イベントのタイル通行可能設定を
+ * 大型船、または小型船として扱い、
+ * 深海、海を移動させることができるようになります。
  *
  *
- * イベントのメモ欄設定:
+ * イベント_メモ欄:
  *   <boat>
- *     ・イベントを小型船として扱います。
+ *     ・イベントのタイル通行可能設定を小型船として扱い、
+ *       海を移動できるようにします。
+ *
  *   <ship>
- *     ・イベントを大型船として扱います。
+ *     ・イベントのタイル通行可能設定を大型船として扱い、
+ *       深海、海を移動できるようにします。
  *
  *
  * プラグインパラメーター:
@@ -75,16 +75,17 @@ Imported.MKR_VehicleEvent = true;
 (function () {
     'use strict';
 
-    var PN = "MKR_VehicleEvent";
+    // var PN = "MKR_VehicleEvent";
 
     //=========================================================================
     // Game_CharacterBase
-    //  ・イベントの通行設定を再定義します。
+    //  ・イベントの通行可能設定を再定義します。
     //
     //=========================================================================
     var _Game_CharacterBase_canPass = Game_CharacterBase.prototype.canPass;
     Game_CharacterBase.prototype.canPass = function(x, y, d) {
         var ret, type, x2, y2;
+        ret = _Game_CharacterBase_canPass.apply(this, arguments);
         type = this.vehicleType();
 
         if(type) {
@@ -113,15 +114,15 @@ Imported.MKR_VehicleEvent = true;
             if (this.isCollidedWithCharacters(x2, y2)) {
                 ret = false;
             }
-        } else {
-            ret = _Game_CharacterBase_canPass.apply(this, arguments);
         }
         return ret;
     };
 
     Game_CharacterBase.prototype.vehicleType = function() {
-        var ret, ev;
+        var ret, ev, pattern, notes, cnt, n, i, match;
         ret = "";
+        pattern = /<(boat|ship)>/i
+
         if(this instanceof Game_Vehicle) {
             return this._type;
         }
@@ -129,11 +130,19 @@ Imported.MKR_VehicleEvent = true;
             return "";
         }
         ev = this.event();
-        if(ev.meta.boat) {
-            ret = "boat";
-        }
-        if(ev.meta.ship) {
-            ret = "ship";
+
+        if(ev.note) {
+            notes = ev.note.toLowerCase().split(/ (?=<)/);
+            cnt = notes.length;
+
+            for(i = 0; i < cnt; i++) {
+                n = notes[i].trim();
+
+                if(pattern.test(n)) {
+                    match = n.match(pattern);
+                    ret = match[1];
+                }
+            }
         }
 
         return ret;
