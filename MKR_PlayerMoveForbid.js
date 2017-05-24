@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.3 2017/05/24 メニュー開閉フラグが正常に動作していなかったため修正
+//
 // 1.0.2 2017/02/19 移動禁止の間、メニュー開閉を行えるかのフラグを追加
 //
 // 1.0.1 2016/09/04 未使用のコードを削除しファイル容量を小さくした。
@@ -19,7 +21,7 @@
 
 /*:
  *
- * @plugindesc (v1.0.2) 指定された番号のスイッチがONの間、
+ * @plugindesc (v1.0.3) 指定された番号のスイッチがONの間、
  * プレイヤー操作によるキャラの移動を禁止します。
  *
  * @author マンカインド
@@ -118,7 +120,7 @@
 
     var Params = {
         "MoveSwitch" : CheckParam("num", "Default_Move_Flag", 10, 1),
-        "MenuFlg" : CheckParam("bool", "Default_Move_Flag", true),
+        "MenuFlg" : CheckParam("bool", "Default_Menu_Flag", true),
     };
 
 
