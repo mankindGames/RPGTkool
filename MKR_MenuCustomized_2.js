@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/05/31 ・コマンド「アイテム選択の処理」で開かれる
+//                    アイテムリストの列数を指定可能に。
+//
 // 1.0.0 2017/05/30 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,16 +18,17 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) メニューカスタマイズプラグインその2
+ * @plugindesc (v1.0.1) メニューカスタマイズプラグインその2
  * @author マンカインド
  *
- * @help = メニューカスタマイズプラグインその2 ver 1.0.0 =
+ * @help = メニューカスタマイズプラグインその2 ver 1.0.1 =
  *
  * このプラグインを導入すると、
  *   ・メニュー画面のアイテム一覧
  *   ・メニュー画面のスキル一覧
  *   ・バトル画面のアイテム一覧
  *   ・バトル画面のスキル一覧
+ *   ・マップ画面の「アイテム選択の処理」一覧
  * の表示列数が変更されます。
  *
  * 変更後の列数についてはプラグインパラメーターで個別に指定が可能です。
@@ -71,6 +75,10 @@
  *
  * @param Battle_SkillList_Cols
  * @desc バトル→スキルリストの列数を指定します。(デフォルト:1)
+ * @default 1
+ *
+ * @param Map_ItemList_Cols
+ * @desc マップ→「アイテム選択の処理」リストの列数を指定します。(デフォルト:1)
  * @default 1
  *
 */
@@ -122,6 +130,7 @@ Imported.MKR_MenuCustomized_2 = true;
         "MenuSListCols" : CheckParam("num", "Menu_SkillList_Cols", 1, 0),
         "BattleIListCols" : CheckParam("num", "Battle_ItemList_Cols", 1, 0),
         "BattleSListCols" : CheckParam("num", "Battle_SkillList_Cols", 1, 0),
+        "MapIListCols" : CheckParam("num", "Map_ItemList_Cols", 1, 0),
     };
 
 
@@ -164,6 +173,17 @@ Imported.MKR_MenuCustomized_2 = true;
     //=========================================================================
     Window_BattleItem.prototype.maxCols = function() {
         return Params.BattleIListCols[0];
+    };
+
+
+    //=========================================================================
+    // Window_EventItem
+    //  ・マップシーンの「アイテム選択の処理」コマンドで開かれる
+    //    アイテムリストウィンドウを再定義します。
+    //
+    //=========================================================================
+    Window_EventItem.prototype.maxCols = function() {
+        return Params.MapIListCols[0];
     };
 
 
