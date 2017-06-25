@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/06/25 余計なコードが残っていたため修正。
 // 1.0.0 2017/06/25 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,10 +16,10 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) メッセージウィンドウカスタマイズプラグイン
+ * @plugindesc (v1.0.1) メッセージウィンドウカスタマイズプラグイン
  * @author マンカインド
  *
- * @help = メッセージウィンドウカスタマイズプラグイン ver1.0.0 =
+ * @help = メッセージウィンドウカスタマイズプラグイン ver1.0.1 =
  *
  * このプラグインを導入することでメッセージウィンドウに以下の変更を行います。
  *
@@ -112,8 +113,8 @@ Imported.MKR_MessageWindowCustom = true;
 
 
     //=========================================================================
-    //
-    //  ・
+    // Window_Message
+    //  ・ウィンドウの高さを再定義します。
     //
     //=========================================================================
     var _Window_Message_windowHeight = Window_Message.prototype.windowHeight;
@@ -143,44 +144,5 @@ Imported.MKR_MessageWindowCustom = true;
     Window_Message.prototype.newLineX = function() {
         return $gameMessage.faceName() === '' ? 0 : 168 + Params.MesOffsetH[0];
     };
-
-
-    //=========================================================================
-    //
-    //  ・
-    //
-    //=========================================================================
-
-
-
-    //=========================================================================
-    // Window_Base
-    //  ・改行コードで正しく改行が行われるよう再定義します。
-    //
-    //=========================================================================
-    var _Window_Base_processEscapeCharacter = Window_Base.prototype.processEscapeCharacter;
-    Window_Base.prototype.processEscapeCharacter = function(code, textState) {
-        _Window_Base_processEscapeCharacter.call(this, code, textState);
-        switch (code.toLowerCase()) {
-            case 'n':
-                this.processNewLine(textState);
-                textState.index--;
-                break;
-        }
-    };
-
-
-    //=========================================================================
-    // DataManager
-    //  ・プラグイン導入前のセーブデータを
-    //    ロードしたとき用の処理を定義します。
-    //
-    //=========================================================================
-    var _DataManager_extractSaveContents = DataManager.extractSaveContents;
-    DataManager.extractSaveContents = function(contents) {
-        _DataManager_extractSaveContents.call(this, contents);
-        // 処理を追記
-    };
-
 
 })();
