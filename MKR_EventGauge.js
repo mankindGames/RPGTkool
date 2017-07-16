@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.5 2017/07/16 古いバージョンで作成されたツクールMVプロジェクトにおいて
+//                  プラグインが正常に動作しなかったため修正
+//
 // 1.1.4 2017/05/27 ・イベントゲージを表示するマップで
 //                    セーブが出来なかった問題を修正。
 //                  ・スクリプトによるコマンド記述方法を一部変更
@@ -761,7 +764,7 @@ Imported.MKR_EventGauge = true;
     Window_Gauge.prototype.constructor = Window_Gauge;
 
     Window_Gauge.prototype.initialize = function(num) {
-        var x, y, width, height, option, bitmap, key;
+        var x, y, width, height, option, bitmap, key, ver;
 
         this._gaugeNum = num;
         width = this.windowWidth();
@@ -773,13 +776,37 @@ Imported.MKR_EventGauge = true;
 
         Window_Base.prototype.initialize.call(this, x, y, width, height);
 
-        key = String.randomStr(12);
-        bitmap = ImageManager.cache.getItem(key);
-        if (!bitmap) {
-            bitmap = new Bitmap(width - this.standardPadding() * 2, height - this.standardPadding() * 2);
-            ImageManager.cache.setItem(key, bitmap);
+        try {
+            ver = Utils.RPGMAKER_VERSION;
+            key = String.randomStr(12);
+            console.log(ver);
+            ver = ver.replace(/\./g, "");
+            if(isFinite(ver)) {
+                ver = parseInt(ver);
+                console.log(ver);
+                if(ver >= 150) {
+                    bitmap = ImageManager._imageCache.get(key);
+                    console.log(bitmap);
+                    if (!bitmap) {
+                        bitmap = new Bitmap(width - this.standardPadding() * 2, height - this.standardPadding() * 2);
+                        ImageManager._imageCache.add(key, bitmap);
+                        console.log(ImageManager._imageCache.get(key));
+                    }
+                    this.contents = bitmap;
+                } else if(ver >= 131) {
+                    bitmap = ImageManager.cache.getItem(key);
+                    console.log(bitmap);
+                    if (!bitmap) {
+                        bitmap = new Bitmap(width - this.standardPadding() * 2, height - this.standardPadding() * 2);
+                        ImageManager.cache.setItem(key, bitmap);
+                    }
+                    this.contents = bitmap;
+                }
+            }
+        } catch(e) {
+            console.log(e);
         }
-        this.contents = bitmap;
+
         this.opacity = 0;
 
         option = $gameMap.event(num).getGaugeOption();
