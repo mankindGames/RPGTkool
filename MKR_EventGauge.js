@@ -779,14 +779,12 @@ Imported.MKR_EventGauge = true;
         try {
             ver = Utils.RPGMAKER_VERSION;
             key = String.randomStr(12);
-            console.log(ver);
             ver = ver.replace(/\./g, "");
             if(isFinite(ver)) {
                 ver = parseInt(ver);
                 console.log(ver);
                 if(ver >= 150) {
                     bitmap = ImageManager._imageCache.get(key);
-                    console.log(bitmap);
                     if (!bitmap) {
                         bitmap = new Bitmap(width - this.standardPadding() * 2, height - this.standardPadding() * 2);
                         ImageManager._imageCache.add(key, bitmap);
@@ -795,7 +793,6 @@ Imported.MKR_EventGauge = true;
                     this.contents = bitmap;
                 } else if(ver >= 131) {
                     bitmap = ImageManager.cache.getItem(key);
-                    console.log(bitmap);
                     if (!bitmap) {
                         bitmap = new Bitmap(width - this.standardPadding() * 2, height - this.standardPadding() * 2);
                         ImageManager.cache.setItem(key, bitmap);
@@ -804,7 +801,7 @@ Imported.MKR_EventGauge = true;
                 }
             }
         } catch(e) {
-            console.log(e);
+            // console.log(e);
         }
 
         this.opacity = 0;
