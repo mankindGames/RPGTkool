@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.1.1 2017/07/17 テンションゲージの描画パラメータが
+//                  正常に反映されていなかったため修正。
+//
 // 1.1.0 2017/07/17 ・バトル画面のテンションゲージ描画方向を選択可能に。
 //                  ・プラグインパラメーターの設定方法を変更。
 //
@@ -20,10 +23,10 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.1.0) アクターテンションプラグイン
+ * @plugindesc (v1.1.1) アクターテンションプラグイン
  * @author マンカインド
  *
- * @help = アクターテンションプラグイン ver 1.1.0 = (作:マンカインド)
+ * @help = アクターテンションプラグイン ver 1.1.1 = (作:マンカインド)
  *
  * アクターにテンション(気分、気持ち)要素を実装し、
  * テンションが特定値を下回ることによって指定したステートの付与を行います。
@@ -531,19 +534,24 @@ Imported.MKR_ActorTension = true;
 
         if(Params.GaugeMenuEnable[0]) {
             var lineHeight, x2, y2, width2;
+            x2 = 0;
+            y2 = 0;
+            width2 = 0;
             lineHeight = this.lineHeight();
-            x2 = x + 180;
-            y2 = y + lineHeight * 3;
-            width2 = Math.min(200, width - 180 - this.textPadding());
+
             if(Params.GaugeMenuX[0] != 0) {
-                x2 = x2 + Params.GaugeMenuX[0];
+                x2 += Params.GaugeMenuX[0];
             }
             if(Params.GaugeMenuY[0] != 0) {
-                y2 = y2 + Params.GaugeMenuY[0];
+                y2 += Params.GaugeMenuY[0];
             }
             if(Params.GaugeMenuW[0] != 0) {
-                width2 = width2 + Params.GaugeMenuW[0];
+                width2 += Params.GaugeMenuW[0];
             }
+            x2 += x + 180;
+            y2 += y + lineHeight * 3;
+            width2 = Math.min(width2 + 200, width2 + width - 180 - this.textPadding());
+            width2 = width2 >= 0 ? width2 : width2 + 200;
 
             this.drawActorTension(actor, x2, y2, width2);
         }
@@ -598,8 +606,9 @@ Imported.MKR_ActorTension = true;
     //=========================================================================
     var _Window_MenuStatus_drawItemStatus = Window_MenuStatus.prototype.drawItemStatus;
     Window_MenuStatus.prototype.drawItemStatus = function(index) {
+        var actor, rect, x, y, width;
+
         if(Params.GaugeMenuEnable[0]) {
-            var actor, rect, x, y, width;
             actor = $gameParty.members()[index];
             rect = this.itemRect(index);
             x = rect.x + 162;
@@ -620,7 +629,7 @@ Imported.MKR_ActorTension = true;
     //=========================================================================
     var _Window_BattleStatus_gaugeAreaWidth = Window_BattleStatus.prototype.gaugeAreaWidth;
     Window_BattleStatus.prototype.gaugeAreaWidth = function() {
-        if($dataSystem.optDisplayTp && Params.GaugeBattleEnable[0]) {
+        if($dataSystem.optDisplayTp && Params.GaugeBattleEnable[0] && Params.GaugeBattlePattern == 1) {
             return 343;
         } else {
             return _Window_BattleStatus_gaugeAreaWidth.call(this);
@@ -651,10 +660,10 @@ Imported.MKR_ActorTension = true;
         height2 = 0;
 
         if(Params.GaugeBattleX[0] != 0) {
-            x += Params.GaugeMenuX[0];
+            x += Params.GaugeBattleX[0];
         }
         if(Params.GaugeBattleY[0] != 0) {
-            y += Params.GaugeMenuY[0];
+            y += Params.GaugeBattleY[0];
         }
         if(Params.GaugeBattleW[0] != 0) {
             width += Params.GaugeBattleW[0];
