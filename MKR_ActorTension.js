@@ -1,26 +1,31 @@
-//=============================================================================
+//===============================================================================
 // MKR_ActorTension.js
-//=============================================================================
+//===============================================================================
 // Copyright (c) 2016-2017 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
-// ----------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 // Version
+// 1.1.0 2017/07/17 ・バトル画面のテンションゲージ描画方向を選択可能に。
+//                  ・プラグインパラメーターの設定方法を変更。
+//
 // 1.0.1 2017/02/01 テンション値とともに操作される変数の動作を変更。
+//
 // 1.0.0 2017/01/29 初版公開。
-// ----------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
 //    [Blog] http://mankind-games.blogspot.jp/
-//=============================================================================
+//===============================================================================
 
 /*:
- *
- * @plugindesc (v1.0.1) アクターテンションプラグイン
- *
+ * ==============================================================================
+ * @plugindesc (v1.1.0) アクターテンションプラグイン
  * @author マンカインド
  *
- * @help アクターにテンション(気分、気持ち)要素を実装し、
+ * @help = アクターテンションプラグイン ver 1.1.0 = (作:マンカインド)
+ *
+ * アクターにテンション(気分、気持ち)要素を実装し、
  * テンションが特定値を下回ることによって指定したステートの付与を行います。
  * また、特定ステートが付与されるとテンションによる影響を無効化できます。
  *
@@ -153,6 +158,7 @@
  *     バージョンアップにより本プラグインの仕様が変更される可能性があります。
  *     ご了承ください。
  *
+ * ==============================================================================
  *
  * @param Tension_Name
  * @desc メニューなどに表示されるテンション値の名称を指定します。
@@ -164,92 +170,167 @@
  *
  * @param Gauge_Color1
  * @desc テンションゲージのグラデーション用カラー番号1(左)、表示可能色はWindow.pngの右下部分にある色枠を参照してください。
+ * @type number
+ * @min 0
+ * @max 31
  * @default 10
  *
  * @param Gauge_Color2
  * @desc テンションゲージのグラデーション用カラー番号2(右)、表示可能色はWindow.pngの右下部分にある色枠を参照してください。
+ * @type number
+ * @min 0
+ * @max 31
  * @default 2
  *
+ * @param メニュー画面設定
+ * @default ====================================
+ *
  * @param Gauge_Menu_Enable
- * @desc メニュー画面にテンションゲージを表示するか指定します。(ON:表示する、OFF:表示しない)
- * @default ON
+ * @desc メニュー画面にテンションゲージを表示する場合はONを指定してください。(デフォルト:ON)
+ * @type boolean
+ * @default true
+ * @parent メニュー画面設定
  *
  * @param Gauge_Menu_X
- * @desc メニュー画面テンションゲージのX座標増減値。横の位置を調整したい場合に指定してください。
+ * @desc メニュー画面テンションゲージのX座標増減値。(デフォルト:0)
+ * @type number
+ * @min -999
+ * @max 999
  * @default 0
+ * @parent メニュー画面設定
  *
  * @param Gauge_Menu_Y
- * @desc メニュー画面テンションゲージのY座標増減値。縦の位置を調整したい場合に指定してください。
+ * @desc メニュー画面テンションゲージのY座標増減値。(デフォルト:0)
+ * @type number
+ * @min -999
+ * @max 999
  * @default 0
+ * @parent メニュー画面設定
  *
  * @param Gauge_Menu_Width
- * @desc メニュー画面テンションゲージのwidth増減値。長さを調整したい場合に指定してください。
+ * @desc メニュー画面テンションゲージの横幅増減値。(デフォルト:0)
+ * @type number
+ * @min -999
+ * @max 999
  * @default 0
+ * @parent メニュー画面設定
+ *
+ * @param バトル画面設定
+ * @default ====================================
  *
  * @param Gauge_Battle_Enable
- * @desc バトル画面にテンションゲージを表示するか指定します。(ON:表示する、OFF:表示しない)
- * @default ON
+ * @desc バトル画面にテンションゲージを表示する場合はONを指定してください。(デフォルト:ON)
+ * @type boolean
+ * @default true
+ * @parent バトル画面設定
  *
  * @param Gauge_Battle_X
- * @desc バトル画面テンションゲージのX座標増減値、横の位置を調整したい場合に指定してください。
+ * @desc バトル画面テンションゲージのX座標増減値。(デフォルト:0)
+ * @type number
+ * @min -999
+ * @max 999
  * @default 0
+ * @parent バトル画面設定
  *
  * @param Gauge_Battle_Y
- * @desc バトル画面テンションゲージのY座標増減値、縦の位置を調整したい場合に指定してください。
+ * @desc バトル画面テンションゲージのY座標増減値。(デフォルト:0)
+ * @type number
+ * @min -999
+ * @max 999
  * @default 0
+ * @parent バトル画面設定
  *
  * @param Gauge_Battle_Width
- * @desc バトル画面テンションゲージのwidth増減値。長さを調整したい場合に指定してください。
+ * @desc バトル画面テンションゲージの横幅増減値。ゲージを横方向に描画するときにのみ作用する。(デフォルト:0)
+ * @type number
+ * @min -999
+ * @max 999
  * @default 0
+ * @parent バトル画面設定
+ *
+ * @param Gauge_Battle_Height
+ * @desc バトル画面テンションゲージの高さ増減値。ゲージを縦方向に描画するときにのみ作用する。(デフォルト:0)
+ * @type number
+ * @min -999
+ * @max 999
+ * @default 0
+ * @parent バトル画面設定
+ *
+ * @param Gauge_Battle_Pattern
+ * @desc バトル画面テンションゲージの描画方法を指定します。(デフォルト:横方向に描画)
+ * @type select
+ * @option 横方向に描画
+ * @option 縦方向に描画
+ * @default 横方向に描画
+ * @parent バトル画面設定
  *
  * @param Actor_Init_Tension
- * @desc [初期値] アクターの初期テンション値を指定します。
+ * @desc [初期値] アクターの初期テンション値を指定します。(デフォルト:50)
+ * @type number
+ * @min 0
  * @default 50
  *
  * @param Actor_Max_Tension
- * @desc アクターの最大テンション値を指定します。
+ * @desc アクターの最大テンション値を指定します。(デフォルト:100)
+ * @type number
+ * @min 0
  * @default 100
  *
  * @param Actor_Die_Tension_Down_Enable
- * @desc アクターが戦闘不能になったとき、他アクターのテンションを減少させるか指定します。(ON:減少させる, OFF:減少させない)
- * @default ON
+ * @desc アクターが戦闘不能になったとき、他アクターのテンションを減少させる場合はONを指定してください。(デフォルト:ON)
+ * @type boolean
+ * @default true
  *
  * @param Actor_Die_Tension_Down
- * @desc アクターが戦闘不能になったとき、他アクターに対して減少させるテンション値を指定します。
+ * @desc アクターが戦闘不能になったとき、他アクターに対して減少させるテンション値を指定します。(デフォルト:20)
+ * @type number
+ * @min 0
  * @default 20
  *
  * @param Battle_Win_Tension_Up_Enable
- * @desc 戦闘に勝利したとき、戦闘参加メンバーのテンションを増加させるか指定します。(ON:増加させる, OFF:増加させない)
- * @default ON
+ * @desc 戦闘に勝利したとき、戦闘参加メンバーのテンションを増加させるか場合はONを指定してください。(デフォルト:ON)
+ * @type boolean
+ * @default true
  *
  * @param Battle_Win_Tension_Up
- * @desc 戦闘に勝利したとき、戦闘参加メンバーに対して増加させるテンション値を指定します。
+ * @desc 戦闘に勝利したとき、戦闘参加メンバーに対して増加させるテンション値を指定します。(デフォルト:10)
+ * @type number
+ * @min 0
  * @default 10
  *
  * @param Battle_Getaway_Tension_Down_Enable
- * @desc 戦闘から逃走したとき、戦闘参加メンバーのテンションを減少させるか指定します。(ON:減少させる, OFF:減少させない)
- * @default ON
+ * @desc 戦闘から逃走したとき、戦闘参加メンバーのテンションを減少させる場合はONを指定してください。(デフォルト:ON)
+ * @type boolean
+ * @default true
  *
  * @param Battle_Getaway_Tension_Down
- * @desc 戦闘に逃走したとき、戦闘参加メンバーに対して減少させるテンション値を指定します。
+ * @desc 戦闘から逃走したとき、戦闘参加メンバーに対して減少させるテンション値を指定します。(デフォルト:5)
+ * @type number
+ * @min 0
  * @default 5
  *
  * @param State_Add_Tension_Down_Enable
- * @desc テンション値が低下した場合、ステート付与を行うか指定します。(ON:行う, OFF:行わない)
- * @default ON
+ * @desc テンション値が低下した場合、ステート付与を行う場合はONを指定してください。(デフォルト:ON)
+ * @type boolean
+ * @default true
  *
  * @param State_Add_Tension_Low
- * @desc [初期値] ステート付与を行うテンション値を指定します。(0～100指定値以下で付与)
+ * @desc [初期値] ステート付与を行うテンション値を指定します。(指定値以下で付与、デフォルト:30)
+ * @type number
+ * @min 0
  * @default 30
  *
  * @param State_Id_Tension_Low
- * @desc [初期値] テンション値が指定値以下となった場合に付与するステートIDを指定します。
+ * @desc [初期値] テンション値が指定値以下となった場合に付与するステートIDを指定します。(デフォルト:5)
+ * @type state
  * @default 5
  *
  * @param State_Id_Tension_Invalid
- * @desc テンション値の低下によるステート付与を無効化するステートIDを指定します。
+ * @desc テンション値の低下によるステート付与を無効化するステートIDを指定します。(デフォルト:7)
+ * @type state
  * @default 7
  *
+ * ==============================================================================
 */
 
 var Imported = Imported || {};
@@ -300,13 +381,8 @@ Imported.MKR_ActorTension = true;
                 case "string":
                     value = value;
                     break;
-                case "switch":
-                    if(value == "") {
-                        value = (def != "")? def : value;
-                    }
-                    if(!value.match(/^([A-D]|\d+)$/i)) {
-                        throw new Error("[CheckParam] " + param + "の値がスイッチではありません: " + param + " : " + value);
-                    }
+                case "select":
+                    value = ConvertOption(param, value);
                     break;
                 default:
                     throw new Error("[CheckParam] " + param + "のタイプが不正です: " + type);
@@ -315,33 +391,51 @@ Imported.MKR_ActorTension = true;
         }
 
         return [value, type, def, min, max, param];
-    }
+    };
+
+    var ConvertOption = function(param, value) {
+        var ret = -1;
+        if(param == "Gauge_Battle_Pattern") {
+            switch(value) {
+                case "横方向に描画":
+                    ret = 1;
+                    break;
+                case "縦方向に描画":
+                    ret = 2;
+                    break;
+            }
+        }
+
+        return ret;
+    };
 
     Params = {
         "TenName" : CheckParam("string", "Tension_Name", "テンション"),
         "TenNameA" : CheckParam("string", "Tension_Name_A", "ﾃﾝｼｮﾝ"),
-        "GaugeColor1" : CheckParam("num", "Gauge_Color1", 10, 0),
-        "GaugeColor2" : CheckParam("num", "Gauge_Color2", 2, 0),
-        "GaugeMenuEnable" : CheckParam("bool", "Gauge_Menu_Enable", "ON"),
-        "GaugeMenuX" : CheckParam("num", "Gauge_Menu_X", 0),
-        "GaugeMenuY" : CheckParam("num", "Gauge_Menu_Y", 0),
-        "GaugeMenuW" : CheckParam("num", "Gauge_Menu_Width", 0),
-        "GaugeBattleEnable" : CheckParam("bool", "Gauge_Battle_Enable", "ON"),
-        "GaugeBattleX" : CheckParam("num", "Gauge_Battle_X", 0),
-        "GaugeBattleY" : CheckParam("num", "Gauge_Battle_Y", 0),
-        "GaugeBattleW" : CheckParam("num", "Gauge_Battle_Width", 0),
-        "ActorInitTen" : CheckParam("num", "Actor_Init_Tension", 50, 0, 100),
-        "ActorMaxTen" : CheckParam("num", "Actor_Max_Tension", 50, 0, 100),
-        "ActorDieTenDownEnable" : CheckParam("bool", "Actor_Die_Tension_Down_Enable", "ON"),
+        "GaugeColor1" : CheckParam("num", "Gauge_Color1", 10, 0, 31),
+        "GaugeColor2" : CheckParam("num", "Gauge_Color2", 2, 0, 31),
+        "GaugeMenuEnable" : CheckParam("bool", "Gauge_Menu_Enable", true),
+        "GaugeMenuX" : CheckParam("num", "Gauge_Menu_X", 0, -999, 999),
+        "GaugeMenuY" : CheckParam("num", "Gauge_Menu_Y", 0, -999, 999),
+        "GaugeMenuW" : CheckParam("num", "Gauge_Menu_Width", 0, -999, 999),
+        "GaugeBattleEnable" : CheckParam("bool", "Gauge_Battle_Enable", true),
+        "GaugeBattleX" : CheckParam("num", "Gauge_Battle_X", 0, -999, 999),
+        "GaugeBattleY" : CheckParam("num", "Gauge_Battle_Y", 0, -999, 999),
+        "GaugeBattleW" : CheckParam("num", "Gauge_Battle_Width", 0, -999, 999),
+        "GaugeBattleH" : CheckParam("num", "Gauge_Battle_Height", 0, -999, 999),
+        "GaugeBattlePattern" : CheckParam("select", "Gauge_Battle_Pattern", "横方向に描画"),
+        "ActorInitTen" : CheckParam("num", "Actor_Init_Tension", 50, 0),
+        "ActorMaxTen" : CheckParam("num", "Actor_Max_Tension", 100, 0),
+        "ActorDieTenDownEnable" : CheckParam("bool", "Actor_Die_Tension_Down_Enable", true),
         "ActorDieTenDown" : CheckParam("num", "Actor_Die_Tension_Down", 20, 0),
-        "BattleWinTenUpEnable" : CheckParam("bool", "Battle_Win_Tension_Up_Enable", "ON"),
+        "BattleWinTenUpEnable" : CheckParam("bool", "Battle_Win_Tension_Up_Enable", true),
         "BattleWinTenUp" : CheckParam("num", "Battle_Win_Tension_Up", 10, 0),
-        "BattleGetawayTenDownEnable" : CheckParam("bool", "Battle_Getaway_Tension_Down_Enable", "ON"),
+        "BattleGetawayTenDownEnable" : CheckParam("bool", "Battle_Getaway_Tension_Down_Enable", true),
         "BattleGetawayTenDown" : CheckParam("num", "Battle_Getaway_Tension_Down", 5, 0),
-        "StateAddTenDownEnable" : CheckParam("bool", "State_Add_Tension_Down_Enable", "ON"),
-        "StateAddTenLow" : CheckParam("num", "State_Add_Tension_Low", 30, 1),
-        "StateIdTenLow" : CheckParam("num", "State_Id_Tension_Low", 5, 1),
-        "StateIdTenInvalid" : CheckParam("num", "State_Id_Tension_Invalid", 7, 1),
+        "StateAddTenDownEnable" : CheckParam("bool", "State_Add_Tension_Down_Enable", true),
+        "StateAddTenLow" : CheckParam("num", "State_Add_Tension_Low", 30, 0),
+        "StateIdTenLow" : CheckParam("num", "State_Id_Tension_Low", 5, 0),
+        "StateIdTenInvalid" : CheckParam("num", "State_Id_Tension_Invalid", 7, 0),
     };
 
 
@@ -465,8 +559,22 @@ Imported.MKR_ActorTension = true;
         this.changeTextColor(this.systemColor());
         this.drawText(Params.TenNameA[0], x, y, 44);
         this.changeTextColor(this.tensionColor(actor));
-        this.drawText(actor.tension, x + width - 64, y, 64, 'right');
-        // this.drawCurrentAndMax(actor.ten, actor.maxTen(), x, y, width,
+        // this.drawText(actor.tension, x + width - 64, y, 64, 'right');
+        this.drawCurrentAndMax(actor.tension, actor.maxTen(), x, y, width,
+                               this.tensionColor(actor), this.normalColor());
+    };
+
+    Window_Base.prototype.drawHorizonActorTension = function(actor, x, y, height) {
+        var color1, color2;
+        color1 = this.tensionGaugeColor1();
+        color2 = this.tensionGaugeColor2();
+
+        this.drawHorizonGauge(x, y, height, actor.tensionRate(), color1, color2);
+        // this.changeTextColor(this.systemColor());
+        // this.drawHorizonText(Params.TenNameA[0], 0, 0);
+        // this.changeTextColor(this.tensionColor(actor));
+        // this.drawText(actor.tension, x + width - 64, y, 64, 'right');
+        // this.drawCurrentAndMax(actor.tension, actor.maxTen(), x, y, width,
         //                        this.tensionColor(actor), this.normalColor());
     };
 
@@ -529,51 +637,113 @@ Imported.MKR_ActorTension = true;
         }
     };
 
+    // TP表示有り
     var _Window_BattleStatus_drawGaugeAreaWithTp = Window_BattleStatus.prototype.drawGaugeAreaWithTp;
     Window_BattleStatus.prototype.drawGaugeAreaWithTp = function(rect, actor) {
-        if(Params.GaugeBattleEnable[0]) {
-            var x2, y2, width2;
-            x2 = rect.x + 265;
-            y2 = rect.y;
-            width2 = 84;
-            if(Params.GaugeBattleX[0] != 0) {
-                x2 = x2 + Params.GaugeMenuX[0];
-            }
-            if(Params.GaugeBattleY[0] != 0) {
-                y2 = y2 + Params.GaugeMenuY[0];
-            }
-            if(Params.GaugeBattleW[0] != 0) {
-                width2 = width2 + Params.GaugeBattleW[0];
-            }
+        var x, x2, y, y2, width, width2, height, height2;
+        x = 0;
+        y = 0;
+        width = 0;
+        height = 0;
+        x2 = 0;
+        y2 = 0;
+        width2 = 0;
+        height2 = 0;
 
-            this.drawActorHp(actor, rect.x + 0, rect.y, 88);
-            this.drawActorMp(actor, rect.x + 93, rect.y, 88);
-            this.drawActorTp(actor, rect.x + 186, rect.y, 74);
-            this.drawActorTension(actor, x2, y2, width2);
+        if(Params.GaugeBattleX[0] != 0) {
+            x += Params.GaugeMenuX[0];
+        }
+        if(Params.GaugeBattleY[0] != 0) {
+            y += Params.GaugeMenuY[0];
+        }
+        if(Params.GaugeBattleW[0] != 0) {
+            width += Params.GaugeBattleW[0];
+        }
+        if(Params.GaugeBattleH[0] != 0) {
+            height += Params.GaugeBattleH[0];
+        }
+
+        if(Params.GaugeBattleEnable[0]) {
+            if(Params.GaugeBattlePattern[0] === 1) {
+                x =  x + rect.x + 265;
+                x2 = x > 0 ? x : 0;
+                y = y + rect.y;
+                y2 = y > 0 ? y : 0;
+                width = width + 84;
+                width2 = width > 0 ? width : 84;
+
+                this.drawActorHp(actor, rect.x + 0, rect.y, 88);
+                this.drawActorMp(actor, rect.x + 93, rect.y, 88);
+                this.drawActorTp(actor, rect.x + 186, rect.y, 74);
+                this.drawActorTension(actor, x2, y2, width2);
+            } else if(Params.GaugeBattlePattern[0] === 2) {
+                _Window_BattleStatus_drawGaugeAreaWithTp.apply(this, arguments);
+
+                x =  x + rect.x - 10;
+                x2 = x > 0 ? x : 0;
+                y = y + rect.y + rect.height - 2;
+                y2 = y > 0 ? y : 0;
+                height = height + rect.height - 4;
+                height2 = height > 0 ? height : rect.height;
+
+                this.drawHorizonActorTension(actor, x2, y2, height2);
+            }
         } else {
-            return _Window_BattleStatus_drawGaugeAreaWithTp.apply(this, arguments);
+            _Window_BattleStatus_drawGaugeAreaWithTp.apply(this, arguments);
         }
 
     };
 
+    // TP表示無し
     var _Window_BattleStatus_drawGaugeAreaWithoutTp = Window_BattleStatus.prototype.drawGaugeAreaWithoutTp;
     Window_BattleStatus.prototype.drawGaugeAreaWithoutTp = function(rect, actor) {
-        if(Params.GaugeBattleEnable[0]) {
-            var x2, y2;
-            x2 = rect.x + 234;
-            y2 = rect.y;
-            if(Params.GaugeBattleX[0] != 0) {
-                x2 = x2 + Params.GaugeMenuX[0];
-            }
-            if(Params.GaugeBattleY[0] != 0) {
-                y2 = y2 + Params.GaugeMenuY[0];
-            }
+        var x, x2, y, y2, width, width2, height, height2;
+        x = 0;
+        y = 0;
+        width = 0;
+        height = 0;
+        x2 = 0;
+        y2 = 0;
+        width2 = 0;
+        height2 = 0;
 
-            this.drawActorHp(actor, rect.x + 0, rect.y, 108);
-            this.drawActorMp(actor, rect.x + 123,  rect.y, 96);
-            this.drawActorTension(actor, x2, y2, 96);
-        } else {
-            return _Window_BattleStatus_drawGaugeAreaWithoutTp.apply(this, arguments);
+        if(Params.GaugeBattleX[0] != 0) {
+            x += Params.GaugeMenuX[0];
+        }
+        if(Params.GaugeBattleY[0] != 0) {
+            y += Params.GaugeMenuY[0];
+        }
+        if(Params.GaugeBattleW[0] != 0) {
+            width += Params.GaugeBattleW[0];
+        }
+        if(Params.GaugeBattleH[0] != 0) {
+            height += Params.GaugeBattleH[0];
+        }
+
+        if(Params.GaugeBattleEnable[0]) {
+            if(Params.GaugeBattlePattern[0] === 1) {
+                x = x + rect.x + 234;
+                x2 = x > 0 ? x : 0;
+                y = y + rect.y;
+                y2 = y > 0 ? y : 0;
+                width = width + 96;
+                width2 = width > 0 ? width : 96;
+
+                this.drawActorHp(actor, rect.x + 0, rect.y, 108);
+                this.drawActorMp(actor, rect.x + 123,  rect.y, 96);
+                this.drawActorTension(actor, x2, y2, width2);
+            } else if(Params.GaugeBattlePattern[0] === 2) {
+                _Window_BattleStatus_drawGaugeAreaWithoutTp.apply(this, arguments);
+
+                x =  x + rect.x - 10;
+                x2 = x > 0 ? x : 0;
+                y = y + rect.y + rect.height - 2;
+                y2 = y > 0 ? y : 0;
+                height = height + rect.height - 4;
+                height2 = height > 0 ? height : rect.height;
+
+                this.drawHorizonActorTension(actor, x2, y2, height2);
+            }
         }
 
     };
@@ -835,6 +1005,67 @@ Imported.MKR_ActorTension = true;
             }
         });
     };
+
+
+Window_Base.prototype.drawHorizonGauge = function(x, y, height, rate, color1, color2) {
+    var fillH, gaugeY;
+    fillH = Math.floor(height * rate);
+    // gaugeY = y + this.lineHeight() - 8;
+    gaugeY = y;
+
+    this.contents.fillRect(x, gaugeY, 6, -height, this.gaugeBackColor());
+    this.contents.gradientFillRect(x, gaugeY, 6, -fillH, color1, color2);
+};
+
+
+Window_Base.prototype.drawHorizonText = function(text, x, y, maxWidth, align) {
+    this.contents.drawHorizonText(text, x, y, maxWidth, this.lineHeight(), align);
+};
+
+
+Bitmap.prototype.drawHorizonText = function(text, x, y, maxWidth, lineHeight, align) {
+    if (text !== undefined) {
+        var tx = x;
+        var ty = y + lineHeight - (lineHeight - this.fontSize * 0.7) / 2;
+        var context = this._context;
+        var alpha = context.globalAlpha;
+        maxWidth = maxWidth || 0xffffffff;
+        if (align === 'center') {
+            tx += maxWidth / 2;
+        }
+        if (align === 'right') {
+            tx += maxWidth;
+        }
+        context.save();
+        context.font = this._makeFontNameText();
+        context.textAlign = align;
+        context.textBaseline = 'alphabetic';
+        context.globalAlpha = 1;
+        this._drawHorizonTextOutline(text, tx, ty, maxWidth);
+        context.globalAlpha = alpha;
+        this._drawHorizonTextBody(text, tx, ty, maxWidth);
+        context.restore();
+        this._setDirty();
+    }
+};
+
+Bitmap.prototype._drawHorizonTextOutline = function(text, tx, ty, maxWidth) {
+    console.log("outline tx="+tx);
+    console.log("outline ty="+ty);
+    var context = this._context;
+    context.strokeStyle = this.outlineColor;
+    context.lineWidth = this.outlineWidth;
+    context.lineJoin = 'round';
+    context.strokeText(text, tx, ty, maxWidth);
+};
+
+Bitmap.prototype._drawHorizonTextBody = function(text, tx, ty, maxWidth) {
+    console.log("body tx="+tx);
+    console.log("body ty="+ty);
+    var context = this._context;
+    context.fillStyle = this.textColor;
+    context.fillText(text, tx, ty, maxWidth);
+};
 
 
 })();
