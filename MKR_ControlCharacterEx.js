@@ -1,11 +1,13 @@
-//=============================================================================
+//===============================================================================
 // MKR_ControlCharacterEx.js
-//=============================================================================
-// Copyright (c) 2016 mankind
+//===============================================================================
+// Copyright (c) 2016-2017 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
-// ----------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 // Version
+// 1.2.0 2017/07/19 制御文字「\im[n]」を追加、文中アイコンの余白を指定可能に。
+//
 // 1.1.4 2016/10/16 制御文字「\me[n]」を追加、文中でMEを再生可能に。
 //
 // 1.1.3 2016/08/24 ・制御文字「\$」で表示される
@@ -21,22 +23,34 @@
 // 1.0.1 2016/07/22 一部制御文字が動作しなくなるバグを修正。
 //
 // 1.0.0 2016/07/21 初版公開。
-// ----------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
-//=============================================================================
+//    [Blog] http://mankind-games.blogspot.jp/
+//===============================================================================
 
 /*:
+ * ==============================================================================
+ * @plugindesc (v1.2.0) 制御文字拡張プラグイン
+ * @author マンカインド
  *
- * @plugindesc (v1.1.4) メッセージ内で使用可能な制御文字を
- * 追加/拡張します。
- * @author mankind
- *
- * @help
+ * @help = 制御文字拡張プラグイン ver 1.2.0 = (作:マンカインド)
  * メッセージ内で利用可能な制御文字を追加/拡張します。
  *
  *
  * 新規追加した制御文字:
+ *   \IM[アイコン右余白]
+ *     ・この制御文字の後から表示されるアイコンの右余白をpx単位で設定します。
+ *
+ *       余白は数値で指定、または制御文字の\v[n]を利用可能です。
+ *
+ *       なお、ここでの余白設定は
+ *       プラグインパラメータで指定できる初期値よりも優先されます。
+ *
+ *       余白設定はメッセージウィンドウが開かれている間、持続します。
+ *       1度ウィンドウが閉じられると、余白はプラグインパラメーターの設定に
+ *       戻ります。
+ *
  *   \SE[SE名,SE音量,SEピッチ,SE位相]
  *     ・メッセージ表示中にSEを演奏します。
  *       SE名は必須です。
@@ -198,60 +212,89 @@
  *      バージョンアップにより本プラグインの仕様が変更される可能性があります。
  *      ご了承ください。
  *
+ * ==============================================================================
  *
  * @param Default_SE_Volume
  * @desc [初期値:変数可] 制御文字 \SE 使用時に再生するSEの音量です。
+ * @type string
  * @default 90
  *
  * @param Default_SE_Pitch
  * @desc [初期値:変数可] 制御文字 \SE 使用時に再生するSEのピッチです。
+ * @type string
  * @default 100
  *
  * @param Default_SE_Pan
  * @desc [初期値:変数可] 制御文字 \SE 使用時に再生するSEの位相です。
+ * @type string
  * @default 0
- *
- * @param Default_Wait_Period
- * @desc [変数可] 制御文字 \. 使用時に待機するフレーム数です。デフォルト15フレーム(15フレーム=1/4秒)
- * @default 15
- *
- * @param Default_Wait_Line
- * @desc [変数可] 制御文字 \| 使用時に待機するフレーム数です。デフォルト60フレーム(60フレーム=1秒)
- * @default 60
- *
- * @param Default_Name_Color
- * @desc [変数可] 制御文字 \n または \p 使用時に名前部分につける色の番号です。番号でつく色は制御文字 \c を参考にしてください。
- * @default 2
- *
- * @param Default_Gold_Background
- * @desc [初期値:変数可] 制御文字 \$ 使用時に表示する所持金ウィンドウの背景を指定します。(0:ウィンドウ 1:暗くする 2:透明)
- * @default 0
- *
- * @param Default_Gold_Position
- * @desc [初期値:変数可] 制御文字 \$ 使用時に表示する所持金ウィンドウの位置を指定します。詳細はヘルプを確認してください。
- * @default 6
  *
  * @param Default_ME_Volume
  * @desc [初期値:変数可] 制御文字 \ME 使用時に再生するMEの音量です。
+ * @type string
  * @default 90
  *
  * @param Default_ME_Pitch
  * @desc [初期値:変数可] 制御文字 \ME 使用時に再生するMEのピッチです。
+ * @type string
  * @default 100
  *
  * @param Default_ME_Pan
  * @desc [初期値:変数可] 制御文字 \ME 使用時に再生するSEの位相です。
+ * @type string
  * @default 0
  *
+ * @param Default_Wait_Period
+ * @desc [変数可] 制御文字 \. 使用時に待機するフレーム数です。デフォルト15フレーム(15フレーム=1/4秒)
+ * @type string
+ * @default 15
  *
- * *
+ * @param Default_Wait_Line
+ * @desc [変数可] 制御文字 \| 使用時に待機するフレーム数です。デフォルト60フレーム(60フレーム=1秒)
+ * @type string
+ * @default 60
+ *
+ * @param Default_Name_Color
+ * @desc [変数可] 制御文字 \N[n] または \P[n] 使用時に名前部分につける色の番号です。番号でつく色は制御文字 \C[n] を参考にしてください。
+ * @type string
+ * @default 0
+ *
+ * @param Default_Icon_Margin
+ * @desc [変数可] 制御文字 \I[n] または \p 使用時に名前部分につける色の番号です。番号でつく色は制御文字 \C[n] を参考にしてください。
+ * @type string
+ * @default 0
+ *
+ * @param Default_Gold_Background
+ * @desc [初期値:変数可] 制御文字 \$ 使用時に表示する所持金ウィンドウの背景を指定します。(0:ウィンドウ 1:暗くする 2:透明)
+ * @type string
+ * @default 0
+ *
+ * @param Default_Gold_Position
+ * @desc [初期値:変数可] 制御文字 \$ 使用時に表示する所持金ウィンドウの位置を指定します。詳細はヘルプを確認してください。
+ * @type string
+ * @default 6
+ *
+ * @param Message_Icon_Margin
+ * @desc [初期値] 制御文字 \I[n] 使用時に表示されるアイコンの余白を指定します。
+ * @type number
+ * @decimals 0
+ * @min 0
+ * @default 4
+ *
+ * ==============================================================================
 */
+
+var Imported = Imported || {};
+Imported.MKR_ControlCharacterEx = true;
+
 (function () {
     'use strict';
 
+    var PN = "MKR_ControlCharacterEx";
+
     var CheckParam = function(type, param, def, min, max) {
         var Parameters, regExp, value;
-        Parameters = PluginManager.parameters("MKR_ControlCharacterEx");
+        Parameters = PluginManager.parameters(PN);
 
         if(arguments.length < 4) {
             min = -Infinity;
@@ -263,22 +306,15 @@
         if(param in Parameters) {
             value = String(Parameters[param]);
         } else {
-            throw new Error('Plugin parameter not found: '+param);
+            throw new Error("[CheckParam] プラグインパラメーターがありません: " + param);
         }
 
-        regExp = /^\x1bV\[\d+\]|\x1bS\[\d+\]$/i;
         value = value.replace(/\\/g, '\x1b');
         value = value.replace(/\x1b\x1b/g, '\\');
 
+        regExp = /(\x1bV|\x1bN)\[\d+\]/i;
         if(!regExp.test(value)) {
             switch(type) {
-                case "bool":
-                    if(value == "") {
-                        value = (def)? true : false;
-                    } else {
-                        value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
-                    }
-                    break;
                 case "num":
                     if(value == "") {
                         value = (isFinite(def))? parseInt(def, 10) : 0;
@@ -288,29 +324,20 @@
                     }
                     break;
                 case "string":
-                    if(value == "") {
-                        value = (def != "")? def : value;
-                    }
-                    break;
-                case "switch":
-                    if(value == "") {
-                        value = (def != "")? def : value;
-                    }
-                    if(!value.match(/^([A-D]|\d+)$/i)) {
-                        throw new Error('Plugin parameter value is not switch : '+param+' : '+value);
-                    }
+                    value = value;
                     break;
                 default:
-                    throw new Error('Plugin parameter type is illegal: '+type);
+                    throw new Error("[CheckParam] " + param + "のタイプが不正です: " + type);
                     break;
             }
         }
 
-        return [value, type, def, min, max];
+        return [value, type, def, min, max, param];
     };
 
     var CEC = function(params) {
-        var text, value, type, def, min, max;
+        var text, value, type, def, min, max, param;
+        type = params[1];
         text = String(params[0]);
         text = text.replace(/\\/g, '\x1b');
         text = text.replace(/\x1b\x1b/g, '\\');
@@ -318,20 +345,13 @@
         def = params[2];
         min = params[3];
         max = params[4];
-
+        param = params[5];
 
         text = text.replace(/\x1bV\[\d+\]/i, function() {
             return String(ConvVb(text));
         }.bind(this));
 
         switch(type) {
-            case "bool":
-                if(text == "") {
-                    value = (def)? true : false;
-                } else {
-                    value = text.toUpperCase() === "ON" || text.toUpperCase() === "TRUE" || text.toUpperCase() === "1";
-                }
-                break;
             case "num":
                 value = (isFinite(text))? parseInt(text, 10) : (isFinite(def))? parseInt(def, 10) : 0;
                 value = value.clamp(min, max);
@@ -343,16 +363,8 @@
                     value = text;
                 }
                 break;
-            case "switch":
-                if(value == "") {
-                    value = (def != "")? def : value;
-                }
-                if(!value.match(/^([A-D]|\d+)$/)) {
-                    throw new Error('Plugin parameter value is not switch : '+param+' : '+value);
-                }
-                break;
             default:
-                throw new Error('[CEC] Plugin parameter type is illegal: '+type);
+                throw new Error("[CEC] " + param + "のタイプが不正です: " + type);
                 break;
         }
 
@@ -378,7 +390,7 @@
 
     var DefSeVolume, DefSePitch, DefSePan, DefWaitPeriod, DefWaitLine, DefNameColor,
         DefGoldBackground, DefGoldPosition,
-        DefMeVolume, DefMePitch, DefMePan;
+        DefMeVolume, DefMePitch, DefMePan, MesIconMargin;
     DefSeVolume = CheckParam("num", "Default_SE_Volume", 90, 20, 100);
     DefSePitch = CheckParam("num", "Default_SE_Pitch", 100, 50, 150);
     DefSePan = CheckParam("num", "Default_SE_Pan", 0, -100, 100);
@@ -390,6 +402,28 @@
     DefMeVolume = CheckParam("num", "Default_ME_Volume", 90, 20, 100);
     DefMePitch = CheckParam("num", "Default_ME_Pitch", 100, 50, 150);
     DefMePan = CheckParam("num", "Default_ME_Pan", 0, -100, 100);
+    MesIconMargin = CheckParam("num", "Message_Icon_Margin", 4, 0);
+
+
+    //=========================================================================
+    // Game_Message
+    //  設定保持用変数を定義します。
+    //
+    //=========================================================================
+    var _Game_Message_clear = Game_Message.prototype.clear;
+    Game_Message.prototype.clear = function() {
+        _Game_Message_clear.call(this);
+
+        this._iconMargin = MesIconMargin[0];
+    };
+
+    Game_Message.prototype.iconMargin = function() {
+        return this._iconMargin;
+    };
+
+    Game_Message.prototype.setIconMargin = function(margin) {
+        this._iconMargin = margin;
+    };
 
 
     //=========================================================================
@@ -401,7 +435,7 @@
     Window_Base.prototype.obtainEscapeCode = function(textState) {
         var regExp, arr;
         textState.index++;
-        regExp = /^(SE|\$|ME)\[.*?\]/i;
+        regExp = /^(SE|\$|ME|IM)\[.*?\]/i;
         arr = regExp.exec(textState.text.slice(textState.index));
 
         if (arr) {
@@ -438,6 +472,17 @@
         return _Window_Base_convertEscapeCharacters.call(this,text);
     };
 
+    var _Window_Base_processDrawIcon = Window_Base.prototype.processDrawIcon;
+    Window_Base.prototype.processDrawIcon = function(iconIndex, textState) {
+        var x, ret, iconMargin;
+        x = textState.x;
+        iconMargin = $gameMessage.iconMargin();
+        ret = _Window_Base_processDrawIcon.apply(this, arguments);
+        textState.x = x + Window_Base._iconWidth + iconMargin;
+
+        return ret;
+    };
+
 
     //=========================================================================
     // Window_Messge
@@ -447,12 +492,12 @@
     var _Window_Message_processEscapeCharacter = Window_Message.prototype.processEscapeCharacter;
     Window_Message.prototype.processEscapeCharacter = function(code, textState) {
         var regExp, arr, res, se, seVolume, sePitch, sePan, waitPeriod, waitLine,
-            goldBackground, goldPosition, me, meVolume, mePitch, mePan;
+            goldBackground, goldPosition, me, meVolume, mePitch, mePan, iconMargin;
         waitPeriod = CEC(DefWaitPeriod);
         waitLine = CEC(DefWaitLine);
         goldBackground = CEC(DefGoldBackground);
         goldPosition = CEC(DefGoldPosition);
-        regExp = /^(SE|\$|ME)(\[.*?\])?$/i;
+        regExp = /^(SE|\$|ME|IM)(\[.*?\])?$/i;
         arr = regExp.exec(code);
 
         if (arr) {
@@ -495,6 +540,16 @@
                         goldPosition = (res[1] && isFinite(res[1]))? parseInt(res[1], 10) : goldPosition;
                     }
                     this._goldWindow.open(goldBackground, goldPosition, $gameMessage.positionType());
+                    break;
+                case 'IM':
+                    console.log("IM");
+                    console.log(arr);
+                    if(arr[2] != "" && isFinite(arr[2])) {
+                        iconMargin = parseInt(arr[2], 10);
+                        if(iconMargin >= 0) {
+                            $gameMessage.setIconMargin(iconMargin);
+                        }
+                    }
                     break;
                 default:
                     _Window_Message_processEscapeCharacter.call(this, code, textState);
