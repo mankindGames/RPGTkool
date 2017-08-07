@@ -6,6 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.2.9 2017/08/08 ・プラグインヘルプを修正。
+//                  ・探索者が存在しないマップでプラグインコマンドを実行すると
+//                    エラーが発生する場合があったため修正。
+//
 // 2.2.8 2017/07/22 ・一部プラグインとの競合問題を解決。
 //                  ・プラグインパラメーターの指定方法を変更。
 //
@@ -74,10 +78,10 @@
 
 /*:
  *
- * @plugindesc (v2.2.8) プレイヤー探索プラグイン
+ * @plugindesc (v2.2.9) プレイヤー探索プラグイン
  * @author マンカインド
  *
- * @help = プレイヤー探索プラグイン (ver 2.2.8) =
+ * @help = プレイヤー探索プラグイン (ver 2.2.9) =
  * MKR_PlayerSensor.js - マンカインド
  *
  *
@@ -87,15 +91,20 @@
  *
  *
  * 簡単な使い方説明:
- *   探索者にさせたいイベントのメモ欄を設定し、プラグインコマンド
- *   PSS startで全て(一部例外あり)探索者が探索を開始します。
+ *   探索者にしたいイベントのメモ欄を設定し、
+ *   探索者がいるマップでプラグインコマンド PSS start を実行すると、
+ *   そのマップにいる全ての探索者が探索を開始します。
+ *   (探索一時無効状態になっている探索者を除く)
  *
- *   プラグインコマンド PSS t_start で探索者が探索を開始します。
+ *   探索者のイベント内でプラグインコマンド PSS t_start を実行すると、
+ *   その探索者が探索を開始します。
  *   (探索一時無効状態となっている探索者に対しても探索を開始させます。)
  *
- *   プラグインコマンド PSS t_stop で探索者が探索を停止します。
+ *   探索者のイベント内でプラグインコマンド PSS t_stop を実行すると、
+ *   その探索者が探索を停止します。
  *
- *   プラグインコマンド PSS stop で全探索者が探索を停止します。
+ *   探索者がいるマップでプラグインコマンド  PSS stop を実行すると、
+ *   そのマップにいる全探索者が探索を停止します。
  *
  *
  * メモ欄_基本設定(Xは正の整数):
@@ -286,14 +295,16 @@
  *
  * プラグインコマンド:
  *   PSS start
- *     ・探索処理を開始します。
+ *     ・コマンドを実行したマップ上に存在する全ての探索者が
+ *       探索処理を開始します。
  *       (探索一時無効状態の探索者は対象外です)
  *
  *   PSS stop
- *     ・探索処理を終了します。
+ *     ・コマンドを実行したマップ上に存在する全ての探索者が
+ *       探索処理を終了します。
  *
  *   PSS reset X Y ...
- *     ・このコマンドを実行したマップ上に存在する全ての探索者を対象に、
+ *     ・コマンドを実行したマップ上に存在する全ての探索者を対象に、
  *       プラグインパラメーター[Default_Sensor_Switch]で
  *       指定したセルフスイッチ、
  *       またはSオプションで指定したセルフスイッチの
@@ -682,26 +693,29 @@
         sy = Math.abs(event.deltaYFrom($gamePlayer.y));
         list = [];
 
-        // 移動スピード設定
-        if(speed && isFinite(speed) && speed > 0) {
-            newSpeed = parseInt(speed, 10);
+        if(event) {
+            // 移動スピード設定
+            if(speed && isFinite(speed) && speed > 0) {
+                newSpeed = parseInt(speed, 10);
+            }
+
+            // 移動ルート設定
+            list.push({"code":29,"parameters":[newSpeed]}, {"code":25})
+            for(i = 1; i < sx + sy; i++) {
+                list.push({"code":10});
+            }
+            list.push({"code":25}, {"code":29,"parameters":[oldSpeed]}, {"code":0});
+
+            // 移動開始
+            this.setWaitMode('route');
+            event.forceMoveRoute({
+                "list":list,
+                "repeat":false,
+                "skippable":true,
+                "wait":true
+            });
         }
 
-        // 移動ルート設定
-        list.push({"code":29,"parameters":[newSpeed]}, {"code":25})
-        for(i = 1; i < sx + sy; i++) {
-            list.push({"code":10});
-        }
-        list.push({"code":25}, {"code":29,"parameters":[oldSpeed]}, {"code":0});
-
-        // 移動開始
-        this.setWaitMode('route');
-        event.forceMoveRoute({
-            "list":list,
-            "repeat":false,
-            "skippable":true,
-            "wait":true
-        });
     };
 
 
@@ -739,12 +753,18 @@
 
     Game_System.prototype.onSensor = function(eventId) {
         var event = $gameMap.event(eventId);
-        event.setSensorStatus(1);
+
+        if(event && event.getSensorType() != null) {
+            event.setSensorStatus(1);
+        }
     };
 
     Game_System.prototype.offSensor = function(eventId) {
         var event = $gameMap.event(eventId);
-        event.setSensorStatus(0);
+
+        if(event && event.getSensorType() != null) {
+            event.setSensorStatus(0);
+        }
     };
 
     Game_System.prototype.neutralSensor = function(eventId, args) {
