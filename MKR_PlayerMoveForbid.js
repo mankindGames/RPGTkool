@@ -1,11 +1,13 @@
-//=============================================================================
+//==============================================================================
 // MKR_PlayerMoveForbid.js
-//=============================================================================
-// Copyright (c) 2016 マンカインド
+//==============================================================================
+// Copyright (c) 2016-2017 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // Version
+// 1.0.4 2017/08/27 プラグインパラメータの指定方法を変更
+//
 // 1.0.3 2017/05/24 メニュー開閉フラグが正常に動作していなかったため修正
 //
 // 1.0.2 2017/02/19 移動禁止の間、メニュー開閉を行えるかのフラグを追加
@@ -14,19 +16,20 @@
 //                  デフォルト値の設定が不適切だったので修正。
 //
 // 1.0.0 2016/09/04 初版公開。
-// ----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
-//=============================================================================
+//    [Blog] http://mankind-games.blogspot.jp/
+//==============================================================================
 
 /*:
  *
- * @plugindesc (v1.0.3) 指定された番号のスイッチがONの間、
- * プレイヤー操作によるキャラの移動を禁止します。
- *
+ * @plugindesc (v1.0.4) プレイヤー移動禁止プラグイン
  * @author マンカインド
  *
- * @help
+ * @help = プレイヤー移動禁止プラグイン ver 1.0.4 =
+ * MKR_PlayerMoveForbid.js - マンカインド
+ *
  * 指定された番号のスイッチがONの間、
  * プレイヤー操作によるキャラの移動を禁止します。
  *
@@ -63,15 +66,15 @@
  *
  *
  * @param Default_Move_Flag
- * @desc プレイヤーの移動を禁止するスイッチの番号を指定します。
+ * @desc プレイヤーの移動を禁止するスイッチを指定します。
+ * @type switch
  * @default 10
  *
  * @param Default_Menu_Flag
- * @desc プレイヤーの移動を禁止している間、メニューの開閉を許可するか指定します。(許可する:true / 許可しない:false)
+ * @desc ON:プレイヤーの移動を禁止している間、メニューの開閉を許可する。 OFF:メニュー開閉を許可しない
+ * @type boolean
  * @default true
  *
- *
- * *
 */
 (function () {
     'use strict';
@@ -102,12 +105,12 @@
                 }
                 value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
                 break;
-            case "num":
+            case "switch":
                 if(value == "") {
-                    value = (isFinite(def))? parseInt(def, 10) : 0;
-                } else {
-                    value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
-                    value = value.clamp(min, max);
+                    value = (def != "")? def : value;
+                }
+                if(!value.match(/^(\d+)$/i)) {
+                    throw new Error("[CheckParam] " + param + "の値がスイッチではありません: " + param + " : " + value);
                 }
                 break;
             default:
@@ -119,7 +122,7 @@
     }
 
     var Params = {
-        "MoveSwitch" : CheckParam("num", "Default_Move_Flag", 10, 1),
+        "MoveSwitch" : CheckParam("switch", "Default_Move_Flag", "10"),
         "MenuFlg" : CheckParam("bool", "Default_Menu_Flag", true),
     };
 
@@ -132,7 +135,7 @@
     var _Game_System_isMenuEnabled = Game_System.prototype.isMenuEnabled;
     Game_System.prototype.isMenuEnabled = function() {
         return _Game_System_isMenuEnabled.call(this)
-            && ($gameSwitches.value(Params.MoveSwitch[0]) ? Params.MenuFlg[0] : true);
+            && ($gameSwitches.value(Params.MoveSwitch[0]) ? Params.MenuFlg[0] == true : true);
     };
 
 
