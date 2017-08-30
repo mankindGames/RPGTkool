@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.1 2017/08/30 ・プラグインパラメーターの指定方法を変更。
+//                  ・プラグインヘルプを修正。
+//
 // 1.1.0 2017/08/30 ・一部プラグインとの競合問題を修正。
 //                  ・ウィンドウ不透明度を指定可能に。
 //                  ・スロット選択カーソルを非表示にする機能を追加。
@@ -22,10 +25,10 @@
 
 /*:
  *
- * @plugindesc (v1.1.0) マップアイテムスロットプラグイン
+ * @plugindesc (v1.1.1) マップアイテムスロットプラグイン
  * @author マンカインド
  *
- * @help = マップアイテムスロットプラグイン ver 1.1.0 =
+ * @help = マップアイテムスロットプラグイン ver 1.1.1 =
  * MKR_MapItemSlot.js - マンカインド
  *
  * マップ画面上に表示したアイテムスロットからアイテムの使用/装備を
@@ -59,7 +62,7 @@
  * その個数がスロット右下に数字として表示されます。
  * アイテム個数が0になったとき、
  * アイテムスロットからそのアイテムを削除するか、
- * グレーアウトさせて残しておくかはプラグインパラメータから設定可能です。
+ * グレーアウトさせた状態で残しておくかはプラグインパラメータから設定可能です。
  *
  * 選択したスロットに武器が登録されていた場合、
  * 装備可能なものであれば選択と同時にパーティ先頭のアクターに装備されます。
@@ -69,8 +72,8 @@
  * 装備中武器(=選択カーソルが武器の登録されているスロット上にある)の場合、
  * スロット左上に E と表示されます。
  *
- * なお、このプラグインを導入すると、
- * メニューの装備画面から武器の変更をすることはできなくなります。
+ * なお、プラグインパラメータ[武器登録可否]がONのとき、
+ * メニューの装備画面から先頭アクターの武器変更をすることができなくなります。
  * (アイテムスロットの選択によって武器の変更を行ってください)
  *
  * アイテムスロットは先頭から、
@@ -93,42 +96,42 @@
  * アクターから装備が外れます。
  *
  *
- * プラグインパラメータによる動作につてい:
+ * プラグインパラメータによる動作について:
  *   アイテムスロットに対する操作はプラグインパラメータにより変更できます。
  *
- *     ・マウス使用モード.アイテム使用
- *         マウスクリック(画面タッチ)でアイテムの使用が可能になる。
+ *     ・マウス使用モード.アイテム使用(Mouse_Mode.Use_Enable)
+ *         マウスクリック(画面タッチ)でアイテムの使用が可能になります。
  *
- *     ・マウス使用モード.スロット選択
- *         マウスホイールでスロットの選択が可能になる。
+ *     ・マウス使用モード.スロット選択(Mouse_Mode.Select_Enable)
+ *         マウスホイールでスロットの選択が可能になります。
  *
- *     ・キーボード使用モード.アイテム使用
- *         キーボードでアイテムの使用が可能になる。
+ *     ・キーボード使用モード.アイテム使用(Keyboard_Mode.Use_Enable)
+ *         キーボードでアイテムの使用が可能になります。
  *
- *     ・キーボード使用モード.スロット選択
- *         キーボードでスロットの選択が可能になる。
+ *     ・キーボード使用モード.スロット選択(Keyboard_Mode.Select_Enable)
+ *         キーボードでスロットの選択が可能になります。
  *
  *   以下のプラグインパラメータによりアイテムスロットの挙動が変化します。
  *
- *     ・アイテム登録モード
+ *     ・アイテム登録モード(Slot_Add_Mode)
  *       ONの場合、入手したアイテムは自動的にスロットへと登録されます。
  *       自動で登録させたくない場合はOFFにするか、後述するメモ欄の設定を
  *       行ってください。
  *
- *     ・アイテム使用モード
+ *     ・アイテム使用モード(Item_Use_Mode)
  *       ONの場合、アイテムが登録されたスロットにカーソルが移動すると、
  *       自動的にそのアイテムが使用されます。
  *       マウスホイールでのカーソル操作でも自動使用されてしまうため、
  *       このモードをONにするときは[マウス使用モード.スロット選択]を
  *       OFFにするのを推奨します。
  *
- *     ・武器登録可否
+ *     ・武器登録可否(Slot_Set_Weapon)
  *       ONの場合、スロットに武器が登録可能になります。
  *       また、装備画面から武器の変更が行えなくなります。
  *       アイテムのみ登録させたい、武器は自由に変更したい場合は
  *       OFFにしてください。
  *
- *     ・アイテム削除モード
+ *     ・アイテム削除モード(Item_Remove_Mode)
  *       ONの場合、スロットにセットされたアイテムの個数が0個になると
  *       スロットからアイテムが自動的に削除されます。
  *       OFFにすると、アイテムは個数0の状態でグレー表示になります。
@@ -293,7 +296,7 @@
  * @default true
  *
  * @param Map_Slot_Opacity
- * @text スロットの不透明度(マップ)
+ * @text スロット不透明度(マップ)
  * @desc マップ画面に表示されたアイテムスロットの不透明度を数値で指定します。0で完全に透明になります。(デフォルト:255)
  * @type number
  * @max 255
@@ -312,14 +315,14 @@
  * @type boolean
  * @default true
  *
- * @param Use_Mouse_Mode
- * @text マウス使用モード
+ * @param Mouse_Mode
+ * @text マウスモード
  * @desc マウスでのアイテムスロット操作設定
  * @type struct<Mode>
  * @default {"Use_Enable":"true","Select_Enable":"true"}
  *
- * @param Use_Keyboard_Mode
- * @text キーボード使用モード
+ * @param Keyboard_Mode
+ * @text キーボードモード
  * @desc キーボードでのアイテムスロット操作設定
  * @type struct<Mode>
  * @default {"Use_Enable":"true","Select_Enable":"true"}
@@ -426,7 +429,7 @@
  *
  * @param Menu_Slot_Mode
  * @text メニュー表示モード
- * @desc [初期値] アイテムスロット画面へ飛ぶためのコマンドをメニューに追加する方式を指定してください。(デフォルト:コマンド有効状態で追加)
+ * @desc [初期値]アイテムスロット画面コマンドをメニューに追加する方式を指定してください。(デフォルト:コマンド有効状態で追加)
  * @type select
  * @option 追加しない
  * @value 0
@@ -467,7 +470,7 @@
  * @default "アイテムの登録を解除するスロットを選択してください。"
  *
  * @param Menu_Slot_Opacity
- * @text スロットの不透明度(メニュー)
+ * @text スロット不透明度(メニュー)
  * @desc アイテムスロット画面のウィンドウの不透明度を数値で指定します。0で完全に透明になります。(デフォルト:255)
  * @type number
  * @max 255
@@ -756,13 +759,13 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Params["KeyboardMode"] = {
-        "UseEnable" : CheckParam("bool", "UseKeyboardMode.Use_Enable", Parameters["Use_Keyboard_Mode"]["Use_Enable"], true),
-        "SelectEnable" : CheckParam("bool", "KeyboardMode.Select_Enable", Parameters["Use_Keyboard_Mode"]["Select_Enable"], true),
+        "UseEnable" : CheckParam("bool", "KeyboardMode.Use_Enable", Parameters["Keyboard_Mode"]["Use_Enable"], true),
+        "SelectEnable" : CheckParam("bool", "KeyboardMode.Select_Enable", Parameters["Keyboard_Mode"]["Select_Enable"], true),
     };
 
     Params["MouseMode"] = {
-        "UseEnable" : CheckParam("bool", "UseMouseMode.Use_Enable", Parameters["Use_Mouse_Mode"]["Use_Enable"], true),
-        "SelectEnable" : CheckParam("bool", "UseMouseMode.Select_Enable", Parameters["Use_Mouse_Mode"]["Select_Enable"], true),
+        "UseEnable" : CheckParam("bool", "MouseMode.Use_Enable", Parameters["Mouse_Mode"]["Use_Enable"], true),
+        "SelectEnable" : CheckParam("bool", "MouseMode.Select_Enable", Parameters["Mouse_Mode"]["Select_Enable"], true),
     };
 
 
