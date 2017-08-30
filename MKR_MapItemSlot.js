@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.2 2017/08/30 ・余計なコードを削除。
+//
 // 1.1.1 2017/08/30 ・プラグインパラメーターの指定方法を変更。
 //                  ・プラグインヘルプを修正。
 //
@@ -557,7 +559,6 @@ Imported.MKR_MapItemSlot = true;
             max = Infinity;
         }
 
-        console.log("name:%s value:%s", name, value);
         if(value == null) {
             value = "";
         } else {
@@ -720,7 +721,6 @@ Imported.MKR_MapItemSlot = true;
     var Parameters = paramParse(PluginManager.parameters(PN));
     var Params = {};
 
-    console.log(Parameters);
     Params = {
         "SlotVisible" : CheckParam("bool", "Slot_Visible", Parameters["Slot_Visible"], true),
         "SlotNumber" : CheckParam("num", "Slot_Number", Parameters["Slot_Number"], 10, 1, 10),
