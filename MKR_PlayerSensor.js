@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.3.0 2017/09/21 ・一部プラグインと併用した場合の問題を修正。
+//
 // 2.2.9 2017/08/08 ・プラグインヘルプを修正。
 //                  ・探索者が存在しないマップでプラグインコマンドを実行すると
 //                    エラーが発生する場合があったため修正。
@@ -78,10 +80,10 @@
 
 /*:
  *
- * @plugindesc (v2.2.9) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.0) プレイヤー探索プラグイン
  * @author マンカインド
  *
- * @help = プレイヤー探索プラグイン (ver 2.2.9) =
+ * @help = プレイヤー探索プラグイン (ver 2.3.0) =
  * MKR_PlayerSensor.js - マンカインド
  *
  *
@@ -932,6 +934,7 @@
         this._directionFixed = -1;
         this._eventDecision = -1;
         this._regionDecision = "";
+        this._createRange = false;
     };
 
     var _Game_CharacterBaseMoveStraight = Game_CharacterBase.prototype.moveStraight;
@@ -1143,6 +1146,14 @@
         }
 
         return passableFlag;
+    };
+
+    Game_CharacterBase.prototype.isCreateRange = function() {
+        return this._createRange;
+    };
+
+    Game_CharacterBase.prototype.enableCreateRange = function() {
+        this._createRange = true;
     };
 
 
@@ -1943,12 +1954,38 @@
         $gameMap.events().forEach(function(event) {
             if(event._sensorType) {
                 this._viewRangeSprites.push(new Sprite_ViewRange(event));
+                event.enableCreateRange();
             }
         }, this);
         for (var i = 0; i < this._viewRangeSprites.length; i++) {
             this._tilemap.addChild(this._viewRangeSprites[i]);
         }
     };
+
+    var _Spriteset_Base_update = Spriteset_Base.prototype.update;
+    Spriteset_Base.prototype.update = function() {
+        _Spriteset_Base_update.call(this);
+        this.updateViewRange();
+    };
+
+    Spriteset_Base.prototype.updateViewRange = function() {
+        var cnt;
+        cnt = this._viewRangeSprites.length - 1;
+
+        $gameMap.events().filter(function(event) {
+            return !event.isCreateRange();
+        }).forEach(function(event) {
+            if(event._sensorType) {
+                this._viewRangeSprites.push(new Sprite_ViewRange(event));
+                event.enableCreateRange();
+            }
+        }, this);
+
+        for (; cnt < this._viewRangeSprites.length; cnt++) {
+            this._tilemap.addChild(this._viewRangeSprites[cnt]);
+        }
+    };
+
 
 
     //=========================================================================
