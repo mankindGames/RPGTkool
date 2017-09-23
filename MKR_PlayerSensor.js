@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.3.1 2017/09/23 ・ver2.3.0にて、探索者が存在しないマップで
+//                    エラーとなる問題を修正
+//
 // 2.3.0 2017/09/21 ・一部プラグインと併用した場合の問題を修正。
 //
 // 2.2.9 2017/08/08 ・プラグインヘルプを修正。
@@ -80,10 +83,10 @@
 
 /*:
  *
- * @plugindesc (v2.3.0) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.1) プレイヤー探索プラグイン
  * @author マンカインド
  *
- * @help = プレイヤー探索プラグイン (ver 2.3.0) =
+ * @help = プレイヤー探索プラグイン (ver 2.3.1) =
  * MKR_PlayerSensor.js - マンカインド
  *
  *
@@ -1971,6 +1974,7 @@
     Spriteset_Base.prototype.updateViewRange = function() {
         var cnt;
         cnt = this._viewRangeSprites.length - 1;
+        cnt = cnt >= 0 ? cnt : 0;
 
         $gameMap.events().filter(function(event) {
             return !event.isCreateRange();
@@ -1985,7 +1989,6 @@
             this._tilemap.addChild(this._viewRangeSprites[cnt]);
         }
     };
-
 
 
     //=========================================================================
