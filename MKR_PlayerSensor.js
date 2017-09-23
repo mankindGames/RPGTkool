@@ -6,7 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 2.3.1 2017/09/23 ・ver2.3.0にて、探索者が存在しないマップで
+// 2.3.1 2017/09/23 ・ver2.3.0にて、探索者が存在しないシーンで
 //                    エラーとなる問題を修正
 //
 // 2.3.0 2017/09/21 ・一部プラグインと併用した場合の問題を修正。
@@ -1968,7 +1968,9 @@
     var _Spriteset_Base_update = Spriteset_Base.prototype.update;
     Spriteset_Base.prototype.update = function() {
         _Spriteset_Base_update.call(this);
-        this.updateViewRange();
+        if(this._viewRangeSprites) {
+            this.updateViewRange();
+        }
     };
 
     Spriteset_Base.prototype.updateViewRange = function() {
