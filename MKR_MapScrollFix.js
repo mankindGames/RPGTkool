@@ -1,12 +1,15 @@
 //=============================================================================
 // MKR_MapScrollFix.js
 //=============================================================================
-// Copyright (c) 2016 mankind
+// Copyright (c) 2016-2017 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.0 2016/10/24 初版公開
+// 1.0.1 2017/10/04 スクロール固定時、画面外への離脱と画面内への侵入を
+//                  制限できるようにした。
+//
+// 1.0.0 2016/10/24 初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -15,12 +18,21 @@
 
 /*:
  *
- * @plugindesc (v1.0.0) 指定したスイッチがONの間、マップスクロールを固定します。
- * @author mankind
+ * @plugindesc (v1.0.1) マップスクロール固定プラグイン
+ * @author マンカインド
  *
- * @help
+ * @help = マップスクロール固定プラグイン ver 1.0.1 =
+ * MKR_MapScrollFix.js - マンカインド
+ *
+ * 指定されたスイッチがオンの間、
+ * プレイヤーの移動によるマップスクロールを固定します。
+ *
  * プラグインパラメーターでスクロールを禁止するためのスイッチ番号を指定します。
  * ゲーム中にそのスイッチがオンになると画面が固定されます。
+ *
+ * 同じくプラグインパラメータにより、イベントが固定された画面から外への離脱、
+ * 画面内への侵入が可能か設定できます。
+ * (イベントがすり抜けONの場合、この設定は無視されます)
  *
  *
  * プラグインコマンド:
@@ -34,21 +46,6 @@
  * 補足：
  *   ・このプラグインに関するメモ欄の設定、プラグインコマンド/パラメーター、
  *     制御文字は大文字/小文字を区別していません。
- *
- *   ・プラグインパラメーターの説明に、[初期値]と書かれているものは
- *     アクター/イベントのメモ欄で個別に設定が可能です。
- *     設定した場合、[初期値]よりメモ欄の設定が
- *     優先されますのでご注意ください。
- *
- *   ・プラグインパラメーターの説明に、[変数可]と書かれているものは
- *     設定値に変数を表す制御文字である\v[n]を使用可能です。
- *     変数を設定した場合、そのパラメーターの利用時に変数の値を
- *     参照するため、パラメーターの設定をゲーム中に変更できます。
- *
- *   ・プラグインパラメーターの説明に、[スイッチ可]と書かれているものは
- *     設定値にスイッチを表す制御文字である\s[n]を使用可能です。
- *     スイッチを設定した場合、そのパラメーターの利用時にスイッチの値を
- *     参照するため、パラメーターの設定をゲーム中に変更できます。
  *
  *
  * 利用規約:
@@ -68,77 +65,92 @@
  *
  *
  * @param Default_Scroll_Fix_Sw
+ * @text スクロール固定スイッチ
  * @desc マップスクロールを固定するスイッチの番号を指定します。
+ * @type switch
  * @default 10
  *
+ * @param Is_Display_Out
+ * @text 画面外への離脱
+ * @desc スクロール固定時、イベントが画面外へと移動可能か選択します。
+ * @type boolean
+ * @on 移動可能
+ * @off 移動不可
+ * @default true
  *
- * *
+ * @param Is_Display_In
+ * @text 画面内への侵入
+ * @desc スクロール固定時、画面外にいるイベントが画面内へと移動可能か選択します。
+ * @type boolean
+ * @on 移動可能
+ * @off 移動不可
+ * @default true
+ *
+ *
 */
+
+var Imported = Imported || {};
+Imported.MKR_MapScrollFix = true;
+
 (function () {
     'use strict';
 
-    var CheckParam = function(type, param, def, min, max) {
-        var Parameters, regExp, value;
-        Parameters = PluginManager.parameters("MKR_MapScrollFix");
+    const PN = "MKR_MapScrollFix";
 
-        if(arguments.length < 4) {
+    const CheckParam = function(type, name, value, def, min, max, options) {
+        if(min == undefined || min == null) {
             min = -Infinity;
+        }
+        if(max == undefined || max == null) {
             max = Infinity;
         }
-        if(arguments.length < 5) {
-            max = Infinity;
-        }
-        if(param in Parameters) {
-            value = String(Parameters[param]);
+
+        if(value == null) {
+            value = "";
         } else {
-            throw new Error('Plugin parameter not found: '+param);
+            value = String(value);
         }
 
-        regExp = /^\x1bV\[\d+\]$/i;
-        value = value.replace(/\\/g, '\x1b');
-        value = value.replace(/\x1b\x1b/g, '\\');
-
-
-        if(!regExp.test(value)) {
-            switch(type) {
-                case "bool":
-                    if(value == "") {
-                        value = (def)? true : false;
-                    }
-                    value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
-                    break;
-                case "num":
-                    if(value == "") {
-                        value = (isFinite(def))? parseInt(def, 10) : 0;
-                    } else {
-                        value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
-                        value = value.clamp(min, max);
-                    }
-                    break;
-                case "string":
-                    value = value;
-                    break;
-                case "switch":
-                    if(value == "") {
-                        value = (def != "")? def : value;
-                    }
-                    if(!value.match(/^([A-D]|\d+)$/i)) {
-                        throw new Error('Plugin parameter value is not switch : '+param+' : '+value);
-                    }
-                    break;
-                default:
-                    throw new Error('Plugin parameter type is illegal: '+type);
-                    break;
-            }
+        switch(type) {
+            case "bool":
+                if(value == "") {
+                    value = (def)? true : false;
+                }
+                value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
+                break;
+            case "num":
+                value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
+                value = value.clamp(min, max);
+                break;
+            default:
+                throw new Error("[CheckParam] " + name + "のタイプが不正です: " + type);
+                break;
         }
 
         return [value, type, def, min, max];
+    };
+
+    const paramParse = function(obj) {
+        return JSON.parse(JSON.stringify(obj, paramReplace));
     }
 
-    var DefScrollFixSw;
-    DefScrollFixSw = CheckParam("num", "Default_Scroll_Fix_Sw", 10, 1);
+    const paramReplace = function(key, value) {
+        try {
+            return JSON.parse(value || null);
+        } catch (e) {
+            return value;
+        }
+    };
 
-    console.log(DefScrollFixSw)
+    const Parameters = paramParse(PluginManager.parameters(PN));
+    let Params = {};
+
+    Params = {
+        "ScrollFixSw" : CheckParam("num", "Default_Scroll_Fix_Sw", Parameters["Default_Scroll_Fix_Sw"], 10, 0),
+        "IsDisplayOut" : CheckParam("bool", "Is_Display_Out", Parameters["Is_Display_Out"], true),
+        "IsDisplayIn" : CheckParam("bool", "Is_Display_In", Parameters["Is_Display_In"], true),
+    };
+
 
     //=========================================================================
     // Game_Player
@@ -147,11 +159,71 @@
     //=========================================================================
     var _Game_Player_updateScroll = Game_Player.prototype.updateScroll;
     Game_Player.prototype.updateScroll = function(lastScrolledX, lastScrolledY) {
-        var scrollFix = $gameSwitches.value(DefScrollFixSw[0]);
-
-        if(!scrollFix) {
-            _Game_Player_updateScroll.call(this, lastScrolledX, lastScrolledY);
+        if(!$gameSwitches.value(Params.ScrollFixSw[0])) {
+            _Game_Player_updateScroll.apply(this, arguments);
         }
     };
 
+
+    //=========================================================================
+    // Game_CharacterBase
+    //  ・画面外への移動可能判定を定義します
+    //
+    //=========================================================================
+    var _Game_CharacterBase_canPass = Game_CharacterBase.prototype.canPass;
+    Game_CharacterBase.prototype.canPass = function(x, y, d) {
+        let isPass, x2, y2;
+        isPass = _Game_CharacterBase_canPass.apply(this, arguments);
+
+        if(!this.isThrough() && $gameSwitches.value(Params.ScrollFixSw[0])) {
+            if(isPass && !Params.IsDisplayOut[0]) {
+                isPass = this.isDisplayOutPassible(x, y, d);
+            }
+            if(isPass && !Params.IsDisplayIn[0]) {
+                isPass = this.isDisplayInPassible(x, y, d);
+            }
+        }
+
+        return isPass;
+    };
+
+    Game_CharacterBase.prototype.isDisplayOutPassible = function(x, y, d) {
+        let x2, y2, dx, rdx, dy, rdy;
+        dx = $gameMap.displayX();
+        rdx = dx + $gameMap.screenTileX() - 1;
+        dy = $gameMap.displayY();
+        rdy = dy + $gameMap.screenTileY() - 1;
+        x2 = $gameMap.roundXWithDirection(x, d);
+        y2 = $gameMap.roundYWithDirection(y, d);
+
+        switch(true) {
+            case x == dx && x2 < dx:
+            case x == rdx && x2 > rdx:
+            case y == dy && y2 < dy:
+            case y == rdy && y2 > rdy:
+                return false;
+        }
+        return true;
+    };
+
+    Game_CharacterBase.prototype.isDisplayInPassible = function(x, y, d) {
+        let x2, y2, dx, rdx, dy, rdy;
+        dx = $gameMap.displayX();
+        rdx = dx + $gameMap.screenTileX();
+        dx--;
+        dy = $gameMap.displayY();
+        rdy = dy + $gameMap.screenTileY();
+        dy--;
+        x2 = $gameMap.roundXWithDirection(x, d);
+        y2 = $gameMap.roundYWithDirection(y, d);
+
+        switch(true) {
+            case x == dx && x2 > dx:
+            case x == rdx && x2 < rdx:
+            case y == dy && y2 > dy:
+            case y == rdy && y2 < rdy:
+                return false;
+        }
+        return true;
+    };
 })();
