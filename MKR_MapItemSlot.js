@@ -1,11 +1,24 @@
-//=============================================================================
+//===============================================================================
 // MKR_MapItemSlot.js
-//=============================================================================
+//===============================================================================
 // Copyright (c) 2016-2017 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
-// ----------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 // Version
+// 1.1.3 2017/10/11 ・一部プラグインとの競合問題を修正。
+//                  ・メニューアイテムスロット画面の不透明度指定により他画面の
+//                    ウィンドウに影響が出ていた問題を修正。
+//                  ・プラグインパラメーターの指定方法を変更。
+//                  ・一部プラグインパラメータのデフォルト値を変更。
+//                  ・アイテムスロットの拡大表示に対応。
+//                  ・アイテムスロットの余白を設定可能に。
+//                  ・アイテムスロットウィンドウ及び画面について背景画像を
+//                    設定できるように修正。
+//                  ・スロットからアイテムを使用後、$gameParty.lastItem()で
+//                    最後に使用したアイテムを取得できるように。
+//                  ・アイテムスロット画面呼び出し用のプラグインコマンドを追加。
+//
 // 1.1.2 2017/08/30 ・余計なコードを削除。
 //
 // 1.1.1 2017/08/30 ・プラグインパラメーターの指定方法を変更。
@@ -19,18 +32,18 @@
 //                  ・プラグインパラメーターの指定方法を変更。
 //
 // 1.0.0 2017/08/15 初版公開。
-// ----------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
 //    [Blog] http://mankind-games.blogspot.jp/
-//=============================================================================
+//===============================================================================
 
 /*:
  *
- * @plugindesc (v1.1.1) マップアイテムスロットプラグイン
+ * @plugindesc (v1.1.3) マップアイテムスロットプラグイン
  * @author マンカインド
  *
- * @help = マップアイテムスロットプラグイン ver 1.1.1 =
+ * @help = マップアイテムスロットプラグイン ver 1.1.3 =
  * MKR_MapItemSlot.js - マンカインド
  *
  * マップ画面上に表示したアイテムスロットからアイテムの使用/装備を
@@ -41,7 +54,7 @@
  *   ・ゲーム画面上でマウスホイール操作
  * で可能です。
  *
- * アイテムスロット数を10としたとき、スロット番号は以下のようになります。
+ * スロット数を10としたとき、スロット番号は以下のようになります。
  * (デフォルトでキーボードの数字キーに対応しています。
  *  0キーはスロット番号10として扱います)
  * アイテムスロット:[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]
@@ -139,6 +152,19 @@
  *       OFFにすると、アイテムは個数0の状態でグレー表示になります。
  *       アイテム個数が0のため、使用することはできません。
  *
+ * 
+ * スロットサイズ倍率について:
+ *   プラグインパラメータ[スロットサイズ倍率]からスロットの大きさを
+ *   変更することができます。(1.0倍～2.0倍まで)
+ * 
+ *   サイズ倍率と最大スロット数によってはスロットが画面外へと
+ *   飛び出してしまう可能性があります。
+ *   (例えばスロット10個でサイズを2.0倍にすると、
+ *    デフォルトのゲーム画面の横サイズである816pxより大きくなってしまいます)
+ * 
+ *   自動的にゲーム画面内に収まるよう超過サイズを調整する機能はありませんので、
+ *   ゲーム画面内に収まるよう設定の考慮をお願いします。
+ * 
  *
  * 武器・アイテムメモ欄:
  *   <itemslot:noadd>
@@ -218,6 +244,9 @@
  *     ・rightを指定した場合、カーソルは一つ右に移動します。
  *       カーソルがスロット末端を選択していた場合は先頭に移動します。
  *
+ *   itemslot edit
+ *     ・アイテムスロット編集画面を開きます。
+ *
  *
  * スクリプトコマンド:
  *   $gameParty.getItemSlotFreeNumber();
@@ -257,64 +286,22 @@
  *     バージョンアップにより本プラグインの仕様が変更される可能性があります。
  *     ご了承ください。
  *
- *
- * @param Slot_Visible
- * @text アイテムスロットの表示
- * @desc [初期値] ON:アイテムスロットを初期状態で表示する。OFF:初期状態で非表示にする。(デフォルト:ON)
- * @type boolean
- * @default true
+ * ==============================================================================
  *
  * @param Slot_Number
- * @text 最大アイテムスロット数
- * @desc アイテムスロットの数を指定してください。(1～10までの数字。デフォルト:10)
+ * @text 最大スロット数
+ * @desc アイテムスロットの最大数を指定してください。(1～10までの数字。デフォルト:10)
  * @type number
- * @decimals 0
  * @min 1
  * @max 10
  * @default 10
  *
- * @param Slot_X
- * @text アイテムスロットX座標
- * @desc アイテムスロットを画面描画するためのX座標を指定してください。(数字/left/center/rightのいずれか。デフォルト:center)
- * @type combo
- * @option left
- * @option center
- * @option right
- * @default center
- *
- * @param Slot_Y
- * @text アイテムスロットY座標
- * @desc アイテムスロットを画面描画するためのY座標を指定してください。(数字/top/center/bottomのいずれか。デフォルト:bottom)
- * @type combo
- * @option top
- * @option center
- * @option bottom
- * @default bottom
- *
- * @param Slot_Cursor_Visible
- * @text スロット選択カーソルの表示
- * @desc ON:アイテムスロットの選択カーソルを表示する。OFF:カーソルを非表示にする。(デフォルト:ON)
- * @type boolean
- * @default true
- *
- * @param Map_Slot_Opacity
- * @text スロット不透明度(マップ)
- * @desc マップ画面に表示されたアイテムスロットの不透明度を数値で指定します。0で完全に透明になります。(デフォルト:255)
- * @type number
- * @max 255
- * @min 0
- * @default 255
- *
- * @param Hide_Message
- * @text 文章表示中のスロット表示
- * @desc ON:文章の表示中、アイテムスロットを非表示にする。OFF:表示したままにする。(デフォルト:ON)
- * @type boolean
- * @default true
- *
  * @param Slot_Set_Weapon
  * @text 武器登録可否
- * @desc ON:アイテムスロットに武器を登録可能にする。OFF:登録不可にする。(デフォルト:ON)
+ * @desc アイテムスロットに武器を登録可能にするか選択します。(デフォルト:登録する)
  * @type boolean
+ * @on 登録する
+ * @off 登録しない
  * @default true
  *
  * @param Mouse_Mode
@@ -329,33 +316,119 @@
  * @type struct<Mode>
  * @default {"Use_Enable":"true","Select_Enable":"true"}
  *
- * @param Slot_Add_Mode
- * @text スロット登録モード
- * @desc ON:入手したアイテムを自動的にアイテムスロットに登録する。OFF:このモードを無効にする。(デフォルト:ON)
+ *
+ * @param map_setting
+ * @text スロット(マップ)設定
+ * @default ====================================
+ *
+ * @param Slot_Visible
+ * @text アイテムスロットの表示
+ * @desc [初期値] アイテムスロットを初期状態で表示するか選択します。(デフォルト:表示)
  * @type boolean
  * @default true
+ * @on 表示
+ * @off 非表示
+ * @parent map_setting
+ *
+ * @param Slot_Background
+ * @text アイテムスロットの背景
+ * @desc アイテムスロットの背景画像を指定します。(デフォルト設定での必要画像サイズ:横384px,高さ60px)
+ * @type file
+ * @require 1
+ * @dir img/pictures
+ * @parent map_setting
+ *
+ * @param Slot_X
+ * @text アイテムスロットX座標
+ * @desc アイテムスロットを画面描画するためのX座標を指定してください。(数字/left/center/rightのいずれか。デフォルト:center)
+ * @type combo
+ * @option left
+ * @option center
+ * @option right
+ * @default center
+ * @parent map_setting
+ *
+ * @param Slot_Y
+ * @text アイテムスロットY座標
+ * @desc アイテムスロットを画面描画するためのY座標を指定してください。(数字/top/center/bottomのいずれか。デフォルト:bottom)
+ * @type combo
+ * @option top
+ * @option center
+ * @option bottom
+ * @default bottom
+ * @parent map_setting
+ *
+ * @param Map_Slot_Window
+ * @text ウィンドウ設定(マップ)
+ * @desc マップ画面のスロットウィンドウに関する設定です。(デフォルト:1.0 / 12 / 6)
+ * @type struct<SlotWindow>
+ * @default {"Size_Rate":"1.0","Padding":"12","Spacing":"6"}
+ * @parent map_setting
+ *
+ * @param Hide_Message
+ * @text 文章表示中のスロット表示
+ * @desc 文章の表示中、アイテムスロットを非表示にするか選択します。(デフォルト:非表示)
+ * @type boolean
+ * @on 非表示
+ * @off 表示
+ * @default true
+ * @parent map_setting
+ *
+ * @param Slot_Add_Mode
+ * @text スロット登録モード
+ * @desc 入手したアイテムを自動的にアイテムスロットに登録するか選択します。(デフォルト:登録する)
+ * @type boolean
+ * @on 登録する
+ * @off 登録しない
+ * @default true
+ * @parent map_setting
  *
  * @param Item_Use_Mode
  * @text アイテム使用モード
- * @desc ON:アイテムの登録されたスロットにカーソルを移動後、自動的に使用する。OFF:アイテムは手動で使用する。(デフォルト:OFF)
+ * @desc アイテムの登録されたスロットにカーソルを移動後、自動的に使用するか選択します。(デフォルト:使用しない)
  * @type boolean
+ * @on 使用する
+ * @off 使用しない
  * @default false
+ * @parent map_setting
  *
  * @param Item_Remove_Mode
  * @text アイテム削除モード
- * @desc ON:スロットに登録されたアイテムが0個になったとき、スロットから消去する。OFF:消去せず残しておく。(デフォルト:ON)
+ * @desc スロットに登録されたアイテムが0個になったとき、スロットから消去するか選択します。(デフォルト:削除する)
  * @type boolean
+ * @on 削除する
+ * @off 削除しない
  * @default true
+ * @parent map_setting
+ *
+ * @param Slot_Cursor_Visible
+ * @text カーソルの表示
+ * @desc アイテムスロットの選択カーソルを表示するか選択します。(デフォルト:表示する)
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @default true
+ * @parent map_setting
+ *
+ * @param Map_Slot_Opacity
+ * @text 不透明度(マップ)
+ * @desc マップ画面に表示されたアイテムスロットの不透明度を数値で指定します。0で完全に透明になります。(デフォルト:255)
+ * @type number
+ * @max 255
+ * @min 0
+ * @default 255
+ * @parent map_setting
  *
  *
  * @param key_config
  * @text キーコンフィグ
+ * @default ====================================
  *
  * @param Item_Use_Key
  * @text アイテム使用キー
  * @desc スロットに登録されたアイテムを使用するためのキーを指定してください。(デフォルト:Control) ※括弧内はキー名
  * @type struct<Key>
- * @default {"Key":"Control(Ctrl/Alt/Command/Option)"}
+ * @default {"Key":"control"}
  * @parent key_config
  *
  * @param Slot_1_Key
@@ -429,6 +502,10 @@
  * @parent key_config
  *
  *
+ * @param menu_setting
+ * @text スロット(メニュー)設定
+ * @default ====================================
+ *
  * @param Menu_Slot_Mode
  * @text メニュー表示モード
  * @desc [初期値]アイテムスロット画面コマンドをメニューに追加する方式を指定してください。(デフォルト:コマンド有効状態で追加)
@@ -440,44 +517,66 @@
  * @option コマンド無効状態で追加
  * @value 2
  * @default 1
+ * @parent menu_setting
+ *
+ * @param Menu_Background
+ * @text スロットメニューの背景
+ * @desc スロットメニュー画面の背景画像を指定します。(デフォルトのゲーム画面サイズ:横816px,高さ624px)
+ * @type file
+ * @require 1
+ * @dir img/pictures
+ * @parent menu_setting
+ *
+ * @param Menu_Slot_Window
+ * @text ウィンドウ設定(メニュー)
+ * @desc アイテムスロット画面のスロットウィンドウに関する設定です。(デフォルト:1.3 / 12 / 6)
+ * @type struct<SlotWindow>
+ * @default {"Size_Rate":"1.3","Padding":"12","Spacing":"6"}
+ * @parent menu_setting
  *
  * @param Menu_Slot_Name
- * @text メニュースロットコマンド名
+ * @text スロットコマンド名
  * @desc メニューに追加する、アイテムスロット画面へ飛ぶためのコマンド名を指定してください。(デフォルト:アイテムスロット)
- * @type string
+ * @type text
  * @default アイテムスロット
+ * @parent menu_setting
  *
  * @param Slot_Set_Name
  * @text スロット登録コマンド名
  * @desc アイテムスロット画面で、アイテムをスロットへ登録するためのコマンド名を指定してください。(デフォルト:登録)
- * @type string
+ * @type text
  * @default 登録
+ * @parent menu_setting
  *
  * @param Slot_Remove_Name
  * @text スロット削除コマンド名
  * @desc アイテムスロット画面で、スロットに登録されたアイテムをクリアするためのコマンド名を指定してください。(デフォルト:削除)
- * @type string
+ * @type text
  * @default 解除
+ * @parent menu_setting
  *
  * @param Slot_Set_Desc
  * @text スロット登録説明文
  * @desc [制御文字可]アイテムスロット画面で、スロットにアイテムを登録する際の説明文を指定してください。
  * @type note
  * @default "アイテムを登録したいスロットを選択し、\n登録するアイテムを選択してください。"
+ * @parent menu_setting
  *
  * @param Slot_Remove_Desc
  * @text スロット削除説明文
  * @desc [制御文字可]アイテムスロット画面で、スロットに登録されたアイテムを解除するスロットを選択する際の説明文を指定してください。
  * @type note
  * @default "アイテムの登録を解除するスロットを選択してください。"
+ * @parent menu_setting
  *
  * @param Menu_Slot_Opacity
- * @text スロット不透明度(メニュー)
+ * @text 不透明度(メニュー)
  * @desc アイテムスロット画面のウィンドウの不透明度を数値で指定します。0で完全に透明になります。(デフォルト:255)
  * @type number
  * @max 255
  * @min 0
  * @default 255
+ * @parent menu_setting
  *
 */
 
@@ -531,15 +630,42 @@
  *
  * @param Use_Enable
  * @text アイテム使用
- * @desc ON:このモードでスロットに登録されたアイテムの使用が可能になります。 OFF:アイテム使用はできません。(デフォルト:ON)
+ * @desc このモードでスロットに登録されたアイテムの使用が可能か選択します。(デフォルト:使用可能)
  * @type boolean
+ * @on 使用可能
+ * @off 使用不可
  *
  * @param Select_Enable
  * @text スロット選択
- * @desc ON:このモードでスロットの選択が可能になります。 OFF:スロットの選択はできません。(デフォルト:ON)
+ * @desc このモードでスロットの選択が可能か選択します。(デフォルト:選択可能)
  * @type boolean
+ * @on 選択可能
+ * @off 選択不可
  *
  */
+/*~struct~SlotWindow:
+ *
+ * @param Size_Rate
+ * @text スロットサイズ倍率
+ * @desc スロットサイズ倍率を指定してください。サイズは1.0で100%(1倍)、2.0で200%(2倍)となります。(1.0～2.0までの数字)
+ * @type number
+ * @decimals 1
+ * @min 1.0
+ * @max 2.0
+ *
+ * @param Padding
+ * @text ウィンドウ内余白
+ * @desc スロットウィンドウとスロットアイコン間の余白を調整します。(7以上の数字)
+ * @type number
+ * @min 7
+ *
+ * @param Spacing
+ * @text アイコン間隔
+ * @desc スロットアイコンの配置間隔を調整します。(0以上の数字)
+ * @type number
+ * @min 0
+ * 
+ * */
 
 var Imported = Imported || {};
 Imported.MKR_MapItemSlot = true;
@@ -547,11 +673,9 @@ Imported.MKR_MapItemSlot = true;
 (function () {
     'use strict';
 
-    var PN = "MKR_MapItemSlot";
+    const PN = "MKR_MapItemSlot";
 
-    var CheckParam = function(type, name, value, def, min, max, options) {
-        var regExp, value;
-
+    const CheckParam = function(type, name, value, def, min, max, options) {
         if(min == undefined || min == null) {
             min = -Infinity;
         }
@@ -562,51 +686,55 @@ Imported.MKR_MapItemSlot = true;
         if(value == null) {
             value = "";
         } else {
-            value = "" + value;
+            value = String(value);
         }
 
         value = value.replace(/\\/g, '\x1b');
         value = value.replace(/\x1b\x1b/g, '\\');
 
-        regExp = /\x1bV\[\d+\]/i;
-        // regExp = /\\V\[\d+\]/i;
-        if(!regExp.test(value)) {
-            switch(type) {
-                case "bool":
-                    if(value == "") {
-                        value = (def)? true : false;
-                    }
-                    value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
-                    break;
-                case "num":
-                    if(value == "") {
-                        value = (isFinite(def))? parseInt(def, 10) : 0;
-                    } else {
-                        value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
-                        value = value.clamp(min, max);
-                    }
-                    break;
-                case "string":
-                    value = value.replace(/^\"/, "");
-                    value = value.replace(/\"$/, "");
-                    if(value != null && options && options.contains("lower")) {
-                        value = value.toLowerCase();
-                    }
-                    if(value != null && options && options.contains("upper")) {
-                        value = value.toUpperCase();
-                    }
-                    break;
-                default:
-                    throw new Error("[CheckParam] " + param + "のタイプが不正です: " + type);
-                    break;
-            }
+        switch(type) {
+            case "bool":
+                if(value == "") {
+                    value = (def)? true : false;
+                }
+                value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
+                break;
+            case "num":
+                if(value == "") {
+                    value = (isFinite(def))? parseInt(def, 10) : 0;
+                } else {
+                    value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
+                    value = value.clamp(min, max);
+                }
+                break;
+            case "float":
+                if(value == "") {
+                    value = (isFinite(def))? parseFloat(def) : 0.0;
+                } else {
+                    value = (isFinite(value))? parseFloat(value) : (isFinite(def))? parseFloat(def) : 0.0;
+                    value = value.clamp(min, max);
+                }
+                break;
+            case "string":
+                value = value.replace(/^\"/, "");
+                value = value.replace(/\"$/, "");
+                if(value != null && options && options.contains("lower")) {
+                    value = value.toLowerCase();
+                }
+                if(value != null && options && options.contains("upper")) {
+                    value = value.toUpperCase();
+                }
+                break;
+            default:
+                throw new Error("[CheckParam] " + name + "のタイプが不正です: " + type);
+                break;
         }
 
         return [value, type, def, min, max];
     };
 
-    var CEC = function(params) {
-        var text, value, type, def, min, max;
+    const CEC = function(params) {
+        let text, value, type, def, min, max;
         type = params[1];
         text = String(params[0]);
         text = text.replace(/\\/g, '\x1b');
@@ -630,6 +758,10 @@ Imported.MKR_MapItemSlot = true;
                 value = (isFinite(text))? parseInt(text, 10) : (isFinite(def))? parseInt(def, 10) : 0;
                 value = value.clamp(min, max);
                 break;
+            case "float":
+                value = (isFinite(text))? parseFloat(text) : (isFinite(def))? parseFloat(def) : 0.0;
+                value = value.clamp(min, max);
+                break;
             case "string":
             case "select":
                 if(text == "") {
@@ -646,8 +778,8 @@ Imported.MKR_MapItemSlot = true;
         return value;
     };
 
-    var convertEscapeCharacters = function(text) {
-        var windowChild;
+    const convertEscapeCharacters = function(text) {
+        let windowChild;
 
         if(typeof text == "string") {
             if(SceneManager._scene) {
@@ -661,8 +793,8 @@ Imported.MKR_MapItemSlot = true;
         return text;
     };
 
-    var ConvVb = function(text) {
-        var num;
+    const ConvVb = function(text) {
+        let num;
 
         if(typeof text == "string") {
             text = text.replace(/\x1bV\[(\d+)\]/i, function() {
@@ -680,8 +812,8 @@ Imported.MKR_MapItemSlot = true;
         return text;
     };
 
-    var GetMeta = function(meta, name, sep) {
-        var value, values, i, count;
+    const GetMeta = function(meta, name, sep) {
+        let value, values, i, count;
         value = "";
         values = [];
         name = name.toLowerCase().trim();
@@ -706,11 +838,11 @@ Imported.MKR_MapItemSlot = true;
         return value;
     };
 
-    var paramParse = function(obj) {
+    const paramParse = function(obj) {
         return JSON.parse(JSON.stringify(obj, paramReplace));
     }
 
-    var paramReplace = function(key, value) {
+    const paramReplace = function(key, value) {
         try {
             return JSON.parse(value || null);
         } catch (e) {
@@ -718,11 +850,13 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    var Parameters = paramParse(PluginManager.parameters(PN));
-    var Params = {};
+    const Parameters = paramParse(PluginManager.parameters(PN));
+    let Params = {};
 
     Params = {
         "SlotVisible" : CheckParam("bool", "Slot_Visible", Parameters["Slot_Visible"], true),
+        "SlotBackground" : CheckParam("string", "Slot_Background", Parameters["Slot_Background"], ""),
+        "SlotBackgroundNo" : CheckParam("num", "Slot_Background_No", Parameters["Slot_Background_No"], 10, 1, 100),
         "SlotNumber" : CheckParam("num", "Slot_Number", Parameters["Slot_Number"], 10, 1, 10),
         "SlotX" : CheckParam("string", "Slot_X", Parameters["Slot_X"], "center"),
         "SlotY" : CheckParam("string", "Slot_Y", Parameters["Slot_Y"], "bottom"),
@@ -734,6 +868,7 @@ Imported.MKR_MapItemSlot = true;
         "ItemRemoveMode" : CheckParam("bool", "Item_Remove_Mode", Parameters["Item_Remove_Mode"], true),
         "ItemUseMode" : CheckParam("bool", "Item_Use_Mode", Parameters["Item_Use_Mode"], false),
         "MenuSlotMode" : CheckParam("num", "Menu_Slot_Mode", Parameters["Menu_Slot_Mode"], "コマンド有効状態で追加"),
+        "MenuBackground" : CheckParam("string", "Menu_Background", Parameters["Menu_Background"], ""),
         "MenuSlotName" : CheckParam("string", "Menu_Slot_Name", Parameters["Menu_Slot_Name"], "アイテムスロット"),
         "SlotSetName" : CheckParam("string", "Slot_Set_Name", Parameters["Slot_Set_Name"], "登録"),
         // "SlotChangeName" : CheckParam("string", "Slot_Change_Name", Parameters["Slot_Change_Name"], "入れ替え"),
@@ -742,36 +877,42 @@ Imported.MKR_MapItemSlot = true;
         "SlotChangeDesc" : CheckParam("string", "Slot_Change_Desc", Parameters["Slot_Change_Desc"], "移動元のスロットを選択し、\n交換先のスロットを選択してください。"),
         "SlotRemoveDesc" : CheckParam("string", "Slot_Remove_Desc", Parameters["Slot_Remove_Desc"], "アイテムの登録を解除するスロットを選択してください。"),
         "MenuSlotOpacity" : CheckParam("num", "Menu_Slot_Opacity", Parameters["Menu_Slot_Opacity"], 255, 0, 255),
+        "MapSlotWindow" : {
+            "SizeRate" : CheckParam("float", "Map_Slot_Window.Size_Rate", Parameters["Map_Slot_Window"]["Size_Rate"], 1.0, 1.0, 2.0),
+            "Padding" : CheckParam("num", "Map_Slot_Window.Padding", Parameters["Map_Slot_Window"]["Padding"], 12, 7),
+            "Spacing" : CheckParam("num", "Map_Slot_Window.Spacing", Parameters["Map_Slot_Window"]["Spacing"], 6, 0),    
+        },
+        "MenuSlotWindow" : {
+            "SizeRate" : CheckParam("float", "Menu_Slot_Window.Size_Rate", Parameters["Menu_Slot_Window"]["Size_Rate"], 1.0, 1.0, 2.0),
+            "Padding" : CheckParam("num", "Menu_Slot_Window.Padding", Parameters["Menu_Slot_Window"]["Padding"], 12, 7),
+            "Spacing" : CheckParam("num", "Menu_Slot_Window.Spacing", Parameters["Menu_Slot_Window"]["Spacing"], 6, 0),    
+        },
+        "KeyConfig" : {
+            "ItemUseKey" : CheckParam("string", "Item_Use_Key", Parameters["Item_Use_Key"]["Key"], "control", null, null, ["lower"]),
+            "Slot1Key" : CheckParam("string", "Slot_1_Key", Parameters["Slot_1_Key"]["Key"], "1", null, null, ["lower"]),
+            "Slot2Key" : CheckParam("string", "Slot_2_Key", Parameters["Slot_2_Key"]["Key"], "2", null, null, ["lower"]),
+            "Slot3Key" : CheckParam("string", "Slot_3_Key", Parameters["Slot_3_Key"]["Key"], "3", null, null, ["lower"]),
+            "Slot4Key" : CheckParam("string", "Slot_4_Key", Parameters["Slot_4_Key"]["Key"], "4", null, null, ["lower"]),
+            "Slot5Key" : CheckParam("string", "Slot_5_Key", Parameters["Slot_5_Key"]["Key"], "5", null, null, ["lower"]),
+            "Slot6Key" : CheckParam("string", "Slot_6_Key", Parameters["Slot_6_Key"]["Key"], "6", null, null, ["lower"]),
+            "Slot7Key" : CheckParam("string", "Slot_7_Key", Parameters["Slot_7_Key"]["Key"], "7", null, null, ["lower"]),
+            "Slot8Key" : CheckParam("string", "Slot_8_Key", Parameters["Slot_8_Key"]["Key"], "8", null, null, ["lower"]),
+            "Slot9Key" : CheckParam("string", "Slot_9_Key", Parameters["Slot_9_Key"]["Key"], "9", null, null, ["lower"]),
+            "Slot10Key" : CheckParam("string", "Slot_10_Key", Parameters["Slot_10_Key"]["Key"], "0", null, null, ["lower"]),
+        },
+        "KeyboardMode" : {
+            "UseEnable" : CheckParam("bool", "KeyboardMode.Use_Enable", Parameters["Keyboard_Mode"]["Use_Enable"], true),
+            "SelectEnable" : CheckParam("bool", "KeyboardMode.Select_Enable", Parameters["Keyboard_Mode"]["Select_Enable"], true),
+        },
+        "MouseMode" : {
+            "UseEnable" : CheckParam("bool", "MouseMode.Use_Enable", Parameters["Mouse_Mode"]["Use_Enable"], true),
+            "SelectEnable" : CheckParam("bool", "MouseMode.Select_Enable", Parameters["Mouse_Mode"]["Select_Enable"], true),
+        },
     };
 
-    Params["KeyConfig"] = {
-        "ItemUseKey" : CheckParam("string", "Item_Use_Key", Parameters["Item_Use_Key"]["Key"], "control", null, null, ["lower"]),
-        "Slot1Key" : CheckParam("string", "Slot_1_Key", Parameters["Slot_1_Key"]["Key"], "1", null, null, ["lower"]),
-        "Slot2Key" : CheckParam("string", "Slot_2_Key", Parameters["Slot_2_Key"]["Key"], "2", null, null, ["lower"]),
-        "Slot3Key" : CheckParam("string", "Slot_3_Key", Parameters["Slot_3_Key"]["Key"], "3", null, null, ["lower"]),
-        "Slot4Key" : CheckParam("string", "Slot_4_Key", Parameters["Slot_4_Key"]["Key"], "4", null, null, ["lower"]),
-        "Slot5Key" : CheckParam("string", "Slot_5_Key", Parameters["Slot_5_Key"]["Key"], "5", null, null, ["lower"]),
-        "Slot6Key" : CheckParam("string", "Slot_6_Key", Parameters["Slot_6_Key"]["Key"], "6", null, null, ["lower"]),
-        "Slot7Key" : CheckParam("string", "Slot_7_Key", Parameters["Slot_7_Key"]["Key"], "7", null, null, ["lower"]),
-        "Slot8Key" : CheckParam("string", "Slot_8_Key", Parameters["Slot_8_Key"]["Key"], "8", null, null, ["lower"]),
-        "Slot9Key" : CheckParam("string", "Slot_9_Key", Parameters["Slot_9_Key"]["Key"], "9", null, null, ["lower"]),
-        "Slot10Key" : CheckParam("string", "Slot_10_Key", Parameters["Slot_10_Key"]["Key"], "0", null, null, ["lower"]),
-    };
-
-    Params["KeyboardMode"] = {
-        "UseEnable" : CheckParam("bool", "KeyboardMode.Use_Enable", Parameters["Keyboard_Mode"]["Use_Enable"], true),
-        "SelectEnable" : CheckParam("bool", "KeyboardMode.Select_Enable", Parameters["Keyboard_Mode"]["Select_Enable"], true),
-    };
-
-    Params["MouseMode"] = {
-        "UseEnable" : CheckParam("bool", "MouseMode.Use_Enable", Parameters["Mouse_Mode"]["Use_Enable"], true),
-        "SelectEnable" : CheckParam("bool", "MouseMode.Select_Enable", Parameters["Mouse_Mode"]["Select_Enable"], true),
-    };
-
-
-    var ITEM = "item";
-    var WEAPON = "weapon";
-    var ARMOR = "armor";
+    const ITEM = "item";
+    const WEAPON = "weapon";
+    const ARMOR = "armor";
 
 
     //=========================================================================
@@ -779,11 +920,11 @@ Imported.MKR_MapItemSlot = true;
     //  ・キー判定処理を再定義します。
     //
     //=========================================================================
-    var _Input_onKeyDown = Input._onKeyDown;
+    let _Input_onKeyDown = Input._onKeyDown;
     Input._onKeyDown = function(event) {
         _Input_onKeyDown.call(this, event);
 
-        var name;
+        let name;
         name = codeToName(event);
 
         // console.log(event);
@@ -795,11 +936,11 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    var _Input_onKeyUp = Input._onKeyUp;
+    let _Input_onKeyUp = Input._onKeyUp;
     Input._onKeyUp = function(event) {
         _Input_onKeyUp.call(this, event);
 
-        var name;
+        let name;
         name = codeToName(event);
 
         if(!Input.keyMapper[event.keyCode]) {
@@ -815,11 +956,11 @@ Imported.MKR_MapItemSlot = true;
     //  ・アイテムスロットを操作するプラグインコマンドを定義します。
     //
     //=========================================================================
-    var _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
+    let _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.call(this, command, args);
 
-        var index, id, type, item, equip, i, cnt, itemSlot, actor, scene;
+        let index, id, type, item, equip, i, cnt, itemSlot, actor, scene;
         index = -1;
         id = 0;
         type = null;
@@ -836,6 +977,9 @@ Imported.MKR_MapItemSlot = true;
                     break;
                 case "hide":
                     $gameParty.setItemSlotVisible(false);
+                    break;
+                case "edit":
+                    SceneManager.push(Scene_ItemSlot);
                     break;
                 case "set":
                     if(args[1] != null && isFinite(args[1])) {
@@ -867,7 +1011,6 @@ Imported.MKR_MapItemSlot = true;
                     }
 
                     if(item && $gameParty.hasItemType(item)) {
-                        // console.log("setItemSlot index:"+index+" equip:"+equip);
                         $gameParty.setItemSlot(index, item, equip);
                         // if(!equip) {
                             $gameParty.gainItem(item, 1, false);
@@ -940,7 +1083,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・アイテムスロットの内容を定義します。
     //
     //=========================================================================
-    var _Game_Party_initialize = Game_Party.prototype.initialize;
+    let _Game_Party_initialize = Game_Party.prototype.initialize;
     Game_Party.prototype.initialize = function() {
         _Game_Party_initialize.call(this);
 
@@ -948,7 +1091,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.initItemSlot = function() {
-        var i, j, items, cnt, actor;
+        let i, j, items, cnt, actor;
         i = 0;
         j = 0;
 
@@ -958,7 +1101,6 @@ Imported.MKR_MapItemSlot = true;
             cnt = Params.SlotNumber[0];
             // アクターが武器を装備済みの場合、先にスロットに登録する。
             if($gameParty && Params.SlotAddMode[0]) {
-                // console.log("init");
                 actor = $gameParty.leader();
                 if(actor.weapons().length > 0) {
                     actor.weapons().forEach(function(item) {
@@ -987,7 +1129,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.updateItemSlot = function() {
-        var i, cnt;
+        let i, cnt;
 
         if(this._itemSlot != undefined && this._itemSlot != null) {
             cnt = Params.SlotNumber[0];
@@ -997,13 +1139,9 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    var _Game_Party_gainItem = Game_Party.prototype.gainItem;
+    let _Game_Party_gainItem = Game_Party.prototype.gainItem;
     Game_Party.prototype.gainItem = function(item, amount, includeEquip) {
-        var type, index, i, cnt, container, actor, meta;
-
-        // console.log("gainItem:%o",item);
-        // console.log("lastItem:");
-        // console.log(this.getSlotEquipItem());
+        let type, index, i, cnt, container, actor, meta;
 
         meta = "";
         if(item && item.meta) {
@@ -1026,7 +1164,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.setItemSlot = function(index, item, equip) {
-        var equipFlg, actor, win, cnt, i;
+        let equipFlg, actor, win, cnt, i;
 
         if(equip == undefined || equip == null) {
             equip = false;
@@ -1043,8 +1181,6 @@ Imported.MKR_MapItemSlot = true;
             index = -1;
         }
 
-        // console.log("setItemSlot:"+index);
-
         actor = $gameParty.leader();
         if(item && index >= 0 && index < Params.SlotNumber[0]) {
             if(DataManager.isItem(item)) {
@@ -1059,10 +1195,7 @@ Imported.MKR_MapItemSlot = true;
                 this._itemSlot[index].kind = item.wtypeId;
                 this._itemSlot[index].equip = equipFlg;
 
-                // console.log(this._itemSlot);
-
                 if(equip) {
-                    // console.log("setItemSlot equip on");
                     $gameParty.setItemSlotLastIndex(index);
                     this._itemSlot[index].equip = true;
                     actor.changeEquip(0, item);
@@ -1072,7 +1205,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.removeItemSlot = function(index) {
-        var cnt;
+        let cnt;
         cnt = this._itemSlot.length;
 
         if(index >= 0 && index < cnt) {
@@ -1084,7 +1217,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.clearItemSlot = function() {
-        var cnt;
+        let cnt;
         cnt = this._itemSlot.length;
 
         for (i = 0; i < cnt; i++) {
@@ -1093,7 +1226,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.swapItemSlot = function(index1, index2) {
-        var temp;
+        let temp;
         temp = this._itemSlot[index1];
 
         this._itemSlot[index1] = this._itemSlot[index2];
@@ -1101,7 +1234,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.hasItemType = function(item) {
-        var type;
+        let type;
         type = DataManager.getItemType(item);
 
         if(type == WEAPON && !Params.SlotSetW[0]) {
@@ -1114,11 +1247,8 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.setEquipStatus = function(index, equip) {
-        var equipFlg, actor, itemSlot;
-
+        let equipFlg, actor, itemSlot;
         itemSlot = this.getItemSlot(index);
-
-        // console.log(index);
 
         if(itemSlot && (itemSlot.type == WEAPON || itemSlot.type == ARMOR)) {
             this._itemSlot[index].equip = equip;
@@ -1137,7 +1267,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.getItemSlotNumber = function(type, id) {
-        var cnt, i, ret, itemSlot;
+        let cnt, i, ret, itemSlot;
         cnt = this._itemSlot.length;
         ret = -1;
 
@@ -1154,7 +1284,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.getItemSlotFreeNumber = function() {
-        var cnt, i, ret;
+        let cnt, i, ret;
         cnt = this._itemSlot.length;
         ret = -1;
 
@@ -1221,15 +1351,16 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.useItemSlot = function(item) {
-        var actor, action;
+        let actor, action, i;
         actor = this.leader();
 
         if (item && actor.canUse(item) && (item.scope === 0 || this.isItemEffectsValid(item))) {
+            $gameParty.setLastItem(item);
             actor.useItem(item);
             action = new Game_Action(actor);
             action.setItemObject(item);
             this.itemTargetActors(item).forEach(function(target) {
-                for (var i = 0; i < action.numRepeats(); i++) {
+                for (i = 0; i < action.numRepeats(); i++) {
                     action.apply(target);
                 }
             }, this);
@@ -1245,7 +1376,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.isItemEffectsValid = function(item) {
-        var actor, action;
+        let actor, action;
         actor = $gameParty.leader();
         action = new Game_Action(actor);
         action.setItemObject(item);
@@ -1256,7 +1387,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.itemTargetActors = function(item) {
-        var actor, action;
+        let actor, action;
         actor = $gameParty.leader();
         action = new Game_Action(actor);
         action.setItemObject(item);
@@ -1276,9 +1407,9 @@ Imported.MKR_MapItemSlot = true;
     //  ・リーダーアクターの武器変更処理を再定義します。
     //
     //=========================================================================
-    var _Game_Actor_isEquipChangeOk = Game_Actor.prototype.isEquipChangeOk;
+    let _Game_Actor_isEquipChangeOk = Game_Actor.prototype.isEquipChangeOk;
     Game_Actor.prototype.isEquipChangeOk = function(slotId) {
-        var ret = _Game_Actor_isEquipChangeOk.call(this, slotId);
+        let ret = _Game_Actor_isEquipChangeOk.call(this, slotId);
 
         if(Params.SlotSetW[0] && this == $gameParty.leader() && slotId == 0 && ret) {
             ret = false;
@@ -1287,23 +1418,19 @@ Imported.MKR_MapItemSlot = true;
         return ret;
     };
 
-    var _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
+    let _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
     Game_Actor.prototype.changeEquip = function(slotId, item) {
-        var index;
+        let index;
 
-        // console.log("changeEquip: slotId:"+slotId);
-        // console.log(item);
         if(Params.SlotSetW[0] && this == $gameParty.leader() && slotId == 0 && DataManager.getItemType(item) == WEAPON) {
             index = $gameParty.getItemSlotNumber(WEAPON, item.id);
             if(index == -1) {
                 index = $gameParty.getItemSlotFreeNumber() - 1;
                 if(index >= 0) {
-                    // console.log("changeEquip newIndex:"+index);
                     $gameParty.setItemSlotForceIndex(index);
                     _Game_Actor_changeEquip.apply(this, arguments);
                 }
             } else {
-                // console.log("changeEquip index:"+index);
                 $gameParty.setItemSlotForceIndex(index);
                 _Game_Actor_changeEquip.apply(this, arguments);
             }
@@ -1326,17 +1453,21 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlotBase.prototype.constructor = Window_ItemSlotBase;
 
 
-    Window_ItemSlotBase.prototype.initialize = function(x, y) {
-        var x, y;
+    Window_ItemSlotBase.prototype.initialize = function(x, y, kind) {
         x = this.stringToPoint(x, "x");
         y = this.stringToPoint(y, "y");
 
         Window_Selectable.prototype.initialize.call(this, x, y, this.windowWidth(), this.windowHeight());
         this._type = [];
         this._num = [];
+        this._kind = kind;
         this._lastIndex = $gameParty.getItemSlotLastIndex();
-        // console.log("initialize");
-        // console.log("lastIndex:"+this._lastIndex);
+
+        // GALV_GursorImage.jsへの対応
+        if(Imported.Galv_CursorImage) {
+            this.removeChild(this._galvCursor);
+        }
+
         this.refresh();
         this.show();
     };
@@ -1358,11 +1489,18 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_ItemSlotBase.prototype.windowWidth = function() {
-        return Params.SlotNumber[0] * (this.lineHeight() + this.standardPadding());
+        // return this.maxCols() * (this.lineHeight() + this.standardPadding() * 2);
+        return this.maxCols() * this.lineHeight() + this.standardPadding() * 2;
     };
 
     Window_ItemSlotBase.prototype.windowHeight = function() {
         return this.fittingHeight(1);
+    };
+
+    Window_ItemSlotBase.prototype.itemHeight = function() {
+        let val = this.contentsHeight();
+        val = val > this.contentsWidth() ? this.contentsWidth() : val;
+        return val;
     };
 
     Window_ItemSlotBase.prototype.lastIndex = function() {
@@ -1370,7 +1508,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_ItemSlotBase.prototype.item = function(index) {
-        var itemSlot;
+        let itemSlot;
 
         if(index == undefined || index == null || index < 0) {
             index = this.index();
@@ -1402,9 +1540,11 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlotBase.prototype.drawItem = function(index) {
         Window_Selectable.prototype.drawItem.call(this, index);
 
-        var item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize;
+        let item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize, x, y,
+            sizeRate;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
+        sizeRate = this._kind ? Params.MapSlotWindow.SizeRate[0] : Params.MenuSlotWindow.SizeRate[0];
 
         if(itemSlot) {
             type = itemSlot.type;
@@ -1419,12 +1559,15 @@ Imported.MKR_MapItemSlot = true;
                 } else {
                     this.changePaintOpacity(num > 0);
                 }
-                this.drawIcon(item.iconIndex, rect.x + rect.width / 2 - 16, rect.y + rect.height / 2 - 16);
+
+                x = rect.x + rect.width / 2 - Window_Base._iconWidth * sizeRate / 2;
+                y = rect.y + rect.height / 2 - Window_Base._iconHeight * sizeRate / 2;
+                this.drawIconEx(item.iconIndex, x, y, sizeRate);
 
                 if(type == ITEM) {
                     fontSize = this.contents.fontSize;
                     this.contents.fontSize = 20;
-                    this.contents.drawText("" + num, rect.x, rect.y + 16, rect.width - 2, 24, 'right');
+                    this.contents.drawText("" + num, rect.x, rect.height - 20, rect.width - 2, 24, 'right');
                     this.contents.fontSize = fontSize;
                     this._type[index] = ITEM;
                 } else if(type == WEAPON) {
@@ -1438,8 +1581,24 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
+    Window_ItemSlotBase.prototype.drawIconEx = function(iconIndex, x, y, sizeRate) {
+        let bitmap, pw, ph, sx, sy, dw, dh;
+        if(sizeRate == "" || sizeRate <= 1) {
+            sizeRate = 1.0;
+        }
+        bitmap = ImageManager.loadSystem('IconSet');
+        pw = Window_Base._iconWidth;
+        ph = Window_Base._iconHeight;
+        sx = iconIndex % 16 * pw;
+        sy = Math.floor(iconIndex / 16) * ph;
+        dw = pw * sizeRate;
+        dh = ph * sizeRate;
+
+        this.contents.blt(bitmap, sx, sy, pw, ph, x, y, dw, dh);
+    };
+
     Window_ItemSlotBase.prototype.stringToPoint = function(text, type) {
-        var val = 0;
+        let val = 0;
 
         if(isFinite(text)) {
             val = parseInt(text, 10);
@@ -1505,23 +1664,42 @@ Imported.MKR_MapItemSlot = true;
     Window_MapItemSlot.prototype = Object.create(Window_ItemSlotBase.prototype);
     Window_MapItemSlot.prototype.constructor = Window_MapItemSlot;
 
-    Window_MapItemSlot.prototype.initialize = function(x, y) {
-        Window_ItemSlotBase.prototype.initialize.call(this, x, y);
+    Window_MapItemSlot.prototype.initialize = function(x, y, kind) {
+        Window_ItemSlotBase.prototype.initialize.call(this, x, y, kind);
         this.selectLast();
     };
 
     Window_MapItemSlot.prototype.standardPadding = function() {
-        return 12;
+        return Params.MapSlotWindow.Padding[0];
     };
 
     Window_MapItemSlot.prototype.spacing = function() {
-        return 0;
+        return Params.MapSlotWindow.Spacing[0];
+    };
+
+    Window_MapItemSlot.prototype.windowWidth = function() {
+        let val, windowWidth, sizeRate, spacing;
+        windowWidth = Window_ItemSlotBase.prototype.windowWidth.call(this);
+        sizeRate = Params.MapSlotWindow.SizeRate[0];
+        spacing = this.spacing() * (this.maxCols() - 1);
+        val = windowWidth * sizeRate + spacing;
+        // val = Graphics.boxWidth < val ? Graphics.boxWidth : val;
+
+        return val;
+    };
+
+    Window_MapItemSlot.prototype.windowHeight = function() {
+        let val;
+        val = Window_ItemSlotBase.prototype.windowHeight.call(this) * Params.MapSlotWindow.SizeRate[0];
+        // val = Graphics.boxHeight < val ? Graphics.boxHeight : val;
+
+        return val;
     };
 
     Window_MapItemSlot.prototype.update = function() {
         Window_ItemSlotBase.prototype.update.call(this);
 
-        var index;
+        let index;
         index = Graphics.frameCount % Params.SlotNumber[0];
 
         // 再描画判定
@@ -1533,7 +1711,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_MapItemSlot.prototype.checkRedraw = function(index) {
-        var itemSlot, item, equipFlg, actor;
+        let itemSlot, item, equipFlg, actor;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
 
@@ -1541,7 +1719,6 @@ Imported.MKR_MapItemSlot = true;
             item = this.item(index);
             if(item) {
                 if(this._type[index] != itemSlot.type || this._num[index] != $gameParty.numItems(item)) {
-                    // console.log("item type num : "+$gameParty.numItems(item));
                     return true;
                 }
                 // if(itemSlot.type == WEAPON) {
@@ -1560,7 +1737,7 @@ Imported.MKR_MapItemSlot = true;
     Window_MapItemSlot.prototype.drawItem = function(index) {
         Window_ItemSlotBase.prototype.drawItem.call(this, index);
 
-        var item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize;
+        let item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
 
@@ -1580,7 +1757,6 @@ Imported.MKR_MapItemSlot = true;
                         this.contents.fontSize = fontSize;
                     }
                     if(itemSlot.equip != equipFlg) {
-                        // console.log("itemSlot equip set:"+equipFlg);
                         $gameParty.setEquipStatus(index, equipFlg);
                     }
                 }
@@ -1588,18 +1764,11 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    // redraw回数を確認、余計なredrawが発生していなければ削除する
-    // var _Window_MapItemSlot_redrawItem = Window_MapItemSlot.prototype.redrawItem;
-    // Window_MapItemSlot.prototype.redrawItem = function(index) {
-    //     console.log("redraw index:"+index);
-    //     _Window_MapItemSlot_redrawItem.call(this, index);
-    // };
-
-    Window_MapItemSlot.prototype.updateCursor = function() {
+    Window_MapItemSlot.prototype.isCursorVisible = function() {
         if(Params.SlotCursorVisible[0]) {
-            Window_Selectable.prototype.updateCursor.call(this);
+            return Window_Selectable.prototype.isCursorVisible.call(this);
         } else {
-            this.setCursorRect(0, 0, 0, 0);
+            return false;
         }
     };
 
@@ -1618,7 +1787,7 @@ Imported.MKR_MapItemSlot = true;
 
     Window_ItemSlotHelp.prototype.initialize = function(numLines) {
         Window_Help.prototype.initialize.call(this, numLines);
-        this.height += this.fittingHeight(0);
+        // this.height += this.fittingHeight(0);
     };
 
     Window_ItemSlotHelp.prototype.setItem = function(item) {
@@ -1664,13 +1833,11 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_SlotCommand.prototype.processOk = function() {
-        // console.log("slotCommand processOK");
         Window_SlotCommand._lastCommandSymbol = this.currentSymbol();
         Window_Command.prototype.processOk.call(this);
     };
 
     Window_SlotCommand.prototype.updateHelp = function() {
-        // console.log("updateHelp:"+this.currentSymbol());
         switch(this.currentSymbol()) {
             case "slotset":
                 this._helpWindow.setText(Params.SlotSetDesc[0]);
@@ -1701,34 +1868,52 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlot.prototype = Object.create(Window_ItemSlotBase.prototype);
     Window_ItemSlot.prototype.constructor = Window_ItemSlot;
 
-    Window_ItemSlot.prototype.initialize = function(x, y, w, h) {
-        var x2, y2;
+    Window_ItemSlot.prototype.initialize = function(x, y, w, h, kind) {
+        let x2, y2;
         x2 = x + w / 2 - this.windowWidth() / 2;
         y2 = y;
 
-        Window_ItemSlotBase.prototype.initialize.call(this, x2, y2);
+        Window_ItemSlotBase.prototype.initialize.call(this, x2, y2, kind);
         this._slotType = null;
         this._swapTemp = -1;
         this.resetLastIndex();
     };
 
-    // Window_ItemSlot.prototype.standardPadding = function() {
-    //     return 18;
-    // };
+    Window_ItemSlot.prototype.standardPadding = function() {
+        return Params.MenuSlotWindow.Padding[0];
+    };
 
-    // Window_ItemSlot.prototype.spacing = function() {
-    //     return 12;
-    // };
+    Window_ItemSlot.prototype.spacing = function() {
+        return Params.MenuSlotWindow.Spacing[0];
+    };
+
+    Window_ItemSlot.prototype.windowWidth = function() {
+        let val, windowWidth, sizeRate, spacing;
+        windowWidth = Window_ItemSlotBase.prototype.windowWidth.call(this);
+        sizeRate = Params.MenuSlotWindow.SizeRate[0];
+        spacing = this.spacing() * (this.maxCols() - 1);
+        val = windowWidth * sizeRate + spacing;
+        // val = Graphics.boxWidth < val ? Graphics.boxWidth : val;
+
+        return val;
+    };
+
+    Window_ItemSlot.prototype.windowHeight = function() {
+        let val;
+        val = Window_ItemSlotBase.prototype.windowHeight.call(this) * Params.MenuSlotWindow.SizeRate[0];
+        // val = Graphics.boxHeight < val ? Graphics.boxHeight : val;
+
+        return val;
+    };
 
     Window_ItemSlot.prototype.update = function() {
         Window_ItemSlotBase.prototype.update.call(this);
 
-        var index;
+        let index;
         index = Graphics.frameCount % Params.SlotNumber[0];
 
         // 再描画判定
         if(this.checkRedraw(index)) {
-            // console.log("window_update_redraw");
             this.redrawItem(index);
         }
 
@@ -1736,7 +1921,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_ItemSlot.prototype.checkRedraw = function(index) {
-        var itemSlot, item, equipFlg, actor;
+        let itemSlot, item, equipFlg, actor;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
 
@@ -1744,7 +1929,6 @@ Imported.MKR_MapItemSlot = true;
             item = this.item(index);
             if(item) {
                 if(this._type[index] != itemSlot.type || this._num[index] != $gameParty.numItems(item)) {
-                    // console.log("item type num : "+$gameParty.numItems(item));
                     return true;
                 }
                 // if(itemSlot.type == WEAPON) {
@@ -1763,7 +1947,7 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlot.prototype.drawItem = function(index) {
         Window_ItemSlotBase.prototype.drawItem.call(this, index);
 
-        var item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize;
+        let item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
 
@@ -1788,7 +1972,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_ItemSlot.prototype.isCurrentItemEnabled = function() {
-        var ret, item, actor;
+        let ret, item, actor;
         item = this.item();
         actor = $gameParty.leader();
         ret = true;
@@ -1806,20 +1990,12 @@ Imported.MKR_MapItemSlot = true;
         return ret;
     };
 
-    // redraw回数を確認、余計なredrawが発生していなければ削除する
-    // var _Window_ItemSlot_redrawItem = Window_ItemSlot.prototype.redrawItem;
-    // Window_ItemSlot.prototype.redrawItem = function(index) {
-    //     console.log("redraw index:"+index);
-    //     _Window_ItemSlot_redrawItem.call(this, index);
-    // };
-
     Window_ItemSlot.prototype.updateHelp = function() {
         this.setHelpWindowItem(this.item());
     };
 
     Window_ItemSlot.prototype.processOk = function() {
         if (this.isCurrentItemEnabled() && !this.hasLastIndex()) {
-            // console.log("Window_ItemSlot processOk:"+this.index());
             this._lastIndex = this.index();
         }
 
@@ -1889,7 +2065,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_ItemSlotList.prototype.includes = function(item) {
-        var ret, meta;
+        let ret, meta;
         ret = true;
 
         meta = "";
@@ -1913,7 +2089,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_ItemSlotList.prototype.isEnabled = function(item) {
-        var ret, type, actor;
+        let ret, type, actor;
         actor = $gameParty.leader();
         ret = false;
 
@@ -1933,7 +2109,7 @@ Imported.MKR_MapItemSlot = true;
 
     Window_ItemSlotList.prototype.isCurrentItemEnabled = function() {
         return this.isEnabled(this.item());
-        // var ret, item, type;
+        // let ret, item, type;
         // item = this.item();
         // ret = false;
 
@@ -1951,11 +2127,11 @@ Imported.MKR_MapItemSlot = true;
     //  ・メニュー画面にアイテムスロットコマンドを定義します。
     //
     //=========================================================================
-    var _Window_MenuCommand_addOriginalCommands = Window_MenuCommand.prototype.addOriginalCommands;
+    let _Window_MenuCommand_addOriginalCommands = Window_MenuCommand.prototype.addOriginalCommands;
     Window_MenuCommand.prototype.addOriginalCommands = function() {
         _Window_MenuCommand_addOriginalCommands.call(this);
 
-        var status;
+        let status;
         status = $gameParty.getMenuSlotStatus();
 
         if(status == 1) {
@@ -1971,7 +2147,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・制御文字を再定義します。
     //
     //=========================================================================
-    var _Window_Base_processEscapeCharacter = Window_Base.prototype.processEscapeCharacter;
+    let _Window_Base_processEscapeCharacter = Window_Base.prototype.processEscapeCharacter;
     Window_Base.prototype.processEscapeCharacter = function(code, textState) {
         _Window_Base_processEscapeCharacter.call(this, code, textState);
         switch (code.toLowerCase()) {
@@ -1988,27 +2164,34 @@ Imported.MKR_MapItemSlot = true;
     //  ・マップ画面にアイテムスロットを定義します。
     //
     //=========================================================================
-    var _Scene_Map_createDisplayObjects = Scene_Map.prototype.createDisplayObjects;
+    let _Scene_Map_createDisplayObjects = Scene_Map.prototype.createDisplayObjects;
     Scene_Map.prototype.createDisplayObjects = function() {
         _Scene_Map_createDisplayObjects.call(this);
         this.createMapItemSlotWindow();
     };
 
     Scene_Map.prototype.createMapItemSlotWindow = function() {
-        this._mapItemSlotWindow = new Window_MapItemSlot(Params.SlotX[0], Params.SlotY[0]);
-        // console.log("game:"+$gameParty.isItemSlotHide());
-        // console.log("wind:"+this._mapItemSlotWindow.isHide());
+        let kind;
+        kind = 1; // マップ用は1
+
+        this._mapItemSlotWindow = new Window_MapItemSlot(Params.SlotX[0], Params.SlotY[0], kind);
         this._mapItemSlotWindow.setHandler("ok", this.onItemSlotOk.bind(this));
         this._mapItemSlotWindow.opacity = Params.MapSlotOpacity[0];
+        if(Params.SlotBackground[0] != "") {
+            this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowBackSprite);
+            // this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowFrameSprite);
+            this._mapItemSlotWindow._windowBackSprite = new Sprite();
+            this._mapItemSlotWindow._windowBackSprite.bitmap = ImageManager.loadPicture(Params.SlotBackground[0]);
+            this._mapItemSlotWindow._windowSpriteContainer.addChild(this._mapItemSlotWindow._windowBackSprite);
+        }
         this.addChild(this._mapItemSlotWindow);
         if(this._mapItemSlotWindow.lastIndex() <= -1 && !Params.SlotVisible[0]) {
-            // console.log("hide_window");
             $gameParty.setItemSlotVisible(false);
         }
         this._mapItemSlotWindow.selectLast();
     };
 
-    var _Scene_Map_update = Scene_Map.prototype.update;
+    let _Scene_Map_update = Scene_Map.prototype.update;
     Scene_Map.prototype.update = function() {
         _Scene_Map_update.call(this);
 
@@ -2027,7 +2210,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_Map.prototype.updateItemSlot = function() {
-        var pressKey, index, itemSlot, actor, lastIndex, item, action, win, paramKey,
+        let pressKey, index, itemSlot, actor, lastIndex, item, action, win, paramKey,
             mouseMode, keyboardMode;
         actor = $gameParty.leader();
         win = this._mapItemSlotWindow;
@@ -2036,8 +2219,6 @@ Imported.MKR_MapItemSlot = true;
         paramKey = getUseKey();
         mouseMode = Params.MouseMode;
         keyboardMode = Params.KeyboardMode;
-
-        // console.log("last:"+lastIndex);
 
         if(index < 0) {
             win.selectLast();
@@ -2060,9 +2241,7 @@ Imported.MKR_MapItemSlot = true;
             if(lastIndex != index) {
                 item = win.item(lastIndex);
                 if(itemSlot && itemSlot.type == WEAPON && actor.isEquipped(item)) {
-                    // console.log("last_id:"+itemSlot.id);
                     actor.changeEquip(0, null);
-                    // console.log(actor._equips[0]);
                     win.redrawItem(lastIndex);
                 }
             }
@@ -2071,7 +2250,6 @@ Imported.MKR_MapItemSlot = true;
         if(itemSlot && itemSlot.type == WEAPON) {
             item = win.item();
             if(itemSlot && itemSlot.type == WEAPON && !actor.isEquipped(item)) {
-                // console.log("equip_id:"+itemSlot.id);
                 actor.changeEquipById(1, itemSlot.id);
                 $gameParty.setSlotEquipItem(item);
                 win.redrawCurrentItem();
@@ -2088,7 +2266,6 @@ Imported.MKR_MapItemSlot = true;
             item = win.item();
             if(itemSlot) {
                 if((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || (itemSlot.type == WEAPON && !actor.isEquipped(item))) {
-                    // console.log("remove itemSlot");
                     $gameParty.removeItemSlot(index);
                     win.redrawCurrentItem();
                 }
@@ -2099,19 +2276,17 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_Map.prototype.onItemSlotOk = function() {
-        var item;
+        let item;
         item = this._mapItemSlotWindow.item();
-
-        // console.log("アイテム使用");
 
         if($gameParty.useItemSlot(item)){
             this._mapItemSlotWindow.redrawCurrentItem();
         }
     };
 
-    var _Scene_Map_isMapTouchOk = Scene_Map.prototype.isMapTouchOk;
+    let _Scene_Map_isMapTouchOk = Scene_Map.prototype.isMapTouchOk;
     Scene_Map.prototype.isMapTouchOk = function() {
-        var mouseMode = Params.MouseMode;
+        let mouseMode = Params.MouseMode;
         if(mouseMode.UseEnable[0]) {
             return false;
         } else {
@@ -2119,7 +2294,7 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    var _Scene_Map_terminate = Scene_Map.prototype.terminate;
+    let _Scene_Map_terminate = Scene_Map.prototype.terminate;
     Scene_Map.prototype.terminate = function() {
         if (!SceneManager.isNextScene(Scene_Battle)) {
             this._mapItemSlotWindow.hide();
@@ -2154,7 +2329,16 @@ Imported.MKR_MapItemSlot = true;
         this.createItemWindow();
     };
 
-    Scene_MenuBase.prototype.createHelpWindow = function() {
+    Scene_ItemSlot.prototype.createBackground = function(){
+        if(Params.MenuBackground[0]){
+            this._backgroundSprite = new Sprite();
+            this._backgroundSprite.bitmap = ImageManager.loadPicture(Params.MenuBackground[0]);
+            this.addChild(this._backgroundSprite);
+            return;
+        }
+    };
+
+    Scene_ItemSlot.prototype.createHelpWindow = function() {
         this._helpWindow = new Window_ItemSlotHelp();
         this._helpWindow.opacity = Params.MenuSlotOpacity[0];
         this.addWindow(this._helpWindow);
@@ -2172,12 +2356,14 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.createItemSlotWindow = function() {
-        var x, y, w, h;
+        let x, y, w, h, kind;
         x = this._commandWindow.width;
         y = this._commandWindow.y;
         w = Graphics.boxWidth - x;
         h = this._commandWindow.height;
-        this._itemSlotWindow = new Window_ItemSlot(x, y, w, y);
+        kind = 0; // スロットシーン用は0
+
+        this._itemSlotWindow = new Window_ItemSlot(x, y, w, y, kind);
         this._itemSlotWindow.setHelpWindow(this._helpWindow);
         this._itemSlotWindow.setHandler('ok',     this.onItemSlotOk.bind(this));
         this._itemSlotWindow.setHandler('cancel', this.onItemSlotCancel.bind(this));
@@ -2186,7 +2372,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.createCategoryWindow = function() {
-        var width;
+        let width;
         width = Graphics.boxWidth - this._commandWindow.width;
 
         this._categoryWindow = new Window_ItemSlotCategory(width);
@@ -2201,8 +2387,10 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.createItemWindow = function() {
-        var wy = this._categoryWindow.y + this._categoryWindow.height;
-        var wh = Graphics.boxHeight - wy;
+        let wy, wh;
+        wy = this._categoryWindow.y + this._categoryWindow.height;
+        wh = Graphics.boxHeight - wy;
+
         this._itemWindow = new Window_ItemSlotList(0, wy, Graphics.boxWidth, wh);
         this._itemWindow.hide();
         this._itemWindow.setHelpWindow(this._helpWindow);
@@ -2214,8 +2402,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.commandItemSlot = function() {
-        // console.log("commandItemSlot");
-        var symbol;
+        let symbol;
         symbol = this._commandWindow.currentSymbol();
 
         this._itemSlotWindow.setSlotType(symbol);
@@ -2224,12 +2411,10 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.onItemSlotOk = function() {
-        var index, lastIndex;
+        let index, lastIndex;
         lastIndex = this._itemSlotWindow.lastIndex();
         index = this._itemSlotWindow.index();
 
-        // console.log("onItemSlotOk:"+this._commandWindow.index());
-        // console.log("onItemSlotOk:"+this._commandWindow.currentSymbol());
         switch (this._commandWindow.currentSymbol()) {
             case "slotset":
                 if(Params.SlotSetW[0]) {
@@ -2263,7 +2448,6 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.onItemSlotCancel = function() {
-        // console.log("onItemSlotCancel");
         this._itemSlotWindow.resetLastIndex();
         this._itemSlotWindow.deselect();
         this._commandWindow.activate();
@@ -2272,13 +2456,11 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.onCategoryOk = function() {
-        // console.log("onCategoryOk");
         this._itemWindow.activate();
         this._itemWindow.selectLast();
     };
 
     Scene_ItemSlot.prototype.onCategoryCancel = function() {
-        // console.log("onCategoryCancel");
         this._categoryWindow.deselect();
         this._categoryWindow.hide();
         this._itemWindow.hide();
@@ -2287,12 +2469,11 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.onItemOk = function() {
-        // console.log("onItemOk");
-        var item;
+        let item;
         item = this.item();
 
         // setslot専用
-        $gameParty.setLastItem(this.item());
+        // $gameParty.setLastItem(this.item());
         $gameParty.setSlotEquipItem(this._itemSlotWindow.item());
         $gameParty.setItemSlot(this._itemSlotWindow.index(), this.item());
         $gameParty.setSlotEquipItem(this.item());
@@ -2303,7 +2484,6 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.onItemCancel = function() {
-        // console.log("onItemCancel");
         this._itemWindow.deselect();
         this._itemWindow.deactivate();
         if(Params.SlotSetW[0]) {
@@ -2320,7 +2500,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.updateItemSlot = function() {
-        var pressKey, index, win, itemSlot, item, actor, lastIndex;
+        let pressKey, index, win, itemSlot, item, actor, lastIndex;
         win = this._itemSlotWindow;
         index = win.index();
         lastIndex = win.lastIndex();
@@ -2336,12 +2516,10 @@ Imported.MKR_MapItemSlot = true;
             if(itemSlot.type == WEAPON) {
                 if(!actor.isEquipped(win.item($gameParty.getItemSlotLastIndex()))) {
                     actor.changeEquipById(1, itemSlot.id);
-                    // console.log("scene_update_redraw1:"+index);
                     win.redrawItem($gameParty.getItemSlotLastIndex());
                 }
             } else if(actor.weapons().length > 0) {
                 actor.changeEquipById(1, 0);
-                // console.log("scene_update_redraw2:"+index);
                 win.redrawItem($gameParty.getItemSlotLastIndex());
             }
         }
@@ -2353,7 +2531,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・メニュー画面にアイテムスロットコマンドを定義します。
     //
     //=========================================================================
-    var _Scene_Menu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
+    let _Scene_Menu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
     Scene_Menu.prototype.createCommandWindow = function() {
         _Scene_Menu_createCommandWindow.call(this);
         this._commandWindow.setHandler('itemslot', this.commandItemSlot.bind(this));
@@ -2370,7 +2548,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・アイテム用関数を定義します。
     //
     //=========================================================================
-    var _DataManager_extractSaveContents = DataManager.extractSaveContents;
+    let _DataManager_extractSaveContents = DataManager.extractSaveContents;
     DataManager.extractSaveContents = function(contents) {
         _DataManager_extractSaveContents.call(this, contents);
         // 処理を追記
@@ -2428,7 +2606,7 @@ Imported.MKR_MapItemSlot = true;
     //=========================================================================
     // キーイベントのkeyCodeからキー名を取得
     function codeToName(event) {
-        var name, key;
+        let name, key;
         name = null;
 
         if(event.key != undefined && event.key != null) {
@@ -2472,7 +2650,7 @@ Imported.MKR_MapItemSlot = true;
 
     // スロット番号の指定をindexに変換する
     function slotToIndex(slot) {
-        var ret;
+        let ret;
         ret = -1;
 
         if(slot == "left") {
@@ -2495,7 +2673,7 @@ Imported.MKR_MapItemSlot = true;
 
     // スロット使用キーを取得する
     function getUseKey() {
-        var keys;
+        let keys;
         keys = Params.KeyConfig;
 
         // console.log(keys);
@@ -2505,7 +2683,7 @@ Imported.MKR_MapItemSlot = true;
 
     // スロットウィンドウselect
     function updateSlotSelect(win, index, useFlg) {
-        var i, key, item, pushFlg, keys, mouseMode, keyboardMode;
+        let i, key, item, pushFlg, keys, mouseMode, keyboardMode;
         pushFlg = false;
         keys = Params.KeyConfig;
         mouseMode = Params.MouseMode;
