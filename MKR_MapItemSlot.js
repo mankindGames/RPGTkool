@@ -2180,6 +2180,7 @@ Imported.MKR_MapItemSlot = true;
         if(Params.SlotBackground[0] != "") {
             this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowBackSprite);
             // this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowFrameSprite);
+            this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowFrameSprite);
             this._mapItemSlotWindow._windowBackSprite = new Sprite();
             this._mapItemSlotWindow._windowBackSprite.bitmap = ImageManager.loadPicture(Params.SlotBackground[0]);
             this._mapItemSlotWindow._windowSpriteContainer.addChild(this._mapItemSlotWindow._windowBackSprite);
