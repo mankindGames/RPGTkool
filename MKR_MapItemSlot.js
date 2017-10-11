@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.1.4 2017/10/12 ・アイテムスロットに背景設定時、
+//                    ウィンドウ枠が消去されていなかったため修正。
+//
 // 1.1.3 2017/10/11 ・一部プラグインとの競合問題を修正。
 //                  ・メニューアイテムスロット画面の不透明度指定により他画面の
 //                    ウィンドウに影響が出ていた問題を修正。
@@ -40,10 +43,10 @@
 
 /*:
  *
- * @plugindesc (v1.1.3) マップアイテムスロットプラグイン
+ * @plugindesc (v1.1.4) マップアイテムスロットプラグイン
  * @author マンカインド
  *
- * @help = マップアイテムスロットプラグイン ver 1.1.3 =
+ * @help = マップアイテムスロットプラグイン ver 1.1.4 =
  * MKR_MapItemSlot.js - マンカインド
  *
  * マップ画面上に表示したアイテムスロットからアイテムの使用/装備を
@@ -152,19 +155,19 @@
  *       OFFにすると、アイテムは個数0の状態でグレー表示になります。
  *       アイテム個数が0のため、使用することはできません。
  *
- * 
+ *
  * スロットサイズ倍率について:
  *   プラグインパラメータ[スロットサイズ倍率]からスロットの大きさを
  *   変更することができます。(1.0倍～2.0倍まで)
- * 
+ *
  *   サイズ倍率と最大スロット数によってはスロットが画面外へと
  *   飛び出してしまう可能性があります。
  *   (例えばスロット10個でサイズを2.0倍にすると、
  *    デフォルトのゲーム画面の横サイズである816pxより大きくなってしまいます)
- * 
+ *
  *   自動的にゲーム画面内に収まるよう超過サイズを調整する機能はありませんので、
  *   ゲーム画面内に収まるよう設定の考慮をお願いします。
- * 
+ *
  *
  * 武器・アイテムメモ欄:
  *   <itemslot:noadd>
@@ -664,7 +667,7 @@
  * @desc スロットアイコンの配置間隔を調整します。(0以上の数字)
  * @type number
  * @min 0
- * 
+ *
  * */
 
 var Imported = Imported || {};
@@ -880,12 +883,12 @@ Imported.MKR_MapItemSlot = true;
         "MapSlotWindow" : {
             "SizeRate" : CheckParam("float", "Map_Slot_Window.Size_Rate", Parameters["Map_Slot_Window"]["Size_Rate"], 1.0, 1.0, 2.0),
             "Padding" : CheckParam("num", "Map_Slot_Window.Padding", Parameters["Map_Slot_Window"]["Padding"], 12, 7),
-            "Spacing" : CheckParam("num", "Map_Slot_Window.Spacing", Parameters["Map_Slot_Window"]["Spacing"], 6, 0),    
+            "Spacing" : CheckParam("num", "Map_Slot_Window.Spacing", Parameters["Map_Slot_Window"]["Spacing"], 6, 0),
         },
         "MenuSlotWindow" : {
             "SizeRate" : CheckParam("float", "Menu_Slot_Window.Size_Rate", Parameters["Menu_Slot_Window"]["Size_Rate"], 1.0, 1.0, 2.0),
             "Padding" : CheckParam("num", "Menu_Slot_Window.Padding", Parameters["Menu_Slot_Window"]["Padding"], 12, 7),
-            "Spacing" : CheckParam("num", "Menu_Slot_Window.Spacing", Parameters["Menu_Slot_Window"]["Spacing"], 6, 0),    
+            "Spacing" : CheckParam("num", "Menu_Slot_Window.Spacing", Parameters["Menu_Slot_Window"]["Spacing"], 6, 0),
         },
         "KeyConfig" : {
             "ItemUseKey" : CheckParam("string", "Item_Use_Key", Parameters["Item_Use_Key"]["Key"], "control", null, null, ["lower"]),
@@ -2179,7 +2182,6 @@ Imported.MKR_MapItemSlot = true;
         this._mapItemSlotWindow.opacity = Params.MapSlotOpacity[0];
         if(Params.SlotBackground[0] != "") {
             this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowBackSprite);
-            // this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowFrameSprite);
             this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowFrameSprite);
             this._mapItemSlotWindow._windowBackSprite = new Sprite();
             this._mapItemSlotWindow._windowBackSprite.bitmap = ImageManager.loadPicture(Params.SlotBackground[0]);
