@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.2 2017/10/20 一部プラグインとの競合に対応。
+//
 // 1.0.1 2017/10/04 スクロール固定時、画面外への離脱と画面内への侵入を
 //                  制限できるようにした。
 //
@@ -18,12 +20,10 @@
 
 /*:
  *
- * @plugindesc (v1.0.1) マップスクロール固定プラグイン
+ * @plugindesc (v1.0.2) マップスクロール固定プラグイン
  * @author マンカインド
  *
- * @help = マップスクロール固定プラグイン ver 1.0.1 =
- * MKR_MapScrollFix.js - マンカインド
- *
+ * @help
  * 指定されたスイッチがオンの間、
  * プレイヤーの移動によるマップスクロールを固定します。
  *
@@ -32,7 +32,11 @@
  *
  * 同じくプラグインパラメータにより、イベントが固定された画面から外への離脱、
  * 画面内への侵入が可能か設定できます。
- * (イベントがすり抜けONの場合、この設定は無視されます)
+ * (プレイヤー/イベントがすり抜けONの場合、この設定は無視されます)
+ *
+ * スクロール固定はタイル(48px四方)単位で行われます。
+ * そのため、解像度変更などでマップ画面の更新がタイル単位で行われなくなった場合、
+ * 画面表示がタイル単位になるようスクロールされてから固定が行われます。
  *
  *
  * プラグインコマンド:
@@ -161,6 +165,13 @@ Imported.MKR_MapScrollFix = true;
     Game_Player.prototype.updateScroll = function(lastScrolledX, lastScrolledY) {
         if(!$gameSwitches.value(Params.ScrollFixSw[0])) {
             _Game_Player_updateScroll.apply(this, arguments);
+            return;
+        }
+        if($gameMap.displayX() != Math.round($gameMap.displayX())) {
+            $gameMap._displayX = Math.round($gameMap.displayX());
+        }
+        if($gameMap.displayY() != Math.round($gameMap.displayY())) {
+            $gameMap._displayY = Math.round($gameMap.displayY());
         }
     };
 
@@ -170,10 +181,10 @@ Imported.MKR_MapScrollFix = true;
     //  ・画面外への移動可能判定を定義します
     //
     //=========================================================================
-    var _Game_CharacterBase_canPass = Game_CharacterBase.prototype.canPass;
-    Game_CharacterBase.prototype.canPass = function(x, y, d) {
+    var _Game_CharacterBase_isMapPassable = Game_CharacterBase.prototype.isMapPassable;
+    Game_CharacterBase.prototype.isMapPassable = function(x, y, d) {
         let isPass, x2, y2;
-        isPass = _Game_CharacterBase_canPass.apply(this, arguments);
+        isPass = _Game_CharacterBase_isMapPassable.apply(this, arguments);
 
         if(!this.isThrough() && $gameSwitches.value(Params.ScrollFixSw[0])) {
             if(isPass && !Params.IsDisplayOut[0]) {
@@ -183,31 +194,37 @@ Imported.MKR_MapScrollFix = true;
                 isPass = this.isDisplayInPassible(x, y, d);
             }
         }
-
         return isPass;
     };
 
     Game_CharacterBase.prototype.isDisplayOutPassible = function(x, y, d) {
-        let x2, y2, dx, rdx, dy, rdy;
+        let x2, y2, dx, rdx, dy, rdy, realX, realY;
         dx = $gameMap.displayX();
         rdx = dx + $gameMap.screenTileX() - 1;
         dy = $gameMap.displayY();
         rdy = dy + $gameMap.screenTileY() - 1;
         x2 = $gameMap.roundXWithDirection(x, d);
         y2 = $gameMap.roundYWithDirection(y, d);
+        realX = this._realX;
+        realY = this._realY;
 
         switch(true) {
             case x == dx && x2 < dx:
             case x == rdx && x2 > rdx:
             case y == dy && y2 < dy:
             case y == rdy && y2 > rdy:
+            case realX == dx && x2 < dx:
+            case realX == rdx && x2 > rdx:
+            case realY == dy && y2 < dy:
+            case realY == rdy && y2 > rdy:
                 return false;
         }
+
         return true;
     };
 
     Game_CharacterBase.prototype.isDisplayInPassible = function(x, y, d) {
-        let x2, y2, dx, rdx, dy, rdy;
+        let x2, y2, dx, rdx, dy, rdy, realX, realY;
         dx = $gameMap.displayX();
         rdx = dx + $gameMap.screenTileX();
         dx--;
@@ -216,12 +233,18 @@ Imported.MKR_MapScrollFix = true;
         dy--;
         x2 = $gameMap.roundXWithDirection(x, d);
         y2 = $gameMap.roundYWithDirection(y, d);
+        realX = this._realX;
+        realY = this._realY;
 
         switch(true) {
             case x == dx && x2 > dx:
             case x == rdx && x2 < rdx:
             case y == dy && y2 > dy:
             case y == rdy && y2 < rdy:
+            case realX == dx && x2 > dx:
+            case realX == rdx && x2 < rdx:
+            case realY == dy && y2 > dy:
+            case realY == rdy && y2 < rdy:
                 return false;
         }
         return true;
