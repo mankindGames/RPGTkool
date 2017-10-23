@@ -6,6 +6,17 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.3.2 2017/10/23 ・一部プラグインと併用した場合の問題を修正。
+//                  ・プレイヤー発見時、探索者の頭上に
+//                    任意のフキダシアイコンを表示可能に。
+//                  ・プレイヤー発見時、任意のコモンイベントを実行可能に。
+//                  ・プレイヤー発見時、任意のSEを再生可能に。
+//                  ・プレイヤーロスト時、探索者の頭上に
+//                    任意のフキダシアイコンを表示可能に。
+//                  ・プレイヤーロスト時、任意のコモンイベントを実行可能に。
+//                  ・プレイヤーロスト時、任意のSEを再生可能に。
+//                  ・プラグインパラメータの指定方法を変更。
+//
 // 2.3.1 2017/09/23 ・ver2.3.0にて、探索者が存在しないシーンで
 //                    エラーとなる問題を修正
 //
@@ -83,16 +94,18 @@
 
 /*:
  *
- * @plugindesc (v2.3.1) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.2) プレイヤー探索プラグイン
  * @author マンカインド
  *
- * @help = プレイヤー探索プラグイン (ver 2.3.1) =
- * MKR_PlayerSensor.js - マンカインド
- *
- *
+ * @help =
  * 対象イベント(以下、探索者)の視界の範囲を描画し、
- * 範囲マス内にプレイヤーが存在した場合、指定されたスイッチをONにします。
- * 探索中のイベントは、話しかけられた方向に振り向かないようになります。
+ * 範囲内にプレイヤーが存在した場合、
+ * その探索者は発見状態となり指定されたスイッチをONにします。
+ * (スイッチがONの間、探索者は話しかけられた方向に振り向かないようになります)
+ *
+ * プレイヤーが視界範囲マス外に出た場合、
+ * ロスト状態となりONになったスイッチがOFFになります。
+ * (設定により状態以降までの時間が調整できます)
  *
  *
  * 簡単な使い方説明:
@@ -155,12 +168,13 @@
  *
  *
  * メモ欄_オプション(各オプションはスペースで区切る):
+ *     ・各オプションはスペースで区切ること。
+ *     ・指定しない場合は初期値の設定が適用されます。
+ *
  *   Sw[数字またはA～D]
  *     ・探索者がプレイヤーを発見した際に
  *       ONにするスイッチ番号またはセルフスイッチを
  *       探索者毎に指定します。
- *
- *     ・指定しない場合は初期値の設定を使用します。
  *
  *     例)
  *       Sw10 : スイッチ番号10番のスイッチをONにします。
@@ -174,8 +188,6 @@
  *       Nには数値かA～Dのアルファベットが入ります。(A～Dはセルフスイッチです)
  *       スイッチNの状態がON = 1を指定したことと同じです。
  *
- *     ・指定しない場合は初期値の設定を使用します。
- *
  *   Rv[0～1の数字、または\S[n]]
  *     ・探索者の視界範囲を描画しない(0)/する(1)。
  *       0 の場合、探索者の視界範囲が画面に描画されません。
@@ -184,8 +196,6 @@
  *     ・\S[n]はスイッチの状態を取得する制御文字です。
  *       Nには数値かA～Dのアルファベットが入ります。(A～Dはセルフスイッチです)
  *       スイッチNの状態がON = 1を指定したことと同じです。
- *
- *     ・指定しない場合は初期値の設定を使用します。
  *
  *   Td[0または1、または\S[n]]
  *     ・視界範囲の算出に視界範囲内の地形/イベントに対する
@@ -200,8 +210,6 @@
  *     ・\S[n]はスイッチの状態を取得する制御文字です。
  *       Nには数値かA～Dのアルファベットが入ります。(A～Dはセルフスイッチです)
  *       スイッチNの状態がON = 1を指定したことと同じです。
- *
- *     ・指定しない場合は初期値の設定を使用します。
  *
  *   Di[U,R,L,Dどれか1文字]
  *     ・探索者の向きを考慮せず、探索方向を固定します。
@@ -222,8 +230,6 @@
  *     ・視界範囲内の通行可能状態を考慮しない設定になっている場合、
  *       この設定は無視されます。
  *
- *     ・指定しない場合は初期値の設定を使用します。
- *
  *   Rg[リージョン番号、または\V[n]]
  *     ・指定した場合探索者の視界範囲がマップ上のリージョンタイルの
  *       影響を受けます。
@@ -233,7 +239,29 @@
  *     ・視界範囲内の通行可能状態を考慮しない設定になっている場合、
  *       この設定は無視されます。
  *
- *     ・指定しない場合は初期値の設定を使用します。
+ *   Fb[フキダシ番号、または\V[n]]
+ *     ・指定した場合、探索者がプレイヤーを発見したときに
+ *       探索者の頭上にフキダシが表示されます。
+ *
+ *   Fc[コモンイベント番号、または\V[n]]
+ *     ・指定した場合、探索者がプレイヤーを発見したときに
+ *       指定したコモンイベントを実行します。
+ *
+ *   Fd[遅延フレーム数、または\V[n]]
+ *     ・指定した場合、探索者がプレイヤーを発見するまでの時間が
+ *       フレーム数分遅れます。
+ *
+ *   Lb[フキダシ番号、または\V[n]]
+ *     ・指定した場合、探索者がプレイヤーをロストしたときに
+ *       探索者の頭上にフキダシが表示されます。
+ *
+ *   Lc[コモンイベント番号、または\V[n]]
+ *     ・指定した場合、探索者がプレイヤーをロストしたときに
+ *       指定したコモンイベントを実行します。
+ *
+ *   Ld[遅延フレーム数、または\V[n]]
+ *     ・指定した場合、探索者がプレイヤーをロストするまでの時間が
+ *       フレーム数分遅れます。
  *
  *
  * メモ欄の設定例:
@@ -310,7 +338,7 @@
  *
  *   PSS reset X Y ...
  *     ・コマンドを実行したマップ上に存在する全ての探索者を対象に、
- *       プラグインパラメーター[Default_Sensor_Switch]で
+ *       プラグインパラメーター[Sensor_Switch]で
  *       指定したセルフスイッチ、
  *       またはSオプションで指定したセルフスイッチの
  *       どちらかをOFFにします。(メモ欄の設定が優先されます)
@@ -331,7 +359,7 @@
  *
  *   PSS t_reset X Y ...
  *     ・このコマンドを実行した探索者を対象に、
- *       プラグインパラメーター[Default_Sensor_Switch]で
+ *       プラグインパラメーター[Sensor_Switch]で
  *       指定した(セルフ)スイッチ、
  *       またはメモ欄のSwオプションで指定した(セルフ)スイッチの
  *       どちらかをOFFにします。(メモ欄の設定が優先されます)
@@ -347,7 +375,7 @@
  *     ・Xは移動速度。1～6まで対応し、
  *       未指定の場合はイベントに設定されている速度を使用します。
  *
- *     ・プラグインパラメーター[Default_Terrain_Decision]がOFFまたは
+ *     ・プラグインパラメーター[Terrain_Decision]がOFFまたは
  *       メモ欄のTオプションが0の場合は
  *       正しく移動できない可能性があります。
  *       (イベントのすり抜けを有効にすることで移動可能です)
@@ -372,13 +400,17 @@
  *
  *   $gameSystem.neutralSensor(eventId, ["X","Y",...])
  *     ・現在のマップに存在する、指定したイベントIDを持つ探索者に対し、
- *       [Default_Sensor_Switch]で指定した(セルフ)スイッチか、
+ *       [Sensor_Switch]で指定した(セルフ)スイッチか、
  *       またはSwオプションで指定したセルフスイッチの
  *       どちらかをOFFにします。(メモ欄の設定が優先されます)
  *
  *     ・"X", "Y" は(セルフ)スイッチを表し、ここに記載した(セルフ)スイッチも
  *       同様にOFFにします。まとめてOFFにしたい場合に指定してください。
  *       (カンマ区切りで指定してください)
+ *
+ *   $gameSystem.isFoundPlayer()
+ *     ・プレイヤーが探索者に発見されている場合にtrueを返します。
+ *       (それ以外ならfalse)
  *
  *
  * 補足：
@@ -418,75 +450,206 @@
  *     バージョンアップにより本プラグインの仕様が変更される可能性があります。
  *     ご了承ください。
  *
+ * @param 探索設定
+ * @default ====================================
  *
- * @param Default_Sensor_Switch
+ * @param Sensor_Switch
+ * @text 発見後操作スイッチ
  * @desc [初期値] プレイヤー発見時にONにするスイッチ番号またはセルフスイッチを指定。
- * @type string
+ * @type combo
+ * @option A
+ * @option B
+ * @option C
+ * @option D
  * @default D
+ * @parent 探索設定
  *
- * @param Default_Both_Sensor
+ * @param Both_Sensor
+ * @text 両隣の視界
  * @desc [初期値:スイッチ可] 探索者の両隣を探索範囲とする場合はON、しない場合はOFFを指定してください。
- * @type string
+ * @type combo
+ * @option ON
+ * @option OFF
  * @default OFF
+ * @parent 探索設定
  *
- * @param Default_Range_Visible
+ * @param Terrain_Decision
+ * @text 通行不可タイル考慮
+ * @desc [初期値:スイッチ可] 視界範囲に通行不可タイルの存在を考慮させる場合はON、しない場合はOFFを指定してください。
+ * @type combo
+ * @option ON
+ * @option OFF
+ * @default ON
+ * @parent 探索設定
+ *
+ * @param Auto_Sensor
+ * @text 探索自動開始
+ * @desc マップ描画時に探索処理を自動的に開始する設定です。デフォルト:開始しない
+ * @type boolean
+ * @on 開始する
+ * @off 開始しない
+ * @default false
+ * @parent 探索設定
+ *
+ * @param Event_Decision
+ * @text 他イベント考慮
+ * @desc [初期値:スイッチ可] 視界範囲にマップイベントの存在を考慮させる場合はON、しない場合はOFFを指定してください。
+ * @type combo
+ * @option ON
+ * @option OFF
+ * @default OFF
+ * @parent 探索設定
+ *
+ * @param Region_Decision
+ * @text リージョン設定
+ * @desc [初期値:変数可] 視界範囲外(壁扱い)とするリージョン番号を指定してください。
+ * @type string[]
+ * @default []
+ * @parent 探索設定
+ *
+ * @param Real_Range_X
+ * @text 探索範囲X拡張
+ * @desc 探索範囲を指定した数値分、横に拡張します(視界描画はマス単位)。プレイヤーがピクセル単位で移動する場合に有効です。(デフォルト:0)
+ * @type number
+ * @decimals 3
+ * @max 0.999
+ * @min 0.000
+ * @default 0.000
+ * @parent 探索設定
+ *
+ * @param Real_Range_Y
+ * @text 探索範囲Y拡張
+ * @desc 探索範囲を指定した数値分、縦に拡張します(視界描画はマス単位)。プレイヤーがピクセル単位で移動する場合に有効です。(デフォルト:0)
+ * @type number
+ * @decimals 3
+ * @max 0.999
+ * @min 0.000
+ * @default 0.000
+ * @parent 探索設定
+ *
+ * @param 視界設定
+ * @default ====================================
+ *
+ * @param Range_Visible
+ * @text 視界範囲描画
  * @desc [初期値:スイッチ可] 探索者の視界範囲を描画する場合はON、しない場合はOFFを指定してください。
- * @type string
+ * @type combo
+ * @option ON
+ * @option OFF
  * @default ON
+ * @parent 視界設定
  *
- * @param Default_Terrain_Decision
- * @desc [初期値:スイッチ可] 視界範囲に通行不可マスの存在を考慮させる場合はON、しない場合はOFFを指定してください。
- * @type string
- * @default ON
- *
- * @param Default_Range_Color
+ * @param Range_Color
+ * @text 視界範囲の色
  * @desc 視界範囲を描画する際の色を英語で指定してください。デフォルト:white(白)
- * @type string
+ * @type combo
+ * @option white
  * @default white
+ * @parent 視界設定
  *
- * @param Default_Range_Opacity
+ * @param Range_Opacity
+ * @text 視界範囲の不透明度
  * @desc 視界範囲を描画する際の不透明度を数字で指定してください。デフォルト:80(0-255)
  * @type number
  * @min 0
  * @max 255
  * @default 80
+ * @parent 視界設定
  *
- * @param Default_Auto_Sensor
- * @desc マップ描画時に探索処理を自動的に有効にする場合はON、しない場合はOFFを指定してください。
- * @type boolean
- * @default false
+ * @param Player_Found
+ * @text プレイヤー発見時設定
+ * @desc 探索者がプレイヤーを発見した時の設定です。
+ * @type struct<Alert>
+ * @default {"Ballon":"0","Se":"{\"Name\":\"\",\"Volume\":\"90\",\"Pitch\":\"100\",\"Pan\":\"0\"}","Common_Event":"0","Delay":"0"}
  *
- * @param Default_Event_Decision
- * @desc [初期値:スイッチ可] 視界範囲にマップイベントの存在を考慮させる場合はON、しない場合はOFFを指定してください。
- * @type string
- * @default OFF
+ * @param Player_Lost
+ * @text プレイヤーロスト時設定
+ * @desc 探索者がプレイヤーをロストした時の設定です。
+ * @type struct<Alert>
+ * @default {"Ballon":"0","Se":"{\"Name\":\"\",\"Volume\":\"90\",\"Pitch\":\"100\",\"Pan\":\"0\"}","Common_Event":"0","Delay":"0"}
  *
- * @param Default_Region_Decision01
- * @desc [初期値:変数可] 視界範囲外(壁扱い)とするリージョン番号を指定してください。(0でリージョンを考慮しません)
- * @type string
+*/
+/*~struct~Alert:
+ *
+ * @param Ballon
+ * @text [初期値] フキダシ表示
+ * @desc 探索者にフキダシを表示させる場合はアイコン番号を指定します。デフォルト:0(アイコンを表示しない)
+ * @type number
+ * @min 0
+ * @default 0
+ *
+ * @param Se
+ * @text SE設定
+ * @desc Seに関する設定です。
+ * @type struct<Se>
+ *
+ * @param Common_Event
+ * @text [初期値] コモン実行
+ * @desc コモンイベントを実行させる場合は指定します。デフォルト:0(なし)
+ * @type common_event
+ * @default 0
+ *
+ * @param Delay
+ * @text [初期値] 状態移行遅延
+ * @desc プレイヤー発見/ロスト状態に移行するタイミングを指定したフレーム分遅らせます(60フレーム=1秒)。デフォルト:0
+ * @type number
+ * @min 0
+ * @default 0
+ *
+*/
+/*~struct~Se:
+ *
+ * @param Name
+ * @text ファイル名
+ * @desc 再生するファイルを指定します。デフォルト:空(再生しない)
+ * @type file
+ * @require 1
+ * @dir audio/se
+ *
+ * @param Volume
+ * @text 再生時音量
+ * @desc ファイルを再生するときの音量を指定します(0から100までの数値)。デフォルト:90
+ * @type number
+ * @max 100
+ * @min 0
+ * @default 90
+ *
+ * @param Pitch
+ * @text 再生時ピッチ
+ * @desc ファイルを再生するときのピッチを指定します(50から150までの数値)。デフォルト:100
+ * @type number
+ * @max 150
+ * @min 50
+ * @default 100
+ *
+ * @param Pan
+ * @text 再生時位相
+ * @desc ファイルを再生するときの位相を指定します(-100から100までの数値)。デフォルト:0
+ * @type number
+ * @max 100
+ * @min -100
  * @default 0
  *
 */
 (function () {
     'use strict';
 
-    var CheckParam = function(type, param, def, min, max) {
-        var Parameters, regExp, value;
-        Parameters = PluginManager.parameters("MKR_PlayerSensor");
+    const PN = "MKR_PlayerSensor";
 
-        if(arguments.length < 4) {
+    const CheckParam = function(type, name, value, def, min, max, options) {
+        let regExp;
+
+        if(min == undefined || min == null) {
             min = -Infinity;
+        }
+        if(max == undefined || max == null) {
             max = Infinity;
         }
-        if(arguments.length < 5) {
-            max = Infinity;
-        }
-        if(param in Parameters) {
-            value = String(Parameters[param]);
+        if(value == null) {
+            value = "";
         } else {
-            throw new Error('Plugin parameter not found: '+param);
+            value = String(value);
         }
-
         regExp = /^\x1bV\[\d+\]|\x1bS\[\d+\]$/i;
         value = value.replace(/\\/g, '\x1b');
         value = value.replace(/\x1b\x1b/g, '\\');
@@ -508,6 +671,14 @@
                         value = value.clamp(min, max);
                     }
                     break;
+                case "float":
+                    if(value == "") {
+                        value = (isFinite(def))? parseFloat(def) : 0;
+                    } else {
+                        value = (isFinite(value))? parseFloat(value) : (isFinite(def))? parseFloat(def) : 0;
+                        value = value.clamp(min, max);
+                    }
+                    break;
                 case "string":
                     if(value == "") {
                         value = (def != "")? def : value;
@@ -522,16 +693,16 @@
                     }
                     break;
                 default:
-                    throw new Error('Plugin parameter type is illegal: '+type);
+                    throw new Error("[CheckParam] " + name + "のタイプが不正です: " + type);
                     break;
             }
         }
 
         return [value, type, def, min, max];
-    }
+    };
 
-    var CEC = function(params) {
-        var text, value, type, def, min, max;
+    const CEC = function(params) {
+        let text, value, type, def, min, max;
         text = String(params[0]);
         text = text.replace(/\\/g, '\x1b');
         text = text.replace(/\x1b\x1b/g, '\\');
@@ -540,12 +711,7 @@
         min = params[3];
         max = params[4];
 
-        text = text.replace(/\x1bV\[\d+\]/i, function() {
-            return String(ConvVb(text));
-        }.bind(this));
-        text = text.replace(/\x1bS\[(\d+|[A-D])\]/i, function() {
-            return String(ConvSw(text));
-        }.bind(this));
+        text = convertEscapeCharacters(text)
 
         switch(type) {
             case "bool":
@@ -557,6 +723,10 @@
                 break;
             case "num":
                 value = (isFinite(text))? parseInt(text, 10) : (isFinite(def))? parseInt(def, 10) : 0;
+                value = value.clamp(min, max);
+                break;
+            case "float":
+                value = (isFinite(text))? parseFloat(text) : (isFinite(def))? parseFloat(def) : 0;
                 value = value.clamp(min, max);
                 break;
             case "string":
@@ -582,8 +752,23 @@
         return value;
     };
 
-    var ConvVb = function(text) {
-        var num, regExp;
+    const convertEscapeCharacters = function(text) {
+        let windowChild;
+
+        if(typeof text == "string") {
+            if(SceneManager._scene && SceneManager._scene._windowLayer) {
+                windowChild = SceneManager._scene._windowLayer.children[0];
+                text = windowChild ? windowChild.convertEscapeCharacters(text) : text;
+            } else {
+                text = ConvVb(text);
+            }
+        }
+
+        return text;
+    };
+
+    const ConvVb = function(text) {
+        let num, regExp;
         regExp = /^\x1bV\[(\d+)\]$/i;
 
         if(typeof text == "string") {
@@ -601,10 +786,10 @@
         }
 
         return text;
-    }
+    };
 
-    var ConvSw = function(text, target) {
-        var num, key, regExp;
+    const ConvSw = function(text, target) {
+        let num, key, regExp;
         regExp = /^\x1bV\[\d+\]$|^\x1bS\[\d+\]$/i;
 
         if(typeof text == "string") {
@@ -631,22 +816,61 @@
         }
 
         return text;
-    }
+    };
 
-    var DIR_UP, DIR_DOWN, DIR_RIGHT, DIR_LEFT,
+    const paramParse = function(obj) {
+        return JSON.parse(JSON.stringify(obj, paramReplace));
+    };
+
+    const paramReplace = function(key, value) {
+        try {
+            return JSON.parse(value || null);
+        } catch (e) {
+            return value;
+        }
+    };
+
+    const Parameters = paramParse(PluginManager.parameters(PN));
+    let DIR_UP, DIR_DOWN, DIR_RIGHT, DIR_LEFT,
         DefSensorSwitch, DefBothSensor, DefRangeVisible,
         DefTerrainDecision, DefRangeColor, DefRangeOpacity,
-        DefAutoSensor, DefEventDecision, DefRegionDecisions;
-    DefSensorSwitch = CheckParam("switch", "Default_Sensor_Switch", "D");
-    DefBothSensor = CheckParam("bool", "Default_Both_Sensor", false);
-    DefRangeVisible = CheckParam("bool", "Default_Range_Visible", true);
-    DefTerrainDecision = CheckParam("bool", "Default_Terrain_Decision", false);
-    DefRangeColor = CheckParam("string", "Default_Range_Color", "white");
-    DefRangeOpacity = CheckParam("num", "Default_Range_Opacity", 80, 0, 255);
-    DefAutoSensor = CheckParam("bool", "Default_Auto_Sensor", false);
-    DefEventDecision = CheckParam("bool", "Default_Event_Decision", false);
+        DefAutoSensor, DefEventDecision, DefRegionDecisions,
+        DefRealRangeX, DefRealRangeY,
+        DefFoundBallon, DefFoundCommon, DefFoundDelay, DefFoundSe,
+        DefLostBallon, DefLostCommon, DefLostDelay, DefLostSe;
+    DefSensorSwitch = CheckParam("switch", "Sensor_Switch", Parameters["Sensor_Switch"], "D");
+    DefBothSensor = CheckParam("bool", "Both_Sensor", Parameters["Both_Sensor"], false);
+    DefRangeVisible = CheckParam("bool", "Range_Visible", Parameters["Range_Visible"], true);
+    DefTerrainDecision = CheckParam("bool", "Terrain_Decision", Parameters["Terrain_Decision"], false);
+    DefRangeColor = CheckParam("string", "Range_Color", Parameters["Range_Color"], "white");
+    DefRangeOpacity = CheckParam("num", "Range_Opacity", Parameters["Range_Opacity"], 80, 0, 255);
+    DefAutoSensor = CheckParam("bool", "Auto_Sensor", Parameters["Auto_Sensor"], false);
+    DefEventDecision = CheckParam("bool", "Event_Decision", Parameters["Event_Decision"], false);
     DefRegionDecisions = [];
-    DefRegionDecisions.push(CheckParam("num", "Default_Region_Decision01", 0));
+    Parameters["Region_Decision"].forEach(function(region) {
+        DefRegionDecisions.push(CheckParam("string", "Region_Decision", region, 0));
+    });
+    DefRealRangeX = CheckParam("float", "Real_Range_X", Parameters["Real_Range_X"], 0.000, 0.000, 0.999);
+    DefRealRangeY = CheckParam("float", "Real_Range_Y", Parameters["Real_Range_Y"], 0.000, 0.000, 0.999);
+    DefFoundBallon = CheckParam("num", "Player_Found.Ballon", Parameters["Player_Found"]["Ballon"], 0, 0);
+    DefFoundCommon = CheckParam("num", "Player_Found.Common_Event", Parameters["Player_Found"]["Common_Event"], 0, 0);
+    DefFoundDelay = CheckParam("num", "Player_Found.Delay", Parameters["Player_Found"]["Delay"], 0, 0);
+    DefFoundSe = {
+        "name" : CheckParam("string", "Player_Found.Se.Name", Parameters["Player_Found"]["Se"]["Name"], "")[0],
+        "volume" : CheckParam("num", "Player_Found.Se.Volume", Parameters["Player_Found"]["Se"]["Volume"], 90, 0, 100)[0],
+        "pitch" : CheckParam("num", "Player_Found.Se.Pitch", Parameters["Player_Found"]["Se"]["Pitch"], 100, 50, 150)[0],
+        "pan" : CheckParam("num", "Player_Found.Se.Pan", Parameters["Player_Found"]["Se"]["Pan"], 0, -100, 100)[0],
+    }
+    DefLostBallon = CheckParam("num", "Player_Lost.Ballon", Parameters["Player_Lost"]["Ballon"], 0, 0);
+    DefLostCommon = CheckParam("num", "Player_Lost.Common_Event", Parameters["Player_Lost"]["Common_Event"], 0, 0);
+    DefLostDelay = CheckParam("num", "Player_Lost.Delay", Parameters["Player_Lost"]["Delay"], 0, 0);
+    DefLostSe = {
+        "name" : CheckParam("string", "Player_Lost.Se.Name", Parameters["Player_Lost"]["Se"]["Name"], "")[0],
+        "volume" : CheckParam("num", "Player_Lost.Se.Volume", Parameters["Player_Lost"]["Se"]["Volume"], 90, 0, 100)[0],
+        "pitch" : CheckParam("num", "Player_Lost.Se.Pitch", Parameters["Player_Lost"]["Se"]["Pitch"], 100, 50, 150)[0],
+        "pan" : CheckParam("num", "Player_Lost.Se.Pan", Parameters["Player_Lost"]["Se"]["Pan"], 0, -100, 100)[0],
+    }
+
     DIR_UP = 8;
     DIR_DOWN = 2;
     DIR_RIGHT = 6;
@@ -659,7 +883,7 @@
     //  ・イベントをプレイヤー近くまで移動させるコマンド
     //  を定義
     //=========================================================================
-    var _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
+    const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.call(this, command, args);
         if (command.toLowerCase() === "pss") {
@@ -690,7 +914,7 @@
     };
 
     Game_Interpreter.prototype.moveNearPlayer = function(speed) {
-        var event, oldSpeed, newSpeed, list, sx, sy, i, direction;
+        let event, oldSpeed, newSpeed, list, sx, sy, i, direction;
         event = $gameMap.event(this._eventId);
         oldSpeed = event.moveSpeed();
         newSpeed = oldSpeed;
@@ -723,16 +947,25 @@
 
     };
 
+    Game_Interpreter.prototype.setupReservedCommonEventEx = function(eventId) {
+        if ($gameTemp.isCommonEventReserved()) {
+            this.setup($gameTemp.reservedCommonEvent().list, eventId);
+            $gameTemp.clearCommonEvent();
+            return true;
+        } else {
+            return false;
+        }
+    };
+
 
     //=========================================================================
     // Game_System
     //  プレイヤー探索制御を定義
     //=========================================================================
-    var _Game_System_initialize = Game_System.prototype.initialize;
+    const _Game_System_initialize = Game_System.prototype.initialize;
     Game_System.prototype.initialize = function(){
         _Game_System_initialize.call(this);
         this._sensorStart = false
-        this._foundPlayer = 0;
         this._switchStatuses  = {};
     };
 
@@ -757,7 +990,7 @@
     };
 
     Game_System.prototype.onSensor = function(eventId) {
-        var event = $gameMap.event(eventId);
+        let event = $gameMap.event(eventId);
 
         if(event && event.getSensorType() != null) {
             event.setSensorStatus(1);
@@ -765,7 +998,7 @@
     };
 
     Game_System.prototype.offSensor = function(eventId) {
-        var event = $gameMap.event(eventId);
+        let event = $gameMap.event(eventId);
 
         if(event && event.getSensorType() != null) {
             event.setSensorStatus(0);
@@ -773,7 +1006,7 @@
     };
 
     Game_System.prototype.neutralSensor = function(eventId, args) {
-        var mapId, event, sw, switches, sensorSwitch;
+        let mapId, event, sw, switches, sensorSwitch;
         mapId = $gameMap.mapId();
         event = $gameMap.event(eventId);
         switches = [];
@@ -802,20 +1035,12 @@
         return this._sensorStart;
     };
 
-    Game_System.prototype.isFoundPlayer = function() {
-        return this._foundPlayer;
-    };
-
     Game_System.prototype.setSensorStart = function(sensorStart) {
         this._sensorStart = sensorStart || false;
     };
 
     Game_System.prototype.getSensorStart = function() {
         return this._sensorStart;
-    };
-
-    Game_System.prototype.setFoundPlayer = function(foundPlayer) {
-        this._foundPlayer = foundPlayer || 0;
     };
 
     Game_System.prototype.setSensorStatusAll = function(status) {
@@ -833,7 +1058,7 @@
     }
 
     Game_System.prototype.getEventSensorStatus = function(eventId) {
-        var event;
+        let event;
         if(eventId && isFinite(eventId) && $gameMap.event(eventId)) {
             event = $gameMap.event(eventId);
             return event.getSensorStatus();
@@ -899,6 +1124,28 @@
         }
     };
 
+    Game_System.prototype.isFoundPlayer = function() {
+        if(!this.isSensorStart()) return false;
+
+        return $gameMap.events().some(function(event) {
+            return event.getSensorStatus() == 1 && event.getFoundStatus() == 1;
+        });
+    };
+
+
+    //=========================================================================
+    // Game_Map
+    //  プレイヤー探索制御を定義
+    //=========================================================================
+    // const _Game_Map_setupStartingEvent = Game_Map.prototype.setupStartingEvent;
+    // Game_Map.prototype.setupStartingEvent = function() {
+    //     this.refreshIfNeeded();
+    //     if (this._interpreter.setupReservedCommonEventEx()) {
+    //         return true;
+    //     }
+    //     return _Game_Map_setupStartingEvent.call(this);
+    // };
+
 
     //=========================================================================
     // Game_CharacterBase
@@ -918,9 +1165,21 @@
     //    0 = 未発見
     //    1 = 発見済み
     //=========================================================================
-    var _Game_CharacterBaseInitMembers = Game_CharacterBase.prototype.initMembers;
+    const _Game_CharacterBaseInitMembers = Game_CharacterBase.prototype.initMembers;
     Game_CharacterBase.prototype.initMembers = function() {
         _Game_CharacterBaseInitMembers.call(this);
+
+        let foundBallon, foundCommon, foundSe, foundDelay,
+            lostBallon, lostCommon, lostSe, lostDelay;
+        foundBallon = DefFoundBallon[0];
+        foundCommon = DefFoundCommon[0];
+        foundSe = DefFoundSe;
+        foundDelay = DefFoundDelay[0];
+        lostBallon = DefLostBallon[0];
+        lostCommon = DefLostCommon[0];
+        lostSe = DefLostSe;
+        lostDelay = DefLostDelay[0];
+
         this._foundStatus = 0;
         this._sensorStatus = -2;
         this._sensorType = null;
@@ -938,18 +1197,28 @@
         this._eventDecision = -1;
         this._regionDecision = "";
         this._createRange = false;
+        this._foundBallon = foundBallon;
+        this._foundCommon = foundCommon;
+        this._foundSe = foundSe;
+        this._foundMaxDelay = foundDelay;
+        this._foundDelay = this._foundMaxDelay;
+        this._lostBallon = lostBallon;
+        this._lostCommon = lostCommon;
+        this._lostSe = lostSe;
+        this._lostMaxDelay = lostDelay;
+        this._lostDelay = this._lostMaxDelay;
     };
 
-    var _Game_CharacterBaseMoveStraight = Game_CharacterBase.prototype.moveStraight;
+    const _Game_CharacterBaseMoveStraight = Game_CharacterBase.prototype.moveStraight;
     Game_CharacterBase.prototype.moveStraight = function(d) {
-        var status = (this.direction() == d) ? 1 : 2;
+        let status = (this.direction() == d) ? 1 : 2;
         _Game_CharacterBaseMoveStraight.call(this,d);
         if (this.isMovementSucceeded() && d && this.getSensorStatus() == 1) {
             this.setViewRangeStatus(status);
         }
     };
 
-    var _Game_CharacterBaseMoveDiagonally = Game_CharacterBase.prototype.moveDiagonally;
+    const _Game_CharacterBaseMoveDiagonally = Game_CharacterBase.prototype.moveDiagonally;
     Game_CharacterBase.prototype.moveDiagonally = function(horz, vert) {
         _Game_CharacterBaseMoveDiagonally.call(this,horz, vert);
         if (this.isMovementSucceeded() && this.getSensorStatus() == 1) {
@@ -957,9 +1226,9 @@
         }
     };
 
-    var _Game_CharacterBaseSetDirection = Game_CharacterBase.prototype.setDirection;
+    const _Game_CharacterBaseSetDirection = Game_CharacterBase.prototype.setDirection;
     Game_CharacterBase.prototype.setDirection = function(d) {
-        var status = (this.direction() == d) ? 1 : 2;
+        let status = (this.direction() == d) ? 1 : 2;
         if (!this.isDirectionFixed() && d && this.getSensorStatus() == 1) {
             this.setViewRangeStatus(status);
         }
@@ -1098,7 +1367,7 @@
     };
 
     Game_CharacterBase.prototype.setDirectionFixed = function(directionFixed) {
-        var direction;
+        let direction;
 
         switch(directionFixed) {
             case "u":
@@ -1124,7 +1393,7 @@
     };
 
     Game_CharacterBase.prototype.isMapPassableEx = function(x, y, d) {
-        var x2, y2, d2, passableFlag, events, eventDecision, regionDecisions;
+        let x2, y2, d2, passableFlag, events, eventDecision, regionDecisions;
         x2 = $gameMap.roundXWithDirection(x, d);
         y2 = $gameMap.roundYWithDirection(y, d);
         d2 = this.reverseDir(d);
@@ -1142,7 +1411,7 @@
                 });
             }
             if(regionDecisions.length > 0 && passableFlag == true) {
-                passableFlag = !regionDecisions.contains($gameMap.regionId(x2, y2));
+                passableFlag = !regionDecisions.contains(""+$gameMap.regionId(x2, y2));
             }
         } else {
             passableFlag = false;
@@ -1159,13 +1428,85 @@
         this._createRange = true;
     };
 
+    Game_CharacterBase.prototype.setFoundBallon = function(ballon) {
+        this._foundBallon = Number(ballon);
+    };
+
+    Game_CharacterBase.prototype.getFoundBallon = function() {
+        return this._foundBallon;
+    };
+
+    Game_CharacterBase.prototype.setFoundCommon = function(common) {
+        this._foundCommon = Number(common);
+    };
+
+    Game_CharacterBase.prototype.getFoundCommon = function() {
+        return this._foundCommon;
+    };
+
+    Game_CharacterBase.prototype.setFoundDelay = function(delay) {
+        this._foundDelay = Number(delay);
+    };
+
+    Game_CharacterBase.prototype.getFoundDelay = function() {
+        return this._foundDelay;
+    };
+
+    Game_CharacterBase.prototype.resetFoundDelay = function() {
+        this._foundDelay = this._foundMaxDelay;
+    };
+
+    Game_CharacterBase.prototype.setFoundMaxDelay = function(delay) {
+        this._foundMaxDelay = Number(delay);
+    };
+
+    Game_CharacterBase.prototype.getFoundMaxDelay = function() {
+        return this._foundMaxDelay;
+    };
+
+    Game_CharacterBase.prototype.setLostBallon = function(ballon) {
+        this._lostBallon = Number(ballon);
+    };
+
+    Game_CharacterBase.prototype.getLostBallon = function() {
+        return this._lostBallon;
+    };
+
+    Game_CharacterBase.prototype.setLostCommon = function(common) {
+        this._lostCommon = Number(common);
+    };
+
+    Game_CharacterBase.prototype.getLostCommon = function() {
+        return this._lostCommon;
+    };
+
+    Game_CharacterBase.prototype.setLostDelay = function(delay) {
+        this._lostDelay = Number(delay);
+    };
+
+    Game_CharacterBase.prototype.getLostDelay = function() {
+        return this._lostDelay;
+    };
+
+    Game_CharacterBase.prototype.resetLostDelay = function() {
+        this._lostDelay = this._lostMaxDelay;
+    };
+
+    Game_CharacterBase.prototype.setLostMaxDelay = function(delay) {
+        this._lostMaxDelay = Number(delay);
+    };
+
+    Game_CharacterBase.prototype.getLostMaxDelay = function() {
+        return this._lostMaxDelay;
+    };
+
 
     //=========================================================================
     // Game_Map
     //  探索開始処理の自動実行を定義します。
     //=========================================================================
     if(DefAutoSensor[0]) {
-        var _Game_Map_setupEvents = Game_Map.prototype.setupEvents;
+        const _Game_Map_setupEvents = Game_Map.prototype.setupEvents;
         Game_Map.prototype.setupEvents = function() {
             _Game_Map_setupEvents.call(this);
             $gameSystem.startSensor();
@@ -1178,19 +1519,19 @@
     //  プレイヤーとの距離を測り
     //  指定範囲内にプレイヤーがいる場合に指定されたスイッチをONにします。
     //=========================================================================
-    var _Game_EventSetupPageSettings = Game_Event.prototype.setupPageSettings;
+    const _Game_EventSetupPageSettings = Game_Event.prototype.setupPageSettings;
     Game_Event.prototype.setupPageSettings = function() {
         _Game_EventSetupPageSettings.call(this);
         if(this.getSensorStatus() == -2) {
             this.setupSensor();
         }
-        if($gameSystem.isFoundPlayer() == this.eventId()) {
-            this.turnTowardPlayer();
-        }
+        // if($gameSystem.isFoundPlayer() == this.eventId()) {
+        //     this.turnTowardPlayer();
+        // }
     };
 
     Game_Event.prototype.setupSensor = function() {
-        var event, pattern, match, note, cnt, i, n, m,
+        let event, pattern, match, note, cnt, i, n, m,
             options, op, value;
         event = this.event();
         pattern = /<(.?)(?:psensor)(l|f|s|d)?(?:\:)(\\v\[\d+\]|\d+)([ 0-9a-z\[\]\\]*)?>/i
@@ -1252,6 +1593,26 @@
                             } else if(op.match(/^rg(\d+|\x1bv\[(\d+)\])$/)) { // リージョン考慮指定
                                 m = op.match(/^rg(\d+|\x1bv\[(\d+)\])$/);
                                 this.setRegionDecision(m[1]);
+                            } else if(op.match(/^fb(\d+|\x1bv\[(\d+)\])$/)) { // 発見フキダシ指定
+                                m = op.match(/^fb(\d+|\x1bv\[(\d+)\])$/);
+                                this.setFoundBallon(m[1]);
+                            } else if(op.match(/^fc(\d+|\x1bv\[(\d+)\])$/)) { // 発見コモン指定
+                                m = op.match(/^fc(\d+|\x1bv\[(\d+)\])$/);
+                                this.setFoundCommon(m[1]);
+                            } else if(op.match(/^fd(\d+|\x1bv\[(\d+)\])$/)) { // 発見遅延指定
+                                m = op.match(/^fd(\d+|\x1bv\[(\d+)\])$/);
+                                this.setFoundMaxDelay(m[1]);
+                                this.setFoundDelay(m[1]);
+                            } else if(op.match(/^lb(\d+|\x1bv\[(\d+)\])$/)) { // ロストフキダシ指定
+                                m = op.match(/^lb(\d+|\x1bv\[(\d+)\])$/);
+                                this.setLostBallon(m[1]);
+                            } else if(op.match(/^lc(\d+|\x1bv\[(\d+)\])$/)) { // ロストコモン指定
+                                m = op.match(/^lc(\d+|\x1bv\[(\d+)\])$/);
+                                this.setLostCommon(m[1]);
+                            } else if(op.match(/^ld(\d+|\x1bv\[(\d+)\])$/)) { // ロスト遅延指定
+                                m = op.match(/^ld(\d+|\x1bv\[(\d+)\])$/);
+                                this.setLostMaxDelay(m[1]);
+                                this.setLostDelay(m[1]);
                             }
                         }, this);
                     }
@@ -1260,69 +1621,120 @@
         }
     };
 
-    var _Game_EventUpdate = Game_Event.prototype.update;
+    const _Game_EventUpdate = Game_Event.prototype.update;
     Game_Event.prototype.update = function() {
         _Game_EventUpdate.call(this);
-        if($gameSystem.isSensorStart()) this.sensorTarget();
+        if($gameSystem.isSensorStart()) this.sensorUpdate();
     };
 
-    Game_Event.prototype.sensorTarget = function() {
-        var mapId, eventId, sw, key, st, sensorSwitch;
-        sensorSwitch = DefSensorSwitch[0];
+    Game_Event.prototype.sensorUpdate = function() {
         // 探索中のイベントであること
         if(this.getSensorStatus() == 1){
             // マップイベント実行中でないこと
             if(!this.isStarting()) {
-                mapId = $gameMap.mapId();
-                eventId = this.eventId();
-                sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
                 if(this.isFoundPlayer()) {
-                    if(isFinite(sw)) {
-                        if(!$gameSwitches.value(sw)) {
-                            $gameSwitches.setValue(sw, true);
-                        }
-                        $gameSystem.setSwitchStatuses(sw, eventId);
-                    } else if(sw.match(/[a-dA-D]/)) {
-                        key = [mapId, eventId, sw.toUpperCase()];
-                        if(!$gameSelfSwitches.value(key)) {
-                            $gameSelfSwitches.setValue(key, true);
-                        }
+                    if(this.getFoundStatus() == 0) {
+                        this.foundPlayer();
                     }
+                    if(this.getLostDelay() < this.getLostMaxDelay()) this.resetLostDelay();
+                } else if(this.getFoundStatus() == 1) {
+                    this.lostPlayer();
+                    if(this.getFoundDelay() < this.getFoundMaxDelay()) this.resetFoundDelay();
                 } else {
-                    if(isFinite(sw)) {
-                        if($gameSwitches.value(sw) && !$gameSystem.isSwitchStatuses(sw)) {
-                            $gameSwitches.setValue(sw, false);
-                        }
-                        $gameSystem.removeSwitchStatuses(sw, eventId);
-                    } else if(sw.match(/[a-dA-D]/)) {
-                        key = [mapId, eventId, sw.toUpperCase()];
-                        if($gameSelfSwitches.value(key)) {
-                            $gameSelfSwitches.setValue(key, false);
-                        }
-                    }
-
-/*
-                    st = false;
-                    if(isFinite(sw)) {
-                        st = $gameSwitches.value(sw);
-                    } else if(sw.match(/[a-dA-D]/)) {
-                        st = $gameSelfSwitches.value([mapId, eventId, sw.toUpperCase()]);
-                    }
-                    if(st) {
-                        if(isFinite(sw)) {
-                            $gameSwitches.setValue(sw, false);
-                        } else if(sw.match(/[a-dA-D]/)) {
-                            $gameSelfSwitches.setValue([mapId, eventId, sw.toUpperCase()], false);
-                        }
-                    }
-*/
+                    if(this.getFoundDelay() < this.getFoundMaxDelay()) this.resetFoundDelay();
                 }
             }
         }
     };
 
+    Game_Event.prototype.foundPlayer = function() {
+        let mapId, eventId, sw, key, sensorSwitch, delay;
+        delay = this.getFoundDelay();
+
+        if(delay <= 0) {
+            sensorSwitch = DefSensorSwitch[0];
+            mapId = $gameMap.mapId();
+            eventId = this.eventId();
+            sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
+
+            this.setFoundStatus(1);
+            this.resetFoundDelay();
+            this.resetLostDelay();
+            if(isFinite(sw)) {
+                if(!$gameSwitches.value(sw)) {
+                    $gameSwitches.setValue(sw, true);
+                }
+                $gameSystem.setSwitchStatuses(sw, eventId);
+            } else if(sw.match(/[a-dA-D]/)) {
+                key = [mapId, eventId, sw.toUpperCase()];
+                if(!$gameSelfSwitches.value(key)) {
+                    $gameSelfSwitches.setValue(key, true);
+                }
+            }
+
+            if (this._foundSe.name != "") {
+                AudioManager.playSe(this._foundSe);
+            }
+            if (this._foundBallon > 0) {
+                this.requestBalloon(this._foundBallon);
+            }
+            if (this._foundCommon > 0) {
+                $gameTemp.reserveCommonEvent(this._foundCommon);
+                if($gameMap._interpreter) {
+                    $gameMap._interpreter.setupReservedCommonEventEx(this.eventId());
+                }
+            }
+        } else {
+            this.setFoundDelay(--delay);
+            // console.log("foundDelay:"+this.getFoundDelay());
+        }
+    };
+
+    Game_Event.prototype.lostPlayer = function() {
+        let mapId, eventId, sw, key, sensorSwitch, delay;
+        delay = this.getLostDelay();
+
+        if(delay <= 0) {
+            sensorSwitch = DefSensorSwitch[0];
+            mapId = $gameMap.mapId();
+            eventId = this.eventId();
+            sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
+
+            this.setFoundStatus(0);
+            this.resetLostDelay();
+            this.resetFoundDelay();
+            if(isFinite(sw)) {
+                if($gameSwitches.value(sw) && !$gameSystem.isSwitchStatuses(sw)) {
+                    $gameSwitches.setValue(sw, false);
+                }
+                $gameSystem.removeSwitchStatuses(sw, eventId);
+            } else if(sw.match(/[a-dA-D]/)) {
+                key = [mapId, eventId, sw.toUpperCase()];
+                if($gameSelfSwitches.value(key)) {
+                    $gameSelfSwitches.setValue(key, false);
+                }
+            }
+
+            if (this._lostSe.name != "") {
+                AudioManager.playSe(this._lostSe);
+            }
+            if (this._lostBallon > 0) {
+                this.requestBalloon(this._lostBallon);
+            }
+            if (this._lostCommon > 0) {
+                $gameTemp.reserveCommonEvent(this._lostCommon);
+                if($gameMap._interpreter) {
+                    $gameMap._interpreter.setupReservedCommonEventEx(this.eventId());
+                }
+            }
+        } else {
+            this.setLostDelay(--delay);
+            // console.log("lostDelay:"+this.getLostDelay());
+        }
+    };
+
     Game_Event.prototype.isFoundPlayer = function() {
-        var result = false;
+        let result = false;
         switch(this.getSensorType()) {
             case "l": // 直線の探索
                 result = this.sensorLine();
@@ -1337,25 +1749,25 @@
                 result = this.sensorDiamond();
                 break;
         }
-        if(result) {
-            $gameSystem.setFoundPlayer(this.eventId());
-        }
+        // if(result) {
+        //     $gameSystem.setFoundPlayer(this.eventId());
+        // }
         return result;
     };
 
     // 直線の探索
     Game_Event.prototype.sensorLine = function() {
-        var sensorRange, sensorRangeC, strDir, diagoDir, dir, dirFixed, sx, sy, ex, ey, i,
-        coordinates, px, py, cnt;
+        let sensorRange, sensorRangeC, strDir, diagoDir, dir, dirFixed, ex, ey, i,
+        coordinates, px, py, cnt, realX, realY;
         sensorRange = this.getSensorRange();
         dirFixed = this.getDirectionFixed();
         dir = (dirFixed == -1)? this.direction() : dirFixed;
-        px = $gamePlayer.x;
-        py = $gamePlayer.y;
-        sx = this.deltaXFrom($gamePlayer.x);
-        sy = this.deltaYFrom($gamePlayer.y);
-        ex = this.x;
-        ey = this.y;
+        px = $gamePlayer._realX;
+        py = $gamePlayer._realY;
+        ex = this._realX;
+        ey = this._realY;
+        realX = DefRealRangeX[0];
+        realY = DefRealRangeY[0];
 
         // currentRange初期化
         //this.setSensorRangeC(sensorRange);
@@ -1382,9 +1794,10 @@
                     i = 0;
                     if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                     } else {
-                        if(px == ex + coordinates[i][0]
-                                && py <= ey + Math.abs(coordinates[i][0])
-                                && py >= ey + coordinates[i][1]) {
+                        if(px >= ex + coordinates[i][0] - realX
+                                && px <= ex + coordinates[i][0] + realX
+                                && py >= ey + Math.abs(coordinates[i][0])
+                                && py <= ey + coordinates[i][1] + realY) {
                             return true;
                         }
                     }
@@ -1408,9 +1821,10 @@
                     i = 0;
                     if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                     } else {
-                        if(py == ey + coordinates[i][1]
-                                && px >= ex + Math.abs(coordinates[i][1])
-                                && px <= ex + coordinates[i][0]) {
+                        if(py >= ey + coordinates[i][1] - realY
+                                && py <= ey + coordinates[i][1] + realY
+                                && px >= ex + Math.abs(coordinates[i][1]) - realX
+                                && px <= ex + coordinates[i][0] + realX) {
                             return true;
                         }
                     }
@@ -1434,9 +1848,10 @@
                     i = 0;
                     if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                     } else {
-                        if(py == ey + coordinates[i][1]
-                                && px <= ex + Math.abs(coordinates[i][1])
-                                && px >= ex + coordinates[i][0]) {
+                        if(py <= ey + coordinates[i][1] + realY
+                                && py >= ey + coordinates[i][1] - realY
+                                && px <= ex + Math.abs(coordinates[i][1]) + realX
+                                && px >= ex + coordinates[i][0] - realX) {
                             return true;
                         }
                     }
@@ -1460,9 +1875,10 @@
                     i = 0;
                     if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                     } else {
-                        if(px == ex + coordinates[i][0]
+                        if(px >= ex + coordinates[i][0] - DefRealRangeX[0]
+                                && px <= ex + coordinates[i][0] + DefRealRangeX[0]
                                 && py >= ey + Math.abs(coordinates[i][0])
-                                && py <= ey + coordinates[i][1]) {
+                                && py <= ey + coordinates[i][1] + DefRealRangeY[0]) {
                             return true;
                         }
                     }
@@ -1476,20 +1892,24 @@
 
     // 扇範囲の探索
     Game_Event.prototype.sensorFan = function() {
-        var sensorRange, sensorRangeC, dir, dirFixed, sx, sy, ex, ey, px, py,
+        let sensorRange, sensorRangeC, dir, dirFixed, sx, sy, ex, ey, px, py,
             noPass, noPassTemp, i, j, coordinates, sign, strDir, diagoDir, cnt,
-            terrainDecision;
+            terrainDecision, realX, realY, rex, rey;
         sensorRange = this.getSensorRange();
         dirFixed = this.getDirectionFixed();
         dir = (dirFixed == -1)? this.direction() : dirFixed;
-        px = $gamePlayer.x;
-        py = $gamePlayer.y;
-        sx = this.deltaXFrom(px);
-        sy = this.deltaYFrom(py);
+        px = $gamePlayer._realX;
+        py = $gamePlayer._realY;
+        sx = this.deltaXFrom($gamePlayer.x);
+        sy = this.deltaYFrom($gamePlayer.y);
         ex = this.x;
         ey = this.y;
+        rex = this._realX;
+        rey = this._realY;
         noPass = 0;
         terrainDecision = CEC(DefTerrainDecision);
+        realX = DefRealRangeX[0];
+        realY = DefRealRangeY[0];
 
         // currentRange初期化
         this.setSensorRangeC(sensorRange);
@@ -1560,9 +1980,10 @@
                     }else if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                         continue;
                     }
-                    if(px == ex + coordinates[i][0]
-                            && py <= ey - Math.abs(coordinates[i][0])
-                            && py >= ey + coordinates[i][1]) {
+                    if(px <= rex + coordinates[i][0] + realX
+                            && px >= rex + coordinates[i][0] - realX
+                            && py <= rey - Math.abs(coordinates[i][0]) + realY
+                            && py >= rey + coordinates[i][1] - realY) {
                         return true;
                     }
                 }
@@ -1629,9 +2050,10 @@
                     }else if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                         continue;
                     }
-                    if(py == ey + coordinates[i][1]
-                            && px >= ex + Math.abs(coordinates[i][1])
-                            && px <= ex + coordinates[i][0]) {
+                    if(py >= rey + coordinates[i][1] - realY
+                            && py <= rey + coordinates[i][1] + realY
+                            && px >= rex + Math.abs(coordinates[i][1]) - realX
+                            && px <= rex + coordinates[i][0] + realX) {
                         return true;
                     }
                 }
@@ -1698,9 +2120,10 @@
                     }else if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                         continue;
                     }
-                    if(py == ey + coordinates[i][1]
-                            && px <= ex - Math.abs(coordinates[i][1])
-                            && px >= ex + coordinates[i][0]) {
+                    if(py <= rey + coordinates[i][1] + realY
+                            && py >= rey + coordinates[i][1] - realY
+                            && px <= rex - Math.abs(coordinates[i][1]) + realX
+                            && px >= rex + coordinates[i][0] - realX) {
                         return true;
                     }
                 }
@@ -1767,9 +2190,10 @@
                     }else if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                         continue;
                     }
-                    if(px == ex + coordinates[i][0]
-                            && py >= ey + Math.abs(coordinates[i][0])
-                            && py <= ey + coordinates[i][1]) {
+                    if(px >= rex + coordinates[i][0] - realX
+                            && px <= rex + coordinates[i][0] + realX
+                            && py >= rey + Math.abs(coordinates[i][0]) - realY
+                            && py <= rey + coordinates[i][1] + realY) {
                         return true;
                     }
                 }
@@ -1782,15 +2206,12 @@
 
     // 菱形範囲の探索(地形考慮完全無視)
     Game_Event.prototype.sensorDiamond = function() {
-        var sensorRange, sx, sy, ex, ey, px, py,
-            i, j, coordinates, sign, strDir, diagoDir, cnt;
+        let sensorRange, sx, sy, realX, realY;
         sensorRange = this.getSensorRange();
-        px = $gamePlayer.x;
-        py = $gamePlayer.y;
-        sx = this.deltaXFrom(px);
-        sy = this.deltaYFrom(py);
-        ex = this.x;
-        ey = this.y;
+        sx = this.deltaXFrom($gamePlayer._realX);
+        sy = this.deltaYFrom($gamePlayer._realY);
+        realX = DefRealRangeX[0];
+        realY = DefRealRangeY[0];
 
         // currentRange初期化
         this.setSensorRangeC(sensorRange);
@@ -1805,22 +2226,19 @@
         this.setCoordinate(-sensorRange, 0, DIR_UP);
 
         // プレイヤー範囲探索
-        if(Math.abs(sx) + Math.abs(sy) <= sensorRange) {
+        if(Math.abs(sx) + Math.abs(sy) <= sensorRange + Math.max(realX, realY)) {
             return true;
         }
     }
 
     // 四角範囲の探索(地形考慮完全無視)
     Game_Event.prototype.sensorSquare = function() {
-        var sensorRange, sx, sy, ex, ey, px, py,
-            i, j, coordinates, sign, strDir, diagoDir, cnt;
+        let sensorRange, sx, sy, realX, realY;
         sensorRange = this.getSensorRange();
-        px = $gamePlayer.x;
-        py = $gamePlayer.y;
-        sx = this.deltaXFrom(px);
-        sy = this.deltaYFrom(py);
-        ex = this.x;
-        ey = this.y;
+        sx = this.deltaXFrom($gamePlayer._realX);
+        sy = this.deltaYFrom($gamePlayer._realY);
+        realX = DefRealRangeX[0];
+        realY = DefRealRangeY[0];
 
         // currentRange初期化
         this.setSensorRangeC(sensorRange);
@@ -1829,19 +2247,21 @@
         this.clearCoordinate();
 
         // プレイヤー範囲探索
-        if(Math.abs(sx) <= sensorRange && Math.abs(sy) <= sensorRange) {
+        if(Math.abs(sx) <= sensorRange + realX && Math.abs(sy) <= sensorRange + realY) {
             return true;
         }
     }
 
     Game_Event.prototype.isSideSearch = function(directionR, directionL, vx, vy) {
-        var sx, sy, ex, ey, bothSensor, terrainDecision;
-        sx = this.deltaXFrom($gamePlayer.x);
-        sy = this.deltaYFrom($gamePlayer.y);
+        let sx, sy, ex, ey, bothSensor, terrainDecision, realX, realY;
+        sx = this.deltaXFrom($gamePlayer._realX);
+        sy = this.deltaYFrom($gamePlayer._realY);
         ex = this.x;
         ey = this.y;
         bothSensor = CEC(DefBothSensor);
         terrainDecision = CEC(DefTerrainDecision);
+        realX = DefRealRangeX[0];
+        realY = DefRealRangeY[0];
 
         if(this.getBothSensor() == -1 && bothSensor) {
             if(this.getTerrainDecision() == 1
@@ -1866,19 +2286,23 @@
             this.setBothSensorLeft(false);
         }
 
-        if(this.getBothSensorRight() && sx == vx && sy == vy) {
+        if(this.getBothSensorRight()
+                && sx >= vx - realX && sx <= vx + realX
+                && sy >= vy - realY && sy <= vy + realY) {
             return true;
         }
         vx = (vx == 0)? vx : -vx;
         vy = (vy == 0)? vy : -vy;
-        if(this.getBothSensorLeft() && sx == vx && sy == vy) {
+        if(this.getBothSensorLeft()
+                && sx >= vx - realX && sx <= vx + realX
+                && sy >= vy - realY && sy <= vy + realY) {
             return true;
         }
         return false;
     };
 
     Game_Event.prototype.rangeSearch = function(strDir, rx, ry, signX, signY, noPass) {
-        var sensorRange, ex, ey, cx, cy, sx, sy, j, obstacle ,cnt, status,
+        let sensorRange, ex, ey, cx, cy, sx, sy, j, obstacle ,cnt, status,
             noPassDir, terrainDecision;
         sensorRange = this.getSensorRange();
         cnt = sensorRange - Math.abs(rx);
@@ -1917,7 +2341,7 @@
         return (obstacle < 0)? noPass : obstacle;
     };
 
-    var _GameEvent_lock = Game_Event.prototype.lock;
+    const _GameEvent_lock = Game_Event.prototype.lock;
     Game_Event.prototype.lock = function() {
         if(this.getSensorStatus() != 1) {
             _GameEvent_lock.call(this);
@@ -1933,7 +2357,7 @@
 
     Game_Event.prototype.addCoordinate = function(length) {
         // 左右の配列要素数を指定数に合わせる
-        var coordinates, cnt, j;
+        let coordinates, cnt, j;
         coordinates = this.getCoordinate();
         cnt = coordinates.length;
         for(j = cnt; j < length; j++) {
@@ -1946,9 +2370,9 @@
     // Spriteset_Map
     //  探索者の視界範囲を表す図形を描画させる処理を追加定義します。
     //=========================================================================
-    var _createLowerLayer = Spriteset_Map.prototype.createLowerLayer;
+    const _Spriteset_Map_createLowerLayer = Spriteset_Map.prototype.createLowerLayer;
     Spriteset_Map.prototype.createLowerLayer = function() {
-        _createLowerLayer.call(this);
+        _Spriteset_Map_createLowerLayer.call(this);
         this.createViewRange();
     }
 
@@ -1960,12 +2384,12 @@
                 event.enableCreateRange();
             }
         }, this);
-        for (var i = 0; i < this._viewRangeSprites.length; i++) {
+        for (let i = 0; i < this._viewRangeSprites.length; i++) {
             this._tilemap.addChild(this._viewRangeSprites[i]);
         }
     };
 
-    var _Spriteset_Base_update = Spriteset_Base.prototype.update;
+    const _Spriteset_Base_update = Spriteset_Base.prototype.update;
     Spriteset_Base.prototype.update = function() {
         _Spriteset_Base_update.call(this);
         if(this._viewRangeSprites) {
@@ -1974,7 +2398,7 @@
     };
 
     Spriteset_Base.prototype.updateViewRange = function() {
-        var cnt;
+        let cnt;
         cnt = this._viewRangeSprites.length - 1;
         cnt = cnt >= 0 ? cnt : 0;
 
@@ -2022,7 +2446,7 @@
     };
 
     Sprite_ViewRange.prototype.update = function() {
-        var sensorStatus, rangeStatus, rangeVisible, defVisible;
+        let sensorStatus, rangeStatus, rangeVisible, defVisible;
 
         Sprite.prototype.update.call(this);
 
@@ -2057,7 +2481,7 @@
     };
 
     Sprite_ViewRange.prototype.createBitmap = function() {
-        var direction, dirFixed, sensorRange, sensorRangeC, sensorType,
+        let direction, dirFixed, sensorRange, sensorRangeC, sensorType,
             tileWidth, tileHeight, width, height, coordinates,
             sideSensorR, sideSensorL, bs, bias, color, opacity,
             bothSensor;
@@ -2154,7 +2578,7 @@
     };
 
     Sprite_ViewRange.prototype.updateBitmap = function() {
-        var direction, dirFixed, sensorRange, sensorRangeC, sensorType,
+        let direction, dirFixed, sensorRange, sensorRangeC, sensorType,
             tileWidth, tileHeight, width, height, i, cnt,
             tmpCoordinate, coordinate, bias, color, opacity,
             bothSensor;
@@ -2274,7 +2698,7 @@
     };
 
     Sprite_ViewRange.prototype.updatePosition = function() {
-        var direction, dirFixed, sensorRangeC, sensorType, cx, cy, tileWidth, tileHeight, bias;
+        let direction, dirFixed, sensorRangeC, sensorType, cx, cy, tileWidth, tileHeight, bias;
         direction = this._character.direction();
         dirFixed = this._character.getDirectionFixed();
         direction = (dirFixed == -1)? direction : dirFixed;
@@ -2324,7 +2748,7 @@
     //  探索者の視界範囲を表す図形を描画させる処理を追加定義します。
     //=========================================================================
     Bitmap.prototype.fillViewRangeLine = function(color, character) {
-        var context, width, height, tileWidth, tileHeight,
+        let context, width, height, tileWidth, tileHeight,
             j, cx, cy, cnt, num, distanceX, distanceY,
             direction, dirFixed, coordinates, sideSensorR, sideSensorL;
         context = this._context;
@@ -2396,7 +2820,7 @@
     };
 
     Bitmap.prototype.fillViewRangeFan = function(color, character) {
-        var context, width, height, tileWidth, tileHeight, cx, cy,
+        let context, width, height, tileWidth, tileHeight, cx, cy,
             coordinates, direction, dirFixed, sideSensorR, sideSensorL,
             i, j, cnt, num, distanceX, distanceY, sign;
         context = this._context;
@@ -2540,7 +2964,7 @@
     };
 
     Bitmap.prototype.fillViewRangeDiamond = function(color, character) {
-        var context, width, height, tileWidth, tileHeight, cx, cy,
+        let context, width, height, tileWidth, tileHeight, cx, cy,
             coordinates, rx, ry, dir, dx, dy, ndx, ndy,
             i, j, cnt, num, distanceX, distanceY, sign;
         context = this._context;
@@ -2637,7 +3061,7 @@
     };
 
     Bitmap.prototype.mkrDrawLine = function(context, cx, cy, distanceX, distanceY) {
-        var width, height, tileWidth, tileHeight, lx, ly;
+        let width, height, tileWidth, tileHeight, lx, ly;
         width = this.width;
         height = this.height;
         tileWidth = $gameMap.tileWidth();
@@ -2653,7 +3077,7 @@
     };
 
     Bitmap.prototype.mkrSideDrawLine = function(context, cx, cy, sideSensors) {
-        var tileWidth, tileHeight, rx, ry, signX, signY, signX2, signY2;
+        let tileWidth, tileHeight, rx, ry, signX, signY, signX2, signY2;
         tileWidth = $gameMap.tileWidth();
         tileHeight = $gameMap.tileHeight();
         signX = sideSensors[1];
@@ -2691,13 +3115,13 @@
     }
 
     function getRegionIds() {
-        var ArrayRegionId, results, i, argCount, ary;
+        let ArrayRegionId, results, i, argCount, ary;
         ArrayRegionId = [];
 
         if(arguments && arguments.length > 0) {
             argCount = arguments.length;
             for(i = 0; i < argCount; i++) {
-                if(Array.isArray(arguments[i])) {
+                if(Array.isArray(arguments[i]) && arguments[i].length > 0) {
                     ArrayRegionId.push(CEC(arguments[i][0]));
                 } else if(typeof arguments[i] == "string") {
                     ary = arguments[i].split("_").filter(function(val){
