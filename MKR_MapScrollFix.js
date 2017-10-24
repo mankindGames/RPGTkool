@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.3 2017/10/24 画面固定時、ジャンプ移動で画面外へ移動できていた
+//                  問題を修正。
+//
 // 1.0.2 2017/10/20 一部プラグインとの競合に対応。
 //
 // 1.0.1 2017/10/04 スクロール固定時、画面外への離脱と画面内への侵入を
@@ -20,7 +23,7 @@
 
 /*:
  *
- * @plugindesc (v1.0.2) マップスクロール固定プラグイン
+ * @plugindesc (v1.0.3) マップスクロール固定プラグイン
  * @author マンカインド
  *
  * @help
@@ -249,4 +252,31 @@ Imported.MKR_MapScrollFix = true;
         }
         return true;
     };
+
+    const _Game_CharacterBase_updateJump = Game_CharacterBase.prototype.updateJump;
+    Game_CharacterBase.prototype.updateJump = function() {
+        _Game_CharacterBase_updateJump.call(this);
+
+        let maxDisplayX, maxDisplayY;
+        maxDisplayX = $gameMap.displayX() + $gameMap.screenTileX() - 1;
+        maxDisplayY = $gameMap.displayY() + $gameMap.screenTileY() - 1;
+
+        if(!this.isThrough() && $gameSwitches.value(Params.ScrollFixSw[0])) {
+            if(this._realX > maxDisplayX) {
+                this._realX = maxDisplayX;
+                this._x = maxDisplayX;
+            } else if(this._realX <= $gameMap.displayX()) {
+                this._realX = $gameMap.displayX();
+                this._x = $gameMap.displayX();
+            }
+            if(this._realY >= maxDisplayY) {
+                this._realY = maxDisplayY;
+                this._y = maxDisplayY;
+            } else if(this._realY <= $gameMap.displayY()) {
+                this._realY = $gameMap.displayY();
+                this._y = $gameMap.displayY();
+            }
+        }
+    };
+
 })();
