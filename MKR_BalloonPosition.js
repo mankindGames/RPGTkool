@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/11/24 メモ欄を使用しない場合に
+//                  フキダシが表示されなくなっていた問題を修正。
+//
 // 1.0.0 2017/11/23 初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,10 +18,10 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.0) フキダシ位置変更プラグイン
+ * @plugindesc (v1.0.1) フキダシ位置変更プラグイン
  * @author マンカインド
  *
- * @help = フキダシ位置変更プラグイン ver 1.0.0 =
+ * @help = フキダシ位置変更プラグイン ver 1.0.1 =
  * MKR_BalloonPosition.js - マンカインド
  *
  * イベントの頭上に表示されるフキダシの位置を調整します。
@@ -200,12 +203,15 @@ Imported.MKR_BalloonPosition = true;
         _Sprite_Character_updateBalloon.call(this);
 
         let chara, offsetX, offsetY, metas;
+        offsetX = Params.OffsetX;
+        offsetY = Params.OffsetY;
+
         if(this._character.constructor == Game_Event) {
             chara = this._character;
             metas = GetMeta(chara.event().meta, "balloon", ",");
             if(metas) {
-                offsetX =  isFinite(metas[0]) ? parseInt(metas[0]) : Params.OffsetX;
-                offsetY =  isFinite(metas[1]) ? parseInt(metas[1]) : Params.OffsetY;
+                offsetX =  isFinite(metas[0]) ? parseInt(metas[0]) : offsetX;
+                offsetY =  isFinite(metas[1]) ? parseInt(metas[1]) : offsetY;
             }
             if(this._balloonSprite) {
                 this._balloonSprite.x = this.x + offsetX;
