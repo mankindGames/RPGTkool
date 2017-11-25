@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.2 2017/11/25 フキダシの位置調整をプレイヤーに対しても行われるよう修正。
+//
 // 1.0.1 2017/11/24 メモ欄を使用しない場合に
 //                  フキダシが表示されなくなっていた問題を修正。
 //
@@ -18,13 +20,10 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.1) フキダシ位置変更プラグイン
+ * @plugindesc (v1.0.2) フキダシ位置変更プラグイン
  * @author マンカインド
  *
- * @help = フキダシ位置変更プラグイン ver 1.0.1 =
- * MKR_BalloonPosition.js - マンカインド
- *
- * イベントの頭上に表示されるフキダシの位置を調整します。
+ * @help イベント/プレイヤーの頭上に表示されるフキダシの位置を調整します。
  * プラグインパラメータによる調整の他、イベントのメモ欄を使うことでも
  * フキダシ位置の調整が可能です。
  * (メモ欄による調整はプラグインパラメータより優先されます)
@@ -177,23 +176,6 @@ Imported.MKR_BalloonPosition = true;
 
 
     //=========================================================================
-    // Game_Interpreter
-    //  ・
-    //
-    //=========================================================================
-    const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
-    Game_Interpreter.prototype.pluginCommand = function(command, args) {
-        _Game_Interpreter_pluginCommand.call(this, command, args);
-        if (command.toLowerCase() === "") {
-            switch (args[0].toLowerCase()) {
-                case "":
-                    break;
-            }
-        }
-    };
-
-
-    //=========================================================================
     // Sprite_Character
     //  ・フキダシの表示位置を再定義します。
     //
@@ -213,20 +195,12 @@ Imported.MKR_BalloonPosition = true;
                 offsetX =  isFinite(metas[0]) ? parseInt(metas[0]) : offsetX;
                 offsetY =  isFinite(metas[1]) ? parseInt(metas[1]) : offsetY;
             }
-            if(this._balloonSprite) {
-                this._balloonSprite.x = this.x + offsetX;
-                this._balloonSprite.y = this.y - this.height + offsetY;
-            }
         }
 
+        if(this._balloonSprite) {
+            this._balloonSprite.x = this.x + offsetX;
+            this._balloonSprite.y = this.y - this.height + offsetY;
+        }
     };
-
-
-    //=========================================================================
-    //
-    //  ・
-    //
-    //=========================================================================
-
 
 })();
