@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.3.3 2017/12/10 ・一部探索が正常に動作していなかったため修正。
+//                    スイッチの切り替えが正常に動作していなかったため修正。
+//
 // 2.3.2 2017/10/23 ・一部プラグインと併用した場合の問題を修正。
 //                  ・プレイヤー発見時、探索者の頭上に
 //                    任意のフキダシアイコンを表示可能に。
@@ -94,7 +97,7 @@
 
 /*:
  *
- * @plugindesc (v2.3.2) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.3) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help =
@@ -1704,10 +1707,11 @@
             this.resetLostDelay();
             this.resetFoundDelay();
             if(isFinite(sw)) {
-                if($gameSwitches.value(sw) && !$gameSystem.isSwitchStatuses(sw)) {
+                // if($gameSwitches.value(sw) && !$gameSystem.isSwitchStatuses(sw)) {
+                if($gameSwitches.value(sw)) {
                     $gameSwitches.setValue(sw, false);
                 }
-                $gameSystem.removeSwitchStatuses(sw, eventId);
+                // $gameSystem.removeSwitchStatuses(sw, eventId);
             } else if(sw.match(/[a-dA-D]/)) {
                 key = [mapId, eventId, sw.toUpperCase()];
                 if($gameSelfSwitches.value(key)) {
@@ -1796,8 +1800,8 @@
                     } else {
                         if(px >= ex + coordinates[i][0] - realX
                                 && px <= ex + coordinates[i][0] + realX
-                                && py >= ey + Math.abs(coordinates[i][0])
-                                && py <= ey + coordinates[i][1] + realY) {
+                                && py >= ey - Math.abs(coordinates[i][1]) - realY
+                                && py <= ey + Math.abs(coordinates[i][0])) {
                             return true;
                         }
                     }
@@ -1875,10 +1879,10 @@
                     i = 0;
                     if(coordinates[i][0] == 0 && coordinates[i][1] == 0) {
                     } else {
-                        if(px >= ex + coordinates[i][0] - DefRealRangeX[0]
-                                && px <= ex + coordinates[i][0] + DefRealRangeX[0]
+                        if(px >= ex + coordinates[i][0] - realX
+                                && px <= ex + coordinates[i][0] + realX
                                 && py >= ey + Math.abs(coordinates[i][0])
-                                && py <= ey + coordinates[i][1] + DefRealRangeY[0]) {
+                                && py <= ey + coordinates[i][1] + realY) {
                             return true;
                         }
                     }
