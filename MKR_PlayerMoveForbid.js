@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // -----------------------------------------------------------------------------
 // Version
+// 1.0.5 2017/12/10 移動禁止の間、決定キーを動作させるかのフラグを追加
+//
 // 1.0.4 2017/08/27 プラグインパラメータの指定方法を変更
 //
 // 1.0.3 2017/05/24 メニュー開閉フラグが正常に動作していなかったため修正
@@ -24,21 +26,22 @@
 
 /*:
  *
- * @plugindesc (v1.0.4) プレイヤー移動禁止プラグイン
+ * @plugindesc (v1.0.5) プレイヤー移動禁止プラグイン
  * @author マンカインド
  *
- * @help = プレイヤー移動禁止プラグイン ver 1.0.4 =
- * MKR_PlayerMoveForbid.js - マンカインド
- *
- * 指定された番号のスイッチがONの間、
+ * @help 指定された番号のスイッチがONの間、
  * プレイヤー操作によるキャラの移動を禁止します。
  *
- *
- * 簡単な使い方説明:
- * プラグインパラメーター[Default_Move_Flag]にスイッチ番号を指定します。
+ * プラグインパラメーター[移動禁止スイッチ]にスイッチ番号を指定します。
  * 指定された番号のスイッチがONになっている間、
  * プレイヤー操作によるキャラの移動ができなくなります。
  * ([移動ルートの設定]コマンドなどで移動させることは可能です)
+ *
+ * [メニュー開閉制御]により、[移動禁止スイッチ]がONになっている間の
+ * メニュー開閉を制御できます。
+ *
+ * [決定キー制御]により、[移動禁止スイッチ]がONになっている間の
+ * 決定キー/タッチ操作による動作(主にイベントの起動)を制御できます。
  *
  *
  * プラグインコマンド:
@@ -66,23 +69,35 @@
  *
  *
  * @param Default_Move_Flag
- * @desc プレイヤーの移動を禁止するスイッチを指定します。
+ * @text 移動禁止スイッチ
+ * @desc ONの間、プレイヤーの移動を禁止するスイッチ番号を指定します。(デフォルト:10)
  * @type switch
  * @default 10
  *
  * @param Default_Menu_Flag
- * @desc ON:プレイヤーの移動を禁止している間、メニューの開閉を許可する。 OFF:メニュー開閉を許可しない
+ * @text メニュー開閉制御
+ * @desc プレイヤーの移動を禁止している間、メニューの開閉を許可するかどうかを設定します。(デフォルト:許可する)
  * @type boolean
+ * @on 許可する
+ * @off 許可しない
+ * @default true
+ *
+ * @param Enter Flag
+ * @text 決定キー制御
+ * @desc プレイヤーの移動を禁止している間、決定キー/タッチ操作による動作を許可するかどうかを設定します。(デフォルト:許可する)
+ * @type boolean
+ * @on 許可する
+ * @off 許可しない
  * @default true
  *
 */
 (function () {
     'use strict';
 
-    var PN = "MKR_PlayerMoveForbid";
+    const PN = "MKR_PlayerMoveForbid";
 
-    var CheckParam = function(type, param, def, min, max) {
-        var Parameters, regExp, value;
+    const CheckParam = function(type, param, def, min, max) {
+        let Parameters, regExp, value;
         Parameters = PluginManager.parameters(PN);
 
         if(arguments.length < 4) {
@@ -121,9 +136,10 @@
         return [value, type, def, min, max, param];
     }
 
-    var Params = {
+    const Params = {
         "MoveSwitch" : CheckParam("switch", "Default_Move_Flag", "10"),
         "MenuFlg" : CheckParam("bool", "Default_Menu_Flag", true),
+        "EnterFlg" : CheckParam("bool", "Enter Flag", true),
     };
 
 
@@ -132,7 +148,7 @@
     //  ・メニュー開閉許可処理を再定義します。
     //
     //=========================================================================
-    var _Game_System_isMenuEnabled = Game_System.prototype.isMenuEnabled;
+    const _Game_System_isMenuEnabled = Game_System.prototype.isMenuEnabled;
     Game_System.prototype.isMenuEnabled = function() {
         return _Game_System_isMenuEnabled.call(this)
             && ($gameSwitches.value(Params.MoveSwitch[0]) ? Params.MenuFlg[0] == true : true);
@@ -144,9 +160,29 @@
     //  ・プレイヤーの移動処理を再定義します。
     //
     //=========================================================================
-    var _Game_Player_canMove = Game_Player.prototype.canMove;
-    Game_Player.prototype.canMove = function() {
-        return _Game_Player_canMove.call(this) && !$gameSwitches.value(Params.MoveSwitch[0]);
+    const _Game_Player_executeMove = Game_Player.prototype.executeMove;
+    Game_Player.prototype.executeMove = function(direction) {
+        if(!$gameSwitches.value(Params.MoveSwitch[0])) {
+            _Game_Player_executeMove.call(this, direction);
+        }
+    };
+
+    const _Game_Player_triggerButtonAction = Game_Player.prototype.triggerButtonAction;
+    Game_Player.prototype.triggerButtonAction = function() {
+        if($gameSwitches.value(Params.MoveSwitch[0]) && !Params.EnterFlg[0]) {
+        } else {
+            _Game_Player_triggerButtonAction.call(this);
+        }
+        return false;
+    };
+
+    const _Game_Player_triggerTouchAction = Game_Player.prototype.triggerTouchAction;
+    Game_Player.prototype.triggerTouchAction = function() {
+        if($gameSwitches.value(Params.MoveSwitch[0]) && !Params.EnterFlg[0]) {
+        } else {
+            _Game_Player_triggerTouchAction.call(this);
+        }
+        return false;
     };
 
 })();
