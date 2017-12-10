@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.1 2017/12/10 アイテムメニューのカテゴリ設定を追加。
+//
 // 1.0.0 2017/10/25 初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,7 +17,7 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.0) アイテム選択カテゴリ設定プラグイン
+ * @plugindesc (v1.0.1) アイテム選択カテゴリ設定プラグイン
  * @author マンカインド
  *
  * @help [アイテム選択の処理]イベントコマンドで"武器"や"防具"を選択可能にします。
@@ -80,6 +82,20 @@
  * @value armor
  * @default item
  *
+ * @param item_menu_category
+ * @text アイテムメニューカテゴリ
+ * @desc アイテムメニューを開いたときに選択されているアイテムのカテゴリを設定します。(デフォルト:アイテム)
+ * @type select
+ * @option アイテム
+ * @value item
+ * @option 武器
+ * @value weapon
+ * @option 防具
+ * @value armor
+ * @option 大事なもの
+ * @value keyItem
+ * @default item
+ *
 */
 
 var Imported = Imported || {};
@@ -142,6 +158,7 @@ Imported.MKR_ItemSelectCategory = true;
 
     const Params = {
         "InitItemCategory" : CheckParam("string", "init_item_category", Parameters["init_item_category"], "item"),
+        "ItemMenuCategory" : CheckParam("string", "item_menu_category", Parameters["item_menu_category"], "item"),
     };
 
     //=========================================================================
@@ -201,6 +218,17 @@ Imported.MKR_ItemSelectCategory = true;
             default:
                 return _Window_EventItem_includes.call(this, item);
         }
+    };
+
+    //=========================================================================
+    // Window_ItemCategory
+    //  ・アイテムメニューのカテゴリウィンドウの項目を再定義します。
+    //
+    //=========================================================================
+    const _Window_ItemCategory_initialize = Window_ItemCategory.prototype.initialize;
+    Window_ItemCategory.prototype.initialize = function() {
+        _Window_ItemCategory_initialize.call(this);
+        this.selectSymbol(Params.ItemMenuCategory);
     };
 
 })();
