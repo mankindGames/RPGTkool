@@ -6,6 +6,14 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.3.4 2017/12/30 ・一部メモ欄のオプション指定方法でスイッチ/変数指定対応が
+//                    不完全だったため修正。
+//                  ・プレイヤーをロストした場合にONにできる(セルフ)スイッチの
+//                    設定を追加。
+//                  ・マップイベント動作中にも探索を続行できる
+//                    メモ欄オプションを追加。
+//                  ・プラグインヘルプを一部更新
+//
 // 2.3.3 2017/12/10 ・一部探索が正常に動作していなかったため修正。
 //                    スイッチの切り替えが正常に動作していなかったため修正。
 //
@@ -97,11 +105,10 @@
 
 /*:
  *
- * @plugindesc (v2.3.3) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.4) プレイヤー探索プラグイン
  * @author マンカインド
  *
- * @help =
- * 対象イベント(以下、探索者)の視界の範囲を描画し、
+ * @help 対象イベント(以下、探索者)の視界の範囲を描画し、
  * 範囲内にプレイヤーが存在した場合、
  * その探索者は発見状態となり指定されたスイッチをONにします。
  * (スイッチがONの間、探索者は話しかけられた方向に振り向かないようになります)
@@ -109,6 +116,10 @@
  * プレイヤーが視界範囲マス外に出た場合、
  * ロスト状態となりONになったスイッチがOFFになります。
  * (設定により状態以降までの時間が調整できます)
+ *
+ * ※ トリガー[自動実行]によるイベント動作中の場合、ゲーム動作負荷を考慮して
+ *    探索処理は停止します(=プレイヤーを発見/未発見状態の更新が行われません)。
+ *    (イベントメモ欄で設定変更が可能です)
  *
  *
  * 簡単な使い方説明:
@@ -178,6 +189,9 @@
  *     ・探索者がプレイヤーを発見した際に
  *       ONにするスイッチ番号またはセルフスイッチを
  *       探索者毎に指定します。
+ *
+ *     ・プレイヤーをロストした際にONになるスイッチは、
+ *       プレイヤーを発見したときに自動的にOFFになります。
  *
  *     例)
  *       Sw10 : スイッチ番号10番のスイッチをONにします。
@@ -266,6 +280,31 @@
  *     ・指定した場合、探索者がプレイヤーをロストするまでの時間が
  *       フレーム数分遅れます。
  *
+ *   Am[0または1、または\S[n]]
+ *     ・自動実行によるイベントが動作中、このオプションを設定された探索者の
+ *       探索処理を続行する(1)/続行しない(0)
+ *       デフォルトは0です。
+ *
+ *     ・探索を続行する場合、自動実行イベントが動作中の場合でも
+ *       視界範囲にプレイヤーが居るかどうかの判定が行われます。
+ *       (対象の探索者が探索開始状態になっている場合に限ります)
+ *
+ *     ・このオプションを1に設定された探索者は、探索開始状態の間
+ *       常に探索を続けるためゲーム動作負荷が上がります。
+ *       設定は慎重にお願いいたします。
+ *
+ *   Lsw[数字またはA～D]
+ *     ・探索者がプレイヤーをロストした際に
+ *       ONにするスイッチ番号またはセルフスイッチを
+ *       探索者毎に指定します。
+ *
+ *     ・プレイヤーを発見した際にONになるスイッチは、
+ *       プレイヤーをロストしたときに自動的にOFFになります。
+ *
+ *     例)
+ *       Lsw11 : スイッチ番号11番のスイッチをONにします。
+ *       LswB  : 探索者のセルフスイッチBをONにします。
+ *
  *
  * メモ欄の設定例:
  *   <PsensorL:7>
@@ -332,23 +371,24 @@
  * プラグインコマンド:
  *   PSS start
  *     ・コマンドを実行したマップ上に存在する全ての探索者が
- *       探索処理を開始します。
+ *       探索開始処理になります。
  *       (探索一時無効状態の探索者は対象外です)
  *
  *   PSS stop
  *     ・コマンドを実行したマップ上に存在する全ての探索者が
- *       探索処理を終了します。
+ *       探索停止処理状態になります。
  *
  *   PSS reset X Y ...
  *     ・コマンドを実行したマップ上に存在する全ての探索者を対象に、
- *       プラグインパラメーター[Sensor_Switch]で
- *       指定したセルフスイッチ、
- *       またはSオプションで指定したセルフスイッチの
- *       どちらかをOFFにします。(メモ欄の設定が優先されます)
+ *       プラグインパラメーター[発見後操作スイッチ]で
+ *       指定した(セルフ)スイッチ、
+ *       またはSwオプションで指定した(セルフ)スイッチの
+ *       どちらかをOFFにします。(Swオプションの設定が優先されます)
  *
- *     ・また、引数として指定したセルフスイッチも
+ *     ・また、resetの後に指定した(セルフ)スイッチも
  *       同様にOFFにします。まとめてOFFにしたい場合に指定してください。
- *       (X,Y は引数。引数はスペース区切りで記載してください)
+ *       (X,Y はセルフスイッチ/スイッチ番号。
+ *        スペース区切りで記載してください)
  *
  *   PSS t_start
  *     ・このコマンドを実行した探索者を
@@ -358,18 +398,18 @@
  *       実行が必要です。
  *
  *   PSS t_stop
- *     ・このコマンドを実行した探索者に対して探索を終了させます。
+ *     ・このコマンドを実行した探索者を探索停止状態にします。
  *
  *   PSS t_reset X Y ...
  *     ・このコマンドを実行した探索者を対象に、
- *       プラグインパラメーター[Sensor_Switch]で
+ *       プラグインパラメーター[発見後操作スイッチ]で
  *       指定した(セルフ)スイッチ、
  *       またはメモ欄のSwオプションで指定した(セルフ)スイッチの
  *       どちらかをOFFにします。(メモ欄の設定が優先されます)
  *
- *     ・"X", "Y" はセルフスイッチを表し、ここに記載したセルフスイッチも
+ *     ・"X", "Y" は(セルフ)スイッチを表し、ここに記載した(セルフ)スイッチも
  *       同様にOFFにします。まとめてOFFにしたい場合に指定してください。
- *       (セルフスイッチはカンマ区切りで記載してください)
+ *       (セルフスイッチ/スイッチ番号はスペース区切りで記載してください)
  *
  *   PSS t_move X
  *     ・このコマンドを実行した時点のプレイヤー位置に隣接する位置まで、
@@ -378,8 +418,8 @@
  *     ・Xは移動速度。1～6まで対応し、
  *       未指定の場合はイベントに設定されている速度を使用します。
  *
- *     ・プラグインパラメーター[Terrain_Decision]がOFFまたは
- *       メモ欄のTオプションが0の場合は
+ *     ・プラグインパラメーター[通行不可タイル考慮]がOFFまたは
+ *       メモ欄のTdオプションが0の場合は
  *       正しく移動できない可能性があります。
  *       (イベントのすり抜けを有効にすることで移動可能です)
  *
@@ -388,22 +428,22 @@
  *   $gameSystem.getEventSensorStatus(eventId)
  *     ・指定したイベントIDを持つ探索者に対して探索状態を取得します。
  *       [戻り値] | [意味]
- *          -1    | 探索一時無効
- *           0    | 探索停止中
- *           1    | 探索実行中
+ *          -1    | 探索一時無効状態
+ *           0    | 探索停止状態
+ *           1    | 探索実行状態
  *
  *   $gameSystem.onSensor(eventId)
  *     ・指定したイベントIDを持つ探索者を探索開始状態にします。
- *       探索停止/無効状態の探索者に対し探索を再開させる場合に使用します。
+ *       探索停止/一時無効状態の探索者に対し探索を再開させる場合に使用します。
  *
  *     ・探索を開始させるためには事前にPSS startコマンドの実行が必要です。
  *
  *   $gameSystem.offSensor(eventId)
- *     ・指定したイベントIDを持つ探索者に対し探索を停止させます。
+ *     ・指定したイベントIDを持つ探索者を探索停止状態にします。
  *
  *   $gameSystem.neutralSensor(eventId, ["X","Y",...])
  *     ・現在のマップに存在する、指定したイベントIDを持つ探索者に対し、
- *       [Sensor_Switch]で指定した(セルフ)スイッチか、
+ *       [発見後操作スイッチ]で指定した(セルフ)スイッチか、
  *       またはSwオプションで指定したセルフスイッチの
  *       どちらかをOFFにします。(メモ欄の設定が優先されます)
  *
@@ -458,13 +498,25 @@
  *
  * @param Sensor_Switch
  * @text 発見後操作スイッチ
- * @desc [初期値] プレイヤー発見時にONにするスイッチ番号またはセルフスイッチを指定。
+ * @desc [初期値] プレイヤー発見時にONにするスイッチ番号またはセルフスイッチを指定。(ロスト後操作スイッチはOFFになります)
  * @type combo
  * @option A
  * @option B
  * @option C
  * @option D
  * @default D
+ * @parent 探索設定
+ *
+ * @param Lost_Sensor_Switch
+ * @text ロスト後操作スイッチ
+ * @desc [初期値] プレイヤーロスト時にONにするスイッチ番号またはセルフスイッチを指定。(発見後操作スイッチはOFFになります)
+ * @type combo
+ * @value 0
+ * @option A
+ * @option B
+ * @option C
+ * @option D
+ * @default
  * @parent 探索設定
  *
  * @param Both_Sensor
@@ -691,8 +743,11 @@
                     if(value == "") {
                         value = (def != "")? def : value;
                     }
-                    if(!value.match(/^([A-D]|\d+)$/i)) {
-                        throw new Error('Plugin parameter value is not switch : '+param+' : '+value);
+                    if(name == "Lost_Sensor_Switch" && (value == null || value == undefined)) {
+                        value = "";
+                    }
+                    if(name != "Lost_Sensor_Switch" && !value.match(/^([A-D]|\d+)$/i)) {
+                        throw new Error('Plugin parameter value is not switch : '+name+' : '+value);
                     }
                     break;
                 default:
@@ -838,10 +893,11 @@
         DefSensorSwitch, DefBothSensor, DefRangeVisible,
         DefTerrainDecision, DefRangeColor, DefRangeOpacity,
         DefAutoSensor, DefEventDecision, DefRegionDecisions,
-        DefRealRangeX, DefRealRangeY,
+        DefRealRangeX, DefRealRangeY, DefLostSensorSwitch,
         DefFoundBallon, DefFoundCommon, DefFoundDelay, DefFoundSe,
         DefLostBallon, DefLostCommon, DefLostDelay, DefLostSe;
     DefSensorSwitch = CheckParam("switch", "Sensor_Switch", Parameters["Sensor_Switch"], "D");
+    DefLostSensorSwitch = CheckParam("switch", "Lost_Sensor_Switch", Parameters["Lost_Sensor_Switch"]);
     DefBothSensor = CheckParam("bool", "Both_Sensor", Parameters["Both_Sensor"], false);
     DefRangeVisible = CheckParam("bool", "Range_Visible", Parameters["Range_Visible"], true);
     DefTerrainDecision = CheckParam("bool", "Terrain_Decision", Parameters["Terrain_Decision"], false);
@@ -1193,6 +1249,7 @@
         this._viewRangeStatus = 0;
         this._coordinate = [];
         this._sensorSwitch = null;
+        this._lostSensorSwitch = null;
         this._sideSensor = -1;
         this._rangeVisible = -1;
         this._terrainDecision = -1;
@@ -1210,6 +1267,7 @@
         this._lostSe = lostSe;
         this._lostMaxDelay = lostDelay;
         this._lostDelay = this._lostMaxDelay;
+        this._activeMode = 0;
     };
 
     const _Game_CharacterBaseMoveStraight = Game_CharacterBase.prototype.moveStraight;
@@ -1337,6 +1395,18 @@
         return this._sensorSwitch;
     };
 
+    Game_CharacterBase.prototype.setLostSensorSwitch = function(sensorSwitch) {
+        if(isFinite(sensorSwitch)) {
+            this._lostSensorSwitch = parseInt(sensorSwitch, 10);
+        } else if(sensorSwitch.toLowerCase().match(/[a-d]/)) {
+            this._lostSensorSwitch = sensorSwitch.toUpperCase();
+        }
+    };
+
+    Game_CharacterBase.prototype.getLostSensorSwitch = function() {
+        return this._lostSensorSwitch;
+    };
+
     Game_CharacterBase.prototype.setRangeVisible = function(rangeVisible) {
         this._rangeVisible = rangeVisible;
     };
@@ -1366,7 +1436,7 @@
     };
 
     Game_CharacterBase.prototype.getRegionDecision = function() {
-        return this._regionDecision;
+        return parseInt(ConvVb(this._regionDecision), 10);
     };
 
     Game_CharacterBase.prototype.setDirectionFixed = function(directionFixed) {
@@ -1432,23 +1502,23 @@
     };
 
     Game_CharacterBase.prototype.setFoundBallon = function(ballon) {
-        this._foundBallon = Number(ballon);
+        this._foundBallon = ballon;
     };
 
     Game_CharacterBase.prototype.getFoundBallon = function() {
-        return this._foundBallon;
+        return parseInt(ConvVb(this._foundBallon), 10);
     };
 
     Game_CharacterBase.prototype.setFoundCommon = function(common) {
-        this._foundCommon = Number(common);
+        this._foundCommon = common;
     };
 
     Game_CharacterBase.prototype.getFoundCommon = function() {
-        return this._foundCommon;
+        return parseInt(ConvVb(this._foundCommon), 10);
     };
 
     Game_CharacterBase.prototype.setFoundDelay = function(delay) {
-        this._foundDelay = Number(delay);
+        this._foundDelay = parseInt(ConvVb(delay), 10);
     };
 
     Game_CharacterBase.prototype.getFoundDelay = function() {
@@ -1456,35 +1526,35 @@
     };
 
     Game_CharacterBase.prototype.resetFoundDelay = function() {
-        this._foundDelay = this._foundMaxDelay;
+        this._foundDelay = this.getFoundMaxDelay();
     };
 
     Game_CharacterBase.prototype.setFoundMaxDelay = function(delay) {
-        this._foundMaxDelay = Number(delay);
+        this._foundMaxDelay = delay;
     };
 
     Game_CharacterBase.prototype.getFoundMaxDelay = function() {
-        return this._foundMaxDelay;
+        return parseInt(ConvVb(this._foundMaxDelay), 10);
     };
 
     Game_CharacterBase.prototype.setLostBallon = function(ballon) {
-        this._lostBallon = Number(ballon);
+        this._lostBallon = ballon;
     };
 
     Game_CharacterBase.prototype.getLostBallon = function() {
-        return this._lostBallon;
+        return parseInt(ConvVb(this._lostBallon), 10);
     };
 
     Game_CharacterBase.prototype.setLostCommon = function(common) {
-        this._lostCommon = Number(common);
+        this._lostCommon = common;
     };
 
     Game_CharacterBase.prototype.getLostCommon = function() {
-        return this._lostCommon;
+        return parseInt(ConvVb(this._lostCommon), 10);
     };
 
     Game_CharacterBase.prototype.setLostDelay = function(delay) {
-        this._lostDelay = Number(delay);
+        this._lostDelay = parseInt(ConvVb(delay), 10);
     };
 
     Game_CharacterBase.prototype.getLostDelay = function() {
@@ -1492,15 +1562,23 @@
     };
 
     Game_CharacterBase.prototype.resetLostDelay = function() {
-        this._lostDelay = this._lostMaxDelay;
+        this._lostDelay = this.getLostMaxDelay();
     };
 
     Game_CharacterBase.prototype.setLostMaxDelay = function(delay) {
-        this._lostMaxDelay = Number(delay);
+        this._lostMaxDelay = delay;
     };
 
     Game_CharacterBase.prototype.getLostMaxDelay = function() {
-        return this._lostMaxDelay;
+        return parseInt(ConvVb(this._lostMaxDelay), 10);
+    };
+
+    Game_CharacterBase.prototype.setActiveMode = function(mode) {
+        this._activeMode = mode;
+    };
+
+    Game_CharacterBase.prototype.getActiveMode = function() {
+        return parseInt(ConvSw(this._activeMode, this), 10);;
     };
 
 
@@ -1578,6 +1656,9 @@
                             if(op.match(/^sw([a-d]|\d+)$/)) { // スイッチ指定
                                 m = op.match(/^sw([a-d]|\d+)$/);
                                 this.setSensorSwitch(m[1]);
+                            } else if(op.match(/^lsw([a-d]|\d+)$/)) { // ロストスイッチ指定
+                                m = op.match(/^lsw([a-d]|\d+)$/);
+                                this.setLostSensorSwitch(m[1]);
                             } else if(op.match(/^bo([0-1]|\x1bs\[(\d+|[a-d])\])$/)) { // 両隣探索指定
                                 m = op.match(/^bo([0-1]|\x1bs\[(\d+|[a-d])\])$/);
                                 this.setBothSensor(m[1]);
@@ -1616,6 +1697,9 @@
                                 m = op.match(/^ld(\d+|\x1bv\[(\d+)\])$/);
                                 this.setLostMaxDelay(m[1]);
                                 this.setLostDelay(m[1]);
+                            } else if(op.match(/^am([0-1]|\x1bs\[(\d+|[a-d])\])$/)) { // 探索続行指定
+                                m = op.match(/^am([0-1]|\x1bs\[(\d+|[a-d])\])$/);
+                                this.setActiveMode(m[1]);
                             }
                         }, this);
                     }
@@ -1633,8 +1717,8 @@
     Game_Event.prototype.sensorUpdate = function() {
         // 探索中のイベントであること
         if(this.getSensorStatus() == 1){
-            // マップイベント実行中でないこと
-            if(!this.isStarting()) {
+            // マップイベント実行中でないこと or 探索続行オプションが付与されている
+            if(!this.isStarting() || this.getActiveMode() == 1) {
                 if(this.isFoundPlayer()) {
                     if(this.getFoundStatus() == 0) {
                         this.foundPlayer();
@@ -1651,27 +1735,45 @@
     };
 
     Game_Event.prototype.foundPlayer = function() {
-        let mapId, eventId, sw, key, sensorSwitch, delay;
+        let mapId, eventId, sw, key, sensorSwitch, delay, lostSensorSwitch;
         delay = this.getFoundDelay();
 
         if(delay <= 0) {
             sensorSwitch = DefSensorSwitch[0];
+            lostSensorSwitch = DefLostSensorSwitch[0];
             mapId = $gameMap.mapId();
             eventId = this.eventId();
-            sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
 
             this.setFoundStatus(1);
             this.resetFoundDelay();
             this.resetLostDelay();
+
+            // 発見後スイッチON
+            sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
             if(isFinite(sw)) {
                 if(!$gameSwitches.value(sw)) {
                     $gameSwitches.setValue(sw, true);
                 }
-                $gameSystem.setSwitchStatuses(sw, eventId);
+                // $gameSystem.setSwitchStatuses(sw, eventId);
             } else if(sw.match(/[a-dA-D]/)) {
                 key = [mapId, eventId, sw.toUpperCase()];
                 if(!$gameSelfSwitches.value(key)) {
                     $gameSelfSwitches.setValue(key, true);
+                }
+            }
+
+            // ロスト後スイッチOFF
+            sw = (this.getLostSensorSwitch() != null)? this.getLostSensorSwitch() : lostSensorSwitch;
+            if(sw != "") {
+                if(isFinite(sw)) {
+                    if($gameSwitches.value(sw)) {
+                        $gameSwitches.setValue(sw, false);
+                    }
+                } else if(sw.match(/[a-dA-D]/)) {
+                    key = [mapId, eventId, sw.toUpperCase()];
+                    if($gameSelfSwitches.value(key)) {
+                        $gameSelfSwitches.setValue(key, false);
+                    }
                 }
             }
 
@@ -1694,18 +1796,21 @@
     };
 
     Game_Event.prototype.lostPlayer = function() {
-        let mapId, eventId, sw, key, sensorSwitch, delay;
+        let mapId, eventId, sw, key, sensorSwitch, delay, lostSensorSwitch;
         delay = this.getLostDelay();
 
         if(delay <= 0) {
             sensorSwitch = DefSensorSwitch[0];
+            lostSensorSwitch = DefLostSensorSwitch[0];
             mapId = $gameMap.mapId();
             eventId = this.eventId();
-            sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
 
             this.setFoundStatus(0);
             this.resetLostDelay();
             this.resetFoundDelay();
+
+            // 発見後スイッチOFF
+            sw = (this.getSensorSwitch() != null)? this.getSensorSwitch() : sensorSwitch;
             if(isFinite(sw)) {
                 // if($gameSwitches.value(sw) && !$gameSystem.isSwitchStatuses(sw)) {
                 if($gameSwitches.value(sw)) {
@@ -1716,6 +1821,21 @@
                 key = [mapId, eventId, sw.toUpperCase()];
                 if($gameSelfSwitches.value(key)) {
                     $gameSelfSwitches.setValue(key, false);
+                }
+            }
+
+            // ロスト後スイッチON
+            sw = (this.getLostSensorSwitch() != null)? this.getLostSensorSwitch() : lostSensorSwitch;
+            if(sw != "") {
+                if(isFinite(sw)) {
+                    if(!$gameSwitches.value(sw)) {
+                        $gameSwitches.setValue(sw, true);
+                    }
+                } else if(sw.match(/[a-dA-D]/)) {
+                    key = [mapId, eventId, sw.toUpperCase()];
+                    if(!$gameSelfSwitches.value(key)) {
+                        $gameSelfSwitches.setValue(key, true);
+                    }
                 }
             }
 
