@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.2 2017/01/05 一部プラグインとの競合を修正。
+//
 // 1.0.1 2017/01/05 アクター選択中以外の行動時にも前進しなくなっていたため修正。
 //
 // 1.0.0 2017/01/05 初版公開。
@@ -17,7 +19,7 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.1) バトルシーンカスタマイズプラグインその1
+ * @plugindesc (v1.0.2) バトルシーンカスタマイズプラグインその1
  * @author マンカインド
  *
  * @help このプラグインを導入することでバトルシーンに以下の変更を行います。
@@ -82,6 +84,19 @@ Imported.MKR_BattleCustomized_1 = true;
             this.retreat();
         } else if (!this.inHomePosition()) {
             this.stepBack();
+        }
+    };
+
+    const _BattleManager_changeActor = BattleManager.changeActor;
+    BattleManager.changeActor = function(newActorIndex, lastActorActionState) {
+        _BattleManager_changeActor.apply(this, arguments);
+
+        if(Imported.YEP_BattleEngineCore) {
+            this._actorIndex = newActorIndex;
+            let newActor = this.actor();
+            if (newActor) {
+                newActor.spriteReturnHome();
+            }
         }
     };
 
