@@ -6,11 +6,13 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
-// 1.0.2 2017/01/05 一部プラグインとの競合を修正。
+// 1.0.3 2018/01/07 一部プラグインとの競合を修正。
 //
-// 1.0.1 2017/01/05 アクター選択中以外の行動時にも前進しなくなっていたため修正。
+// 1.0.2 2018/01/05 一部プラグインとの競合を修正。
 //
-// 1.0.0 2017/01/05 初版公開。
+// 1.0.1 2018/01/05 アクター選択中以外の行動時にも前進しなくなっていたため修正。
+//
+// 1.0.0 2018/01/05 初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -19,7 +21,7 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.2) バトルシーンカスタマイズプラグインその1
+ * @plugindesc (v1.0.3) バトルシーンカスタマイズプラグインその1
  * @author マンカインド
  *
  * @help このプラグインを導入することでバトルシーンに以下の変更を行います。
@@ -87,6 +89,12 @@ Imported.MKR_BattleCustomized_1 = true;
         }
     };
 
+
+    //=========================================================================
+    // BattleManager
+    //  ・YEP_BattleEngineCore.js併用時にアクターが前進してしまうため再定義
+    //
+    //=========================================================================
     const _BattleManager_changeActor = BattleManager.changeActor;
     BattleManager.changeActor = function(newActorIndex, lastActorActionState) {
         _BattleManager_changeActor.apply(this, arguments);
@@ -96,6 +104,28 @@ Imported.MKR_BattleCustomized_1 = true;
             let newActor = this.actor();
             if (newActor) {
                 newActor.spriteReturnHome();
+            }
+        }
+    };
+
+
+    //=========================================================================
+    // Scene_Battle
+    //  ・YEP_X_BattleSysATB.js / YEP_X_BattleSysCTB.js併用時に
+    //    アクターが前進してしまうため再定義
+    //
+    //=========================================================================
+    const _Scene_Battle_startActorCommandSelection = Scene_Battle.prototype.startActorCommandSelection;
+    Scene_Battle.prototype.startActorCommandSelection = function() {
+        _Scene_Battle_startActorCommandSelection.call(this);
+        if(Imported.YEP_X_BattleSysATB) {
+            if (BattleManager.isATB()) {
+                BattleManager.actor().spriteReturnHome();
+            }
+        }
+        if(Imported.YEP_X_BattleSysCTB) {
+            if (BattleManager.isCTB()) {
+                BattleManager.actor().spriteReturnHome();
             }
         }
     };
