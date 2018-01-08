@@ -6,6 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.1.5 2018/01/09 ・イベント中にアイテムが使用可能だったのを修正。
+//                  ・イベント発生時、アイテムスロットをフェードアウトさせ
+//                    イベント完了後にフェードインさせるように修正。
+//
 // 1.1.4 2017/10/12 ・アイテムスロットに背景設定時、
 //                    ウィンドウ枠が消去されていなかったため修正。
 //
@@ -43,11 +47,11 @@
 
 /*:
  *
- * @plugindesc (v1.1.4) マップアイテムスロットプラグイン
+ * @plugindesc (v1.1.5) マップアイテムスロットプラグイン
  * @author マンカインド
  *
- * @help = マップアイテムスロットプラグイン ver 1.1.4 =
- * MKR_MapItemSlot.js - マンカインド
+ * @help = マップアイテムスロットプラグイン ver 1.1.5 =
+ * MKR_MapItemSlot.js
  *
  * マップ画面上に表示したアイテムスロットからアイテムの使用/装備を
  * することができるようになります。
@@ -129,6 +133,15 @@
  *     ・キーボード使用モード.スロット選択(Keyboard_Mode.Select_Enable)
  *         キーボードでスロットの選択が可能になります。
  *
+ *     ・イベント実行中の動作.スロットの表示(Event_Mode.Slot_Enable)
+ *         イベント実行中、スロットの表示/非表示を設定できます。
+ *
+ *     ・イベント実行中の動作.アイテム使用(Event_Mode.Use_Enable)
+ *         イベント実行中、スロットアイテムの使用可/不可を設定できます。
+ *
+ *     ・イベント実行中の動作.スロット選択(Event_Mode.Select_Enable)
+ *         イベント実行中、スロット選択の可/不可を設定できます。
+ *
  *   以下のプラグインパラメータによりアイテムスロットの挙動が変化します。
  *
  *     ・アイテム登録モード(Slot_Add_Mode)
@@ -154,6 +167,15 @@
  *       スロットからアイテムが自動的に削除されます。
  *       OFFにすると、アイテムは個数0の状態でグレー表示になります。
  *       アイテム個数が0のため、使用することはできません。
+ *
+ *     ・スロット不透明度調整
+ *         イベント実行中にスロットがフェードアウト
+ *         イベント終了後にスロットがフェードイン
+ *       等するときに、1フレーム中に操作するスロットの不透明度を指定します。
+ *       ここで指定した数値分、
+ *         不透明度を減らしながらフェードアウト
+ *         不透明度を増やしながらフェードイン
+ *       するようになります。
  *
  *
  * スロットサイズ倍率について:
@@ -333,6 +355,15 @@
  * @off 非表示
  * @parent map_setting
  *
+ * @param Slot_Opacity_Offset
+ * @text スロット不透明度調整
+ * @desc アイテムスロットのフェードイン/アウト時、1フレーム中に変更するウィンドウ不透明度を整数で指定します。(デフォルト:16)
+ * @type number
+ * @min 1
+ * @max 255
+ * @default 16
+ * @parent map_setting
+ *
  * @param Slot_Background
  * @text アイテムスロットの背景
  * @desc アイテムスロットの背景画像を指定します。(デフォルト設定での必要画像サイズ:横384px,高さ60px)
@@ -368,15 +399,6 @@
  * @default {"Size_Rate":"1.0","Padding":"12","Spacing":"6"}
  * @parent map_setting
  *
- * @param Hide_Message
- * @text 文章表示中のスロット表示
- * @desc 文章の表示中、アイテムスロットを非表示にするか選択します。(デフォルト:非表示)
- * @type boolean
- * @on 非表示
- * @off 表示
- * @default true
- * @parent map_setting
- *
  * @param Slot_Add_Mode
  * @text スロット登録モード
  * @desc 入手したアイテムを自動的にアイテムスロットに登録するか選択します。(デフォルト:登録する)
@@ -388,7 +410,7 @@
  *
  * @param Item_Use_Mode
  * @text アイテム使用モード
- * @desc アイテムの登録されたスロットにカーソルを移動後、自動的に使用するか選択します。(デフォルト:使用しない)
+ * @desc アイテムの登録されたスロットにカーソルを移動後、自動的にそのアイテムを使用するか選択します。(デフォルト:使用しない)
  * @type boolean
  * @on 使用する
  * @off 使用しない
@@ -397,7 +419,7 @@
  *
  * @param Item_Remove_Mode
  * @text アイテム削除モード
- * @desc スロットに登録されたアイテムが0個になったとき、スロットから消去するか選択します。(デフォルト:削除する)
+ * @desc スロットに登録されたアイテムが0個になったとき、スロットからそのアイテムを消去するか選択します。(デフォルト:削除する)
  * @type boolean
  * @on 削除する
  * @off 削除しない
@@ -420,6 +442,13 @@
  * @max 255
  * @min 0
  * @default 255
+ * @parent map_setting
+ *
+ * @param Event_Mode
+ * @text イベント実行中の動作
+ * @desc マップ上でイベント実行中、アイテムスロットの動作を設定します。
+ * @type struct<EventMode>
+ * @default {"Slot_Enable":"false","Use_Enable":"false","Select_Enable":"false"}
  * @parent map_setting
  *
  *
@@ -582,7 +611,6 @@
  * @parent menu_setting
  *
 */
-
 /*~struct~Key:
  *
  * @param Key
@@ -644,6 +672,33 @@
  * @type boolean
  * @on 選択可能
  * @off 選択不可
+ *
+ */
+/*~struct~EventMode:
+ *
+ * @param Slot_Enable
+ * @text スロットの表示
+ * @desc イベント実行中、スロットを表示したままにするか非表示にするかを選択します。(デフォルト:非表示)
+ * @type boolean
+ * @on 表示
+ * @off 非表示
+ * @default false
+ *
+ * @param Use_Enable
+ * @text アイテム使用
+ * @desc イベント実行中にスロットが表示されているとき、スロットアイテムの使用が可能か選択します。(デフォルト:使用不可)
+ * @type boolean
+ * @on 使用可能
+ * @off 使用不可
+ * @default false
+ *
+ * @param Select_Enable
+ * @text スロット選択
+ * @desc イベント実行中にスロットが表示されているとき、スロットを選択可能か選択します。(デフォルト:選択不可)
+ * @type boolean
+ * @on 選択可能
+ * @off 選択不可
+ * @default false
  *
  */
 /*~struct~SlotWindow:
@@ -858,6 +913,7 @@ Imported.MKR_MapItemSlot = true;
 
     Params = {
         "SlotVisible" : CheckParam("bool", "Slot_Visible", Parameters["Slot_Visible"], true),
+        "SlotOpacityOffset" : CheckParam("num", "Slot_Opacity_Offset", Parameters["Slot_Opacity_Offset"], 16, 1, 255),
         "SlotBackground" : CheckParam("string", "Slot_Background", Parameters["Slot_Background"], ""),
         "SlotBackgroundNo" : CheckParam("num", "Slot_Background_No", Parameters["Slot_Background_No"], 10, 1, 100),
         "SlotNumber" : CheckParam("num", "Slot_Number", Parameters["Slot_Number"], 10, 1, 10),
@@ -866,7 +922,6 @@ Imported.MKR_MapItemSlot = true;
         "SlotSetW" : CheckParam("bool", "Slot_Set_Weapon", Parameters["Slot_Set_Weapon"], true),
         "SlotCursorVisible" : CheckParam("bool", "Slot_Cursor_Visible", Parameters["Slot_Cursor_Visible"], true),
         "MapSlotOpacity" : CheckParam("num", "Map_Slot_Opacity", Parameters["Map_Slot_Opacity"], 255, 0, 255),
-        "HideMess" : CheckParam("bool", "Hide_Message", Parameters["Hide_Message"], true),
         "SlotAddMode" : CheckParam("bool", "Slot_Add_Mode", Parameters["Slot_Add_Mode"], true),
         "ItemRemoveMode" : CheckParam("bool", "Item_Remove_Mode", Parameters["Item_Remove_Mode"], true),
         "ItemUseMode" : CheckParam("bool", "Item_Use_Mode", Parameters["Item_Use_Mode"], false),
@@ -910,6 +965,11 @@ Imported.MKR_MapItemSlot = true;
         "MouseMode" : {
             "UseEnable" : CheckParam("bool", "MouseMode.Use_Enable", Parameters["Mouse_Mode"]["Use_Enable"], true),
             "SelectEnable" : CheckParam("bool", "MouseMode.Select_Enable", Parameters["Mouse_Mode"]["Select_Enable"], true),
+        },
+        "EventMode" : {
+            "SlotEnable" : CheckParam("bool", "EventMode.Slot_Enable", Parameters["Event_Mode"]["Slot_Enable"], false),
+            "UseEnable" : CheckParam("bool", "EventMode.Use_Enable", Parameters["Event_Mode"]["Use_Enable"], false),
+            "SelectEnable" : CheckParam("bool", "EventMode.Select_Enable", Parameters["Event_Mode"]["Select_Enable"], false),
         },
     };
 
@@ -1532,10 +1592,6 @@ Imported.MKR_MapItemSlot = true;
         return null;
     };
 
-    Window_ItemSlotBase.prototype.isHide = function() {
-        return !this.visible;
-    };
-
     Window_ItemSlotBase.prototype.update = function() {
         Window_Selectable.prototype.update.call(this);
     };
@@ -1669,6 +1725,10 @@ Imported.MKR_MapItemSlot = true;
 
     Window_MapItemSlot.prototype.initialize = function(x, y, kind) {
         Window_ItemSlotBase.prototype.initialize.call(this, x, y, kind);
+
+        this._opacityOffset = 0;
+        this._showing = false;
+        this._hiding = false;
         this.selectLast();
     };
 
@@ -1711,6 +1771,34 @@ Imported.MKR_MapItemSlot = true;
         }
 
         this._lastIndex = this.index();
+
+        if(this._showing) {
+            this.updateFadeIn();
+        } else if(this._hiding){
+            this.updateFadeOut();
+        }
+    };
+
+    Window_MapItemSlot.prototype.updateFadeIn = function() {
+        this.opacity += this._opacityOffset;
+        this.contentsOpacity += this._opacityOffset;
+
+        if(this.opacity >= Params.MapSlotOpacity[0] || this.contentsOpacity >= Params.MapSlotOpacity[0]) {
+            this.opacity = Params.MapSlotOpacity[0];
+            this.contentsOpacity = Params.MapSlotOpacity[0];
+            this._showing = false;
+        }
+    };
+
+    Window_MapItemSlot.prototype.updateFadeOut = function() {
+        this.opacity -= this._opacityOffset;
+        this.contentsOpacity -= this._opacityOffset;
+
+        if(this.opacity <= 0 || this.contentsOpacity <= 0) {
+            this.opacity = 0;
+            this.contentsOpacity = 0;
+            this._hiding = false;
+        }
     };
 
     Window_MapItemSlot.prototype.checkRedraw = function(index) {
@@ -1773,6 +1861,34 @@ Imported.MKR_MapItemSlot = true;
         } else {
             return false;
         }
+    };
+
+    Window_MapItemSlot.prototype.fadeIn = function() {
+        this._opacityOffset = Params.SlotOpacityOffset[0];
+        this._showing = true;
+        this._hiding = false;
+    };
+
+    Window_MapItemSlot.prototype.fadeOut = function() {
+        this._opacityOffset = Params.SlotOpacityOffset[0];
+        this._hiding = true;
+        this._showing = false;
+    };
+
+    Window_MapItemSlot.prototype.isShowing = function() {
+        return this._showing;
+    };
+
+    Window_MapItemSlot.prototype.isHiding = function() {
+        return this._hiding;
+    };
+
+    Window_ItemSlotBase.prototype.isHide = function() {
+        return this.opacity <= 0;
+    };
+
+    Window_ItemSlotBase.prototype.isShow = function() {
+        return this.opacity > 0;
     };
 
 
@@ -2146,23 +2262,6 @@ Imported.MKR_MapItemSlot = true;
 
 
     //=========================================================================
-    // Window_Base
-    //  ・制御文字を再定義します。
-    //
-    //=========================================================================
-    let _Window_Base_processEscapeCharacter = Window_Base.prototype.processEscapeCharacter;
-    Window_Base.prototype.processEscapeCharacter = function(code, textState) {
-        _Window_Base_processEscapeCharacter.call(this, code, textState);
-        switch (code.toLowerCase()) {
-            case 'n':
-                this.processNewLine(textState);
-                textState.index--;
-                break;
-        }
-    };
-
-
-    //=========================================================================
     // Scene_Map
     //  ・マップ画面にアイテムスロットを定義します。
     //
@@ -2180,6 +2279,7 @@ Imported.MKR_MapItemSlot = true;
         this._mapItemSlotWindow = new Window_MapItemSlot(Params.SlotX[0], Params.SlotY[0], kind);
         this._mapItemSlotWindow.setHandler("ok", this.onItemSlotOk.bind(this));
         this._mapItemSlotWindow.opacity = Params.MapSlotOpacity[0];
+        this._mapItemSlotWindow.contentsOpacity = Params.MapSlotOpacity[0];
         if(Params.SlotBackground[0] != "") {
             this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowBackSprite);
             this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowFrameSprite);
@@ -2198,30 +2298,30 @@ Imported.MKR_MapItemSlot = true;
     Scene_Map.prototype.update = function() {
         _Scene_Map_update.call(this);
 
-        // 表示判定
-        if($gameParty.isItemSlotHide() || ( Params.HideMess[0] &&
-                (this._messageWindow.isOpening() || this._messageWindow.openness ||
-                this._scrollTextWindow.visible))) {
-            this._mapItemSlotWindow.hide();
-        } else {
-            this._mapItemSlotWindow.show();
-        }
-
-        if(!$gameParty.isItemSlotHide() && !this._mapItemSlotWindow.isHide()) {
-            this.updateItemSlot();
-        }
+        this.updateItemSlot();
     };
 
     Scene_Map.prototype.updateItemSlot = function() {
-        let pressKey, index, itemSlot, actor, lastIndex, item, action, win, paramKey,
-            mouseMode, keyboardMode;
+        let index, itemSlot, actor, lastIndex, item, action, win;
         actor = $gameParty.leader();
         win = this._mapItemSlotWindow;
         index = win.index();
         lastIndex = win.lastIndex();
-        paramKey = getUseKey();
-        mouseMode = Params.MouseMode;
-        keyboardMode = Params.KeyboardMode;
+
+        // 表示判定
+        if(isEnableEventToSlot()) {
+            if ((win.isHide() || win.isHiding()) && !win.isShowing()) {
+                win.fadeIn();
+            }
+        } else {
+            if(win.isShow() && !win.isHiding() && !SceneManager._scene.isBusy()) {
+                win.fadeOut();
+            }
+        }
+
+        // if($gameParty.isItemSlotHide() || win.isHide()) {
+        //     return;
+        // }
 
         if(index < 0) {
             win.selectLast();
@@ -2232,8 +2332,8 @@ Imported.MKR_MapItemSlot = true;
         index = win.index();
 
         // アイテム使用
-        if(mouseMode.UseEnable[0] && TouchInput.isTriggered() ||
-                keyboardMode.UseEnable[0] && paramKey && Input.isTriggered(paramKey)) {
+        if( isEnableEventToUse() &&
+                (isEnableMouseToUse() || isEnableKeyboardToUse()) ) {
             win.callHandler("ok");
         }
 
@@ -2275,6 +2375,7 @@ Imported.MKR_MapItemSlot = true;
             }
         }
 
+        // console.log("visible2:"+win.visible);
         $gameParty.setItemSlotLastIndex(index);
     };
 
@@ -2289,12 +2390,10 @@ Imported.MKR_MapItemSlot = true;
 
     let _Scene_Map_isMapTouchOk = Scene_Map.prototype.isMapTouchOk;
     Scene_Map.prototype.isMapTouchOk = function() {
-        let mouseMode = Params.MouseMode;
-        if(mouseMode.UseEnable[0]) {
+        if(isEnableMouseToUse()) {
             return false;
-        } else {
-            return _Scene_Map_isMapTouchOk.call(this);
         }
+        return _Scene_Map_isMapTouchOk.call(this);
     };
 
     let _Scene_Map_terminate = Scene_Map.prototype.terminate;
@@ -2686,11 +2785,9 @@ Imported.MKR_MapItemSlot = true;
 
     // スロットウィンドウselect
     function updateSlotSelect(win, index, useFlg) {
-        let i, key, item, pushFlg, keys, mouseMode, keyboardMode;
+        let i, key, item, pushFlg, keys;
         pushFlg = false;
         keys = Params.KeyConfig;
-        mouseMode = Params.MouseMode;
-        keyboardMode = Params.KeyboardMode;
 
         // アイテムスロット選択
 
@@ -2702,7 +2799,7 @@ Imported.MKR_MapItemSlot = true;
         }
 
         // キーボード
-        if(keyboardMode.SelectEnable[0]) {
+        if(isEnableEventToSelect() && isEnableKeyboardToSelect()) {
             if(Input.isTriggered(keys.Slot1Key[0]) && slotToIndex(1) != -1) {
                 win.select(slotToIndex(1));
                 pushFlg = true;
@@ -2746,14 +2843,14 @@ Imported.MKR_MapItemSlot = true;
         }
 
         // アイテム自動使用
-        if(useFlg && pushFlg && Params.ItemUseMode[0]) {
+        if(isEnableEventToUse() && useFlg && pushFlg && Params.ItemUseMode[0]) {
             pushFlg = false;
             item = win.item();
             $gameParty.useItemSlot(item);
         }
 
         // マウスホイール
-        if(mouseMode.SelectEnable[0]) {
+        if(isEnableEventToSelect() && isEnableMouseToSelect()) {
             if(TouchInput.wheelY > 0) {
                 if(index <= 0) {
                     win.select(Params.SlotNumber[0] - 1);
@@ -2781,6 +2878,57 @@ Imported.MKR_MapItemSlot = true;
             //     }
             // }
         }
+    }
+
+    function isEnableMouseToUse() {
+        let mouseMode;
+        mouseMode = Params.MouseMode;
+
+        return (mouseMode.UseEnable[0] && TouchInput.isTriggered()) ? true : false;
+    }
+
+    function isEnableMouseToSelect() {
+        let mouseMode;
+        mouseMode = Params.MouseMode;
+
+        return mouseMode.SelectEnable[0] ? true : false;
+    }
+
+    function isEnableKeyboardToUse() {
+        let keyboardMode, paramKey;
+        keyboardMode = Params.KeyboardMode;
+        paramKey = getUseKey();
+
+        return (keyboardMode.UseEnable[0] && paramKey && Input.isTriggered(paramKey)) ? true : false;
+    }
+
+    function isEnableKeyboardToSelect() {
+        let keyboardMode;
+        keyboardMode = Params.KeyboardMode;
+
+        return keyboardMode.SelectEnable[0] ? true : false;
+    }
+
+    function isEnableEventToSlot() {
+        let eventMode;
+        eventMode = Params.EventMode;
+
+        return $gameMap.isEventRunning() ? eventMode.SlotEnable[0] ? true : false : true;
+        // return eventMode.SlotEnable[0];
+    }
+
+    function isEnableEventToUse() {
+        let eventMode;
+        eventMode = Params.EventMode;
+
+        return $gameMap.isEventRunning() ? eventMode.UseEnable[0] ? true : false : true;
+    }
+
+    function isEnableEventToSelect() {
+        let eventMode;
+        eventMode = Params.EventMode;
+
+        return $gameMap.isEventRunning() ? eventMode.SelectEnable[0] ? true : false : true;
     }
 
 })();
