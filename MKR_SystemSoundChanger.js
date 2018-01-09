@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.1 2018/01/09 サウンド変更時にデフォルトの設定を上書きしていたため修正。
+//
 // 1.0.0 2018/01/09 初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,7 +17,7 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.0) システムサウンド変更プラグイン
+ * @plugindesc (v1.0.1) システムサウンド変更プラグイン
  * @author マンカインド
  *
  * @help = MKR_SystemSoundChanger.js =
@@ -171,7 +173,8 @@ Imported.MKR_SystemSoundChanger = true;
         let val, se;
         val = Params.EscapeVar > 0 ? $gameVariables._data[Params.EscapeVar] : 0;
         if($dataSystem) {
-            se = $dataSystem.sounds[8];
+            se = JSON.stringify($dataSystem.sounds[8]);
+            se = JSON.parse(se);
         } else {
             se = {
                 name:"",
