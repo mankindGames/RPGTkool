@@ -6,6 +6,11 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.1.6 2018/01/19 ・アイテムスロットへの武器登録を無効にしたとき、
+//                    メニューから戻ると装備武器が外れてしまう問題を修正。
+//                  ・アイテムスロットメニューに背景画像を指定しない場合、
+//                    背景にマップ画面を表示するように変更。
+//
 // 1.1.5 2018/01/09 ・イベント中にアイテムが使用可能だったのを修正。
 //                  ・イベント発生時、アイテムスロットをフェードアウトさせ
 //                    イベント完了後にフェードインさせるように修正。
@@ -47,10 +52,10 @@
 
 /*:
  *
- * @plugindesc (v1.1.5) マップアイテムスロットプラグイン
+ * @plugindesc (v1.1.6) マップアイテムスロットプラグイン
  * @author マンカインド
  *
- * @help = マップアイテムスロットプラグイン ver 1.1.5 =
+ * @help = マップアイテムスロットプラグイン ver 1.1.6 =
  * MKR_MapItemSlot.js
  *
  * マップ画面上に表示したアイテムスロットからアイテムの使用/装備を
@@ -418,7 +423,7 @@
  * @parent map_setting
  *
  * @param Item_Remove_Mode
- * @text アイテム削除モード
+ * @text アイテム消去モード
  * @desc スロットに登録されたアイテムが0個になったとき、スロットからそのアイテムを消去するか選択します。(デフォルト:削除する)
  * @type boolean
  * @on 削除する
@@ -983,7 +988,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・キー判定処理を再定義します。
     //
     //=========================================================================
-    let _Input_onKeyDown = Input._onKeyDown;
+    const _Input_onKeyDown = Input._onKeyDown;
     Input._onKeyDown = function(event) {
         _Input_onKeyDown.call(this, event);
 
@@ -999,7 +1004,7 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    let _Input_onKeyUp = Input._onKeyUp;
+    const _Input_onKeyUp = Input._onKeyUp;
     Input._onKeyUp = function(event) {
         _Input_onKeyUp.call(this, event);
 
@@ -1019,7 +1024,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・アイテムスロットを操作するプラグインコマンドを定義します。
     //
     //=========================================================================
-    let _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
+    const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.call(this, command, args);
 
@@ -1146,7 +1151,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・アイテムスロットの内容を定義します。
     //
     //=========================================================================
-    let _Game_Party_initialize = Game_Party.prototype.initialize;
+    const _Game_Party_initialize = Game_Party.prototype.initialize;
     Game_Party.prototype.initialize = function() {
         _Game_Party_initialize.call(this);
 
@@ -1202,7 +1207,7 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    let _Game_Party_gainItem = Game_Party.prototype.gainItem;
+    const _Game_Party_gainItem = Game_Party.prototype.gainItem;
     Game_Party.prototype.gainItem = function(item, amount, includeEquip) {
         let type, index, i, cnt, container, actor, meta;
 
@@ -1250,7 +1255,7 @@ Imported.MKR_MapItemSlot = true;
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
                 this._itemSlot[index].type = ITEM;
-            } else if(DataManager.isWeapon(item) && actor.isEquipWtypeOk(item.wtypeId)) {
+            } else if(Params.SlotSetW[0] && DataManager.isWeapon(item) && actor.isEquipWtypeOk(item.wtypeId)) {
                 equipFlg = actor.isEquipped(item);
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
@@ -1470,7 +1475,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・リーダーアクターの武器変更処理を再定義します。
     //
     //=========================================================================
-    let _Game_Actor_isEquipChangeOk = Game_Actor.prototype.isEquipChangeOk;
+    const _Game_Actor_isEquipChangeOk = Game_Actor.prototype.isEquipChangeOk;
     Game_Actor.prototype.isEquipChangeOk = function(slotId) {
         let ret = _Game_Actor_isEquipChangeOk.call(this, slotId);
 
@@ -1481,7 +1486,7 @@ Imported.MKR_MapItemSlot = true;
         return ret;
     };
 
-    let _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
+    const _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
     Game_Actor.prototype.changeEquip = function(slotId, item) {
         let index;
 
@@ -2246,7 +2251,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・メニュー画面にアイテムスロットコマンドを定義します。
     //
     //=========================================================================
-    let _Window_MenuCommand_addOriginalCommands = Window_MenuCommand.prototype.addOriginalCommands;
+    const _Window_MenuCommand_addOriginalCommands = Window_MenuCommand.prototype.addOriginalCommands;
     Window_MenuCommand.prototype.addOriginalCommands = function() {
         _Window_MenuCommand_addOriginalCommands.call(this);
 
@@ -2266,7 +2271,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・マップ画面にアイテムスロットを定義します。
     //
     //=========================================================================
-    let _Scene_Map_createDisplayObjects = Scene_Map.prototype.createDisplayObjects;
+    const _Scene_Map_createDisplayObjects = Scene_Map.prototype.createDisplayObjects;
     Scene_Map.prototype.createDisplayObjects = function() {
         _Scene_Map_createDisplayObjects.call(this);
         this.createMapItemSlotWindow();
@@ -2294,7 +2299,7 @@ Imported.MKR_MapItemSlot = true;
         this._mapItemSlotWindow.selectLast();
     };
 
-    let _Scene_Map_update = Scene_Map.prototype.update;
+    const _Scene_Map_update = Scene_Map.prototype.update;
     Scene_Map.prototype.update = function() {
         _Scene_Map_update.call(this);
 
@@ -2339,7 +2344,7 @@ Imported.MKR_MapItemSlot = true;
 
         // 装備アイテム
         itemSlot = $gameParty.getItemSlot(lastIndex);
-        if(itemSlot && itemSlot.type == WEAPON) {
+        if(Params.SlotSetW[0] && itemSlot && itemSlot.type == WEAPON) {
             // lastIndex の装備を先に外すこと
             if(lastIndex != index) {
                 item = win.item(lastIndex);
@@ -2350,7 +2355,7 @@ Imported.MKR_MapItemSlot = true;
             }
         }
         itemSlot = $gameParty.getItemSlot(index);
-        if(itemSlot && itemSlot.type == WEAPON) {
+        if(Params.SlotSetW[0] && itemSlot && itemSlot.type == WEAPON) {
             item = win.item();
             if(itemSlot && itemSlot.type == WEAPON && !actor.isEquipped(item)) {
                 actor.changeEquipById(1, itemSlot.id);
@@ -2358,7 +2363,7 @@ Imported.MKR_MapItemSlot = true;
                 win.redrawCurrentItem();
             }
         }
-        if((itemSlot == null || itemSlot.type == ITEM) && actor.weapons().length > 0) {
+        if(Params.SlotSetW[0] && (itemSlot == null || itemSlot.type == ITEM) && actor.weapons().length > 0) {
             // 武器以外のスロット選択時に装備を確実に外す
             actor.changeEquip(0, null);
         }
@@ -2388,7 +2393,7 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    let _Scene_Map_isMapTouchOk = Scene_Map.prototype.isMapTouchOk;
+    const _Scene_Map_isMapTouchOk = Scene_Map.prototype.isMapTouchOk;
     Scene_Map.prototype.isMapTouchOk = function() {
         if(isEnableMouseToUse()) {
             return false;
@@ -2396,7 +2401,7 @@ Imported.MKR_MapItemSlot = true;
         return _Scene_Map_isMapTouchOk.call(this);
     };
 
-    let _Scene_Map_terminate = Scene_Map.prototype.terminate;
+    const _Scene_Map_terminate = Scene_Map.prototype.terminate;
     Scene_Map.prototype.terminate = function() {
         if (!SceneManager.isNextScene(Scene_Battle)) {
             this._mapItemSlotWindow.hide();
@@ -2432,11 +2437,16 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.createBackground = function(){
-        if(Params.MenuBackground[0]){
+        let background;
+        background = Params.MenuBackground[0];
+
+        if(background){
             this._backgroundSprite = new Sprite();
-            this._backgroundSprite.bitmap = ImageManager.loadPicture(Params.MenuBackground[0]);
+            this._backgroundSprite.bitmap = ImageManager.loadPicture(background);
             this.addChild(this._backgroundSprite);
             return;
+        } else {
+            Scene_ItemBase.prototype.createBackground.call(this);
         }
     };
 
@@ -2633,7 +2643,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・メニュー画面にアイテムスロットコマンドを定義します。
     //
     //=========================================================================
-    let _Scene_Menu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
+    const _Scene_Menu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
     Scene_Menu.prototype.createCommandWindow = function() {
         _Scene_Menu_createCommandWindow.call(this);
         this._commandWindow.setHandler('itemslot', this.commandItemSlot.bind(this));
@@ -2650,7 +2660,7 @@ Imported.MKR_MapItemSlot = true;
     //  ・アイテム用関数を定義します。
     //
     //=========================================================================
-    let _DataManager_extractSaveContents = DataManager.extractSaveContents;
+    const _DataManager_extractSaveContents = DataManager.extractSaveContents;
     DataManager.extractSaveContents = function(contents) {
         _DataManager_extractSaveContents.call(this, contents);
         // 処理を追記
