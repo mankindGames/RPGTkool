@@ -1,11 +1,13 @@
 //=============================================================================
 // MKR_EventGauge.js
 //=============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// Copyright (c) 2016-2018 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.7 2018/03/18 ・ゲージ不透明度をイベントごとに設定可能に。
+//
 // 1.1.6 2017/07/16 ・余計なコードを削除
 //                  ・バージョンを変更し忘れていたため修正
 //
@@ -49,17 +51,19 @@
 
 /*:
  *
- * @plugindesc (v1.1.6) イベントゲージプラグイン
+ * @plugindesc (v1.1.7) イベントゲージプラグイン
  * @author マンカインド
  *
- * @help = イベントゲージプラグイン (v1.1.6) =
+ * @help = イベントゲージプラグイン (v1.1.7) =
  *
  * 指定したイベントの足元にゲージを表示します。(表示位置は調節が可能)
  * ゲージの最大値はイベント生成(マップ移動)時に
- * イベント_メモ欄で指定した変数の値で設定されます。
+ * イベント_メモ欄で指定した値(変数も使用可能)で設定されます。
+ * (最大値の設定はイベント生成時に1度だけ設定されます。
+ *  最大値の変更は後述するプラグイン/スクリプトコマンドにより可能です)
  *
- * ゲージ残量は変数の値に対応しており、
- * 変数の値とゲージ残量が同期します。
+ * (ゲージの値に変数を使用した場合、)
+ * ゲージ残量は変数の値に対応し、変数の値とゲージ残量が同期します。
  * (ただし、ゲージ残量は最大値より上になることは無く、
  *  0より小さくなることもありません)
  *
@@ -88,6 +92,7 @@
  *     <Egauge:vr12 Wh100 Ht10 Fx3 Vs0>
  *     <Egauge:5 Ys-50>
  *     <Egauge:vr5 Xs10 Ys10 Fx1 Fc3 Sc11 Bc7>
+ *     <Egauge:50 op80>
  *
  *   プラグインコマンド(実行したイベントが持つゲージに対して効果を発揮):
  *     Egauge show
@@ -103,6 +108,7 @@
  *     Egauge add \V[10]
  *     Egauge set \V[15]
  *     Egauge maxset \V[20]
+ *     Egauge opacity 255
  *
  *   スクリプトコマンド(指定したIDのイベントが持つゲージに対して効果を発揮):
  *     $gameMap.showGaugeWindow(1);
@@ -122,6 +128,7 @@
  *     $gameMap.addGaugeValue(this._eventId, $gameVariables.value(10));
  *     $gameMap.setGaugeValue(1, $gameVariables.value(15));
  *     $gameMap.setGaugeMaxValue(1, $gameVariables.value(20));
+ *     $gameMap.setOpacity(1, 255);
  *
  *
  * ゲージの色について:
@@ -214,6 +221,10 @@
  *   Bc[数字]
  *     ・ゲージ背景カラーを数字で指定します。
  *       (プラグインパラメーターのGauge_Back_Color設定より優先されます)
+ *
+ *   Op[数字]
+ *     ・ゲージ不透明度を数字で指定します。
+ *       (プラグインパラメーターのGauge_Opacity設定より優先されます)
  *
  *
  * イベント_メモ欄の設定例:
@@ -346,6 +357,13 @@
  *
  *     ・[数字]の代わりに制御文字\V[n]を使うことで、変数n番の値を
  *       ゲージ表示色番号に設定することができます。
+ *
+ *   Egauge opacity [数字]
+ *     ・実行したイベントのゲージ不透明度を指定した[数字]に設定します。
+ *       ([数字]は0-255の間の値を指定してください)
+ *
+ *     ・[数字]の代わりに制御文字\V[n]を使うことで、変数n番の値を
+ *       ゲージ不透明度に設定することができます。
  *
  *
  * スクリプトコマンド:
@@ -510,6 +528,16 @@
  *     ・[数字]の代わりにスクリプト$gameVariables.value(n)を使うことで、
  *       変数n番の値をゲージ表示色番号に設定することができます。
  *
+ *   $gameMap.setGaugeOpacity([イベントID], [数字]);
+ *     ・指定した[イベントID]のゲージ不透明度を指定した[数字]に設定します。
+ *       ([数字]は0-255の間の値を指定してください)
+ *
+ *     ・[イベントID]をthis._eventIdにすることで、
+ *       コマンドを実行したイベントを対象にします。
+ *
+ *     ・[数字]の代わりにスクリプト$gameVariables.value(n)を使うことで、
+ *       変数n番の値をゲージ不透明度に設定することができます。
+ *
  *
  * 補足：
  *   ・このプラグインに関するメモ欄の設定、プラグインコマンドは
@@ -570,7 +598,7 @@
  * @default 19
  *
  * @param Gauge_Opacity
- * @desc ゲージの不透明度(0～255)を指定してください。(0でゲージが透明になります)(デフォルト:255)
+ * @desc [初期値] ゲージの不透明度(0～255)を指定してください。(0でゲージが透明になります)(デフォルト:255)
  * @default 255
  *
  * @param Gauge_In_Picture
@@ -749,6 +777,9 @@ Imported.MKR_EventGauge = true;
                 case "color2":
                     $gameMap.setGaugeColor2(eventId, value);
                     break;
+                case "opacity":
+                    $gameMap.setGaugeOpacity(eventId, value);
+                    break;
             }
         }
     };
@@ -785,13 +816,11 @@ Imported.MKR_EventGauge = true;
             ver = ver.replace(/\./g, "");
             if(isFinite(ver)) {
                 ver = parseInt(ver);
-                console.log(ver);
                 if(ver >= 150) {
                     bitmap = ImageManager._imageCache.get(key);
                     if (!bitmap) {
                         bitmap = new Bitmap(width - this.standardPadding() * 2, height - this.standardPadding() * 2);
                         ImageManager._imageCache.add(key, bitmap);
-                        console.log(ImageManager._imageCache.get(key));
                     }
                     this.contents = bitmap;
                 } else if(ver >= 131) {
@@ -897,7 +926,7 @@ Imported.MKR_EventGauge = true;
     };
 
     Window_Gauge.prototype.updateGauge = function() {
-        var color1, color2, backColor, width, height, fillW, option;
+        var color1, color2, backColor, width, height, fillW, option, opacity;
         width = this.contents.width;
         height = this.contents.height;
 
@@ -905,12 +934,14 @@ Imported.MKR_EventGauge = true;
         color1 = this.textColor(option["Color1"]);
         color2 = this.textColor(option["Color2"]);
         backColor = this.textColor(option["BackC"]);
+        opacity = option["PaintO"];
 
         fillW = Math.floor(width * $gameMap.event(this._gaugeNum).gaugeRate());
 
         this.contents.clear();
         this.contents.fillRect(0, 0, width, height, backColor);
         this.contents.gradientFillRect(0, 0, fillW, height, color1, color2);
+        this.contents.paintOpacity = opacity;
     };
 
     Window_Gauge.prototype.updatePosition = function() {
@@ -1189,6 +1220,23 @@ Imported.MKR_EventGauge = true;
         }
     }
 
+    Game_Map.prototype.setGaugeOpacity = function(eventId, value) {
+        value = String(value).replace(/\\/g, '\x1b');
+        value = value.replace(/\x1b\x1b/g, '\\');
+        if(/\x1bV\[\d+\]/i.test(value)) {
+            value = ConvVb(value);
+        }
+
+        if(eventId == 0) {
+            eventId = this._interpreter.eventId();
+        }
+
+        if(eventId > 0 && eventId < this._events.length) {
+            console.log(eventId + " set opacity:" + value);
+            this.event(eventId).setGaugeOpacity(value);
+        }
+    }
+
 
     //=========================================================================
     // Game_Event
@@ -1301,6 +1349,12 @@ Imported.MKR_EventGauge = true;
                     value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
                     if(value >= 0 && value <= 31) {
                         this._gaugeOption["BackC"] = value;
+                    }
+                }
+                if(/^op(\d+)$/.test(meta)) {
+                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
+                    if(value >= 0 && value <= 255) {
+                        this._gaugeOption["PaintO"] = value;
                     }
                 }
             }, this);
@@ -1488,6 +1542,15 @@ Imported.MKR_EventGauge = true;
 
         if(this.gaugeEnable() && value !== null) {
             this._gaugeOption["Color2"] = value;
+        }
+    }
+
+    Game_Event.prototype.setGaugeOpacity = function(value) {
+        var gameValue;
+        value = isFinite(value) ? parseInt(value, 10) : 0;
+
+        if(this.gaugeEnable() && value !== null) {
+            this._gaugeOption["PaintO"] = value;
         }
     }
 
