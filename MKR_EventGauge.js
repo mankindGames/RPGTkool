@@ -7,6 +7,7 @@
 // ----------------------------------------------------------------------------
 // Version
 // 1.1.7 2018/03/18 ・ゲージ不透明度をイベントごとに設定可能に。
+//                  ・ゲージ量設定を残量、最大値で分離させた。
 //
 // 1.1.6 2017/07/16 ・余計なコードを削除
 //                  ・バージョンを変更し忘れていたため修正
@@ -57,13 +58,13 @@
  * @help = イベントゲージプラグイン (v1.1.7) =
  *
  * 指定したイベントの足元にゲージを表示します。(表示位置は調節が可能)
- * ゲージの最大値はイベント生成(マップ移動)時に
+ * ゲージの最大値/残量はイベント生成(マップ移動)時に
  * イベント_メモ欄で指定した値(変数も使用可能)で設定されます。
  * (最大値の設定はイベント生成時に1度だけ設定されます。
  *  最大値の変更は後述するプラグイン/スクリプトコマンドにより可能です)
  *
- * (ゲージの値に変数を使用した場合、)
- * ゲージ残量は変数の値に対応し、変数の値とゲージ残量が同期します。
+ * (ゲージ最大値/残量に変数を使用した場合、)
+ * ゲージ最大値/残量は変数の値に対応し、変数の値とゲージ残量が同期します。
  * (ただし、ゲージ残量は最大値より上になることは無く、
  *  0より小さくなることもありません)
  *
@@ -87,6 +88,8 @@
  *
  *   イベント_メモ欄:
  *     <Egauge:vr10>
+ *     <Egauge:mvr11>
+ *     <Egauge:vr10 mvr11>
  *     <Egauge:15>
  *     <Egauge:3 Wh20 Ht6>
  *     <Egauge:vr12 Wh100 Ht10 Fx3 Vs0>
@@ -158,10 +161,37 @@
  *
  * イベント_メモ欄_基本設定:
  *   <Egauge:vr[変数番号]>
- *     ・イベントにゲージを表示します。ゲージの値は変数を使用します。
+ *     ・イベントにゲージを表示します。ゲージの残量は変数を使用します。
  *       [変数番号]の部分に変数の番号を指定してください。
  *
  *     ・ゲージ残量に使用する変数は0より大きい値を入れてください。
+ *
+ *     ・ゲージ最大値の指定がされていない場合、
+ *       イベント生成時点の変数の値を最大値として設定します。
+ *       (設定後、変数の値はゲージ残量として機能します)
+ *
+ *   <Egauge:mvr[変数番号]>
+ *     ・イベントにゲージを表示します。ゲージの最大値は変数を使用します。
+ *       [変数番号]の部分に変数の番号を指定してください。
+ *
+ *     ・ゲージ最大値に使用する変数は0より大きい値を入れてください。
+ *
+ *     ・ゲージ残量の指定がされていない場合、
+ *       イベント生成時点の変数の値を残量として設定します。
+ *       (設定後、変数の値はゲージ最大値として機能します)
+ *
+ *   <Egauge:vr[変数番号1] mvr[変数番号2]>
+ *     ・イベントにゲージを表示します。ゲージの残量/最大値は変数を使用します。
+ *       [変数番号1],[変数番号2]の部分に変数の番号を指定してください。
+ *
+ *     ・[変数番号1]がゲージ残量として使われる変数、
+ *       [変数番号2]がゲージ最大値として使われる変数になります。
+ *
+ *     ・ゲージ残量/最大値に使用する変数は0より大きい値を入れてください。
+ *
+ *     ・ゲージ残量に設定された変数の値が
+ *       ゲージ最大値に設定された変数の値より大きい場合、
+ *       自動的にゲージ最大値の値が残量として設定されます。
  *
  *   <Egauge:[数字]>
  *     ・イベントにゲージを表示します。[数字]がゲージの最大値・残量になります。
@@ -230,7 +260,19 @@
  * イベント_メモ欄の設定例:
  *   <Egauge:vr10>
  *     ・イベントにゲージを表示します。
- *       ゲージの表示は変数10番の値が反映されます。
+ *       ゲージの表示は最大値/残量ともに変数10番の値が反映されます。
+ *       (変数の変動によりゲージ残量が変化します)
+ *
+ *   <Egauge:mvr11>
+ *     ・イベントにゲージを表示します。
+ *       ゲージの表示は最大値/残量ともに変数11番の値が反映されます。
+ *       (変数の変動によりゲージ最大値が変化します)
+ *
+ *   <Egauge:vr10 mvr11>
+ *     ・イベントにゲージを表示します。
+ *       ゲージの表示は最大値が変数11番、残量が変数10番の値で反映されます。
+ *       (変数11番の変動によりゲージ最大値が、
+ *        変数10番の変動により残量が変化します)
  *
  *   <Egauge:15>
  *     ・イベントにゲージを表示します。
@@ -243,7 +285,8 @@
  *
  *   <Egauge:vr20 Xs30 Ys-40>
  *     ・イベントにゲージを表示します。
- *       ゲージの表示は変数20番の値が反映されます。
+ *       ゲージの表示は最大値/残量ともに変数20番の値が反映されます。
+ *       (変数が変動するとゲージ残量が変化します)
  *     ・ゲージのX座標をデフォルト+30px、Y座標をデフォルト-40pxで表示します。
  *
  *   <Egauge:200 Wh300 Ht10 Xs-10 Ys-10 Fx1>
@@ -254,7 +297,8 @@
  *
  *   <Egauge:vr5 Xs10 Ys10 Fx1 Fc3 Sc11 Bc7>
  *     ・画面下、右側固定でゲージを表示します。
- *       ゲージの表示は変数5番の値が反映されます。
+ *       ゲージの表示は最大値/残量ともに変数5番の値が反映されます。
+ *       (変数が変動するとゲージ残量が変化します)
  *     ・ゲージの長さ、高さはデフォルト、
  *       X座標をデフォルト+10px、Y座標をデフォルト+10pxで表示します。
  *     ・ゲージのカラー1を3番、カラー2を11番、ゲージ背景を7番の色で描画します。
@@ -304,7 +348,7 @@
  *       ゲージ残量に設定することができます。
  *
  *     ・変数によってゲージ残量が決められている場合、このコマンドによって
- *       変数の値が変化する場合があります。
+ *       変数の値が変化します。
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
@@ -318,8 +362,8 @@
  *     ・ゲージ最大値がゲージ残量を下回る場合、このコマンドによって
  *       ゲージ残量がゲージ最大値と同じになります。
  *
- *     ・変数によってゲージ残量が決められている場合、このコマンドによって
- *       変数の値が変化する場合があります。
+ *     ・変数によってゲージ最大値/残量が決められている場合、このコマンドによって
+ *       変数の値が変化します。
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
@@ -432,7 +476,7 @@
  *       変数n番の値をゲージ残量に設定することができます。
  *
  *     ・変数によってゲージ残量が決められている場合、このコマンドによって
- *       変数の値が変化する場合があります。
+ *       変数の値が変化します。
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
@@ -449,8 +493,8 @@
  *     ・ゲージ最大値がゲージ残量を下回る場合、このコマンドによって
  *       ゲージ残量がゲージ最大値と同じになります。
  *
- *     ・変数によってゲージ残量が決められている場合、このコマンドによって
- *       変数の値が変化する場合があります。
+ *     ・変数によってゲージ最大値/残量が決められている場合、このコマンドによって
+ *       変数の値が変化します
  *
  *     ・イベント_メモ欄にゲージ表示が設定されていない場合、何も変化しません。
  *
@@ -665,13 +709,15 @@ Imported.MKR_EventGauge = true;
     var convertEscapeCharacters = function(text) {
         var windowChild;
 
-        if(typeof text == "string") {
-            if(SceneManager._scene) {
-                windowChild = SceneManager._scene._windowLayer.children[0];
-                text = windowChild ? windowChild.convertEscapeCharacters(text) : ConvVb(text);
-            } else {
-                text = ConvVb(text);
-            }
+        if(typeof text != "string") {
+            return text;
+        }
+
+        if(SceneManager._scene) {
+            windowChild = SceneManager._scene._windowLayer.children[0];
+            text = windowChild ? windowChild.convertEscapeCharacters(text) : ConvVb(text);
+        } else {
+            text = ConvVb(text);
         }
 
         return text;
@@ -680,16 +726,18 @@ Imported.MKR_EventGauge = true;
     var ConvVb = function(text) {
         var num;
 
-        if(typeof text == "string") {
-            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
-                num = parseInt(arguments[1]);
-                return $gameVariables.value(num);
-            }.bind(this));
-            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
-                num = parseInt(arguments[1]);
-                return $gameVariables.value(num);
-            }.bind(this));
+        if(typeof text != "string") {
+            return text;
         }
+
+        text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+            num = parseInt(arguments[1]);
+            return $gameVariables.value(num);
+        }.bind(this));
+        text = text.replace(/\x1bV\[(\d+)\]/i, function() {
+            num = parseInt(arguments[1]);
+            return $gameVariables.value(num);
+        }.bind(this));
 
         return text;
     }
@@ -911,18 +959,21 @@ Imported.MKR_EventGauge = true;
         var chara;
         chara = $gameMap.event(this._gaugeNum);
 
-        if(chara) {
-            if (chara.isHideGauge() || chara.isTransparent() || chara.characterName() == "" || $gameMap.getGaugeInfo(this._gaugeNum) < 0) {
-                this.hide();
-            } else if(!chara.isHideGauge()) {
-                this.show();
-            }
-
-            if(chara._erased) {
-                $gameMap.delGaugeInfo(this._gaugeNum);
-                this.parent.removeChild(this);
-            }
+        if(!chara) {
+            return false;
         }
+
+        if (chara.isHideGauge() || chara.isTransparent() || chara.characterName() == "" || $gameMap.getGaugeInfo(this._gaugeNum) < 0) {
+            this.hide();
+        } else if(!chara.isHideGauge()) {
+            this.show();
+        }
+
+        if(chara._erased) {
+            $gameMap.delGaugeInfo(this._gaugeNum);
+            this.parent.removeChild(this);
+        }
+
     };
 
     Window_Gauge.prototype.updateGauge = function() {
@@ -1002,30 +1053,32 @@ Imported.MKR_EventGauge = true;
         _Game_Map_setup.call(this, mapId);
 
         this._gaugeInfos = [];
-    }
+    };
 
     Game_Map.prototype.getGaugeInfo = function(id) {
         if(id < 1) {
             return -1;
         }
         return this._gaugeInfos.indexOf(id);
-    }
+    };
 
     Game_Map.prototype.addGaugeInfo = function(id) {
         this._gaugeInfos.push(id);
-    }
+    };
 
     Game_Map.prototype.delGaugeInfo = function(id) {
         var num;
 
         if(id > 0) {
-            this.event(id).delMember();
-            num = this._gaugeInfos.indexOf(id);
-            if(num > -1) {
-                this._gaugeInfos.splice(num, 1);
-            }
+            return false;
         }
-    }
+
+        this.event(id).delMember();
+        num = this._gaugeInfos.indexOf(id);
+        if(num > -1) {
+            this._gaugeInfos.splice(num, 1);
+        }
+    };
 
     Game_Map.prototype.showGaugeWindow = function(eventId) {
         if(eventId == 0) {
@@ -1035,7 +1088,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).showGauge();
         }
-    }
+    };
 
     Game_Map.prototype.hideGaugeWindow = function(eventId) {
         if(eventId == 0) {
@@ -1045,7 +1098,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).hideGauge();
         }
-    }
+    };
 
     Game_Map.prototype.isHideGaugeWindow = function(eventId) {
         var gaugeNum, gaugeWindow, result;
@@ -1060,7 +1113,7 @@ Imported.MKR_EventGauge = true;
         }
 
         return result;
-    }
+    };
 
     Game_Map.prototype.addGaugeValue = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1076,7 +1129,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).addGaugeValue(value);
         }
-    }
+    };
 
     Game_Map.prototype.setGaugeValue = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1092,7 +1145,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeValue(value);
         }
-    }
+    };
 
     Game_Map.prototype.getGaugeValue = function(eventId) {
         var value;
@@ -1107,7 +1160,7 @@ Imported.MKR_EventGauge = true;
         }
 
         return value;
-    }
+    };
 
     Game_Map.prototype.setGaugeMaxValue = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1123,7 +1176,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeMaxValue(value);
         }
-    }
+    };
 
     Game_Map.prototype.getGaugeMaxValue = function(eventId) {
         var value;
@@ -1138,7 +1191,7 @@ Imported.MKR_EventGauge = true;
         }
 
         return value;
-    }
+    };
 
     Game_Map.prototype.setGaugeOffsetX = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1154,7 +1207,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeOffsetX(value);
         }
-    }
+    };
 
     Game_Map.prototype.setGaugeOffsetY = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1170,7 +1223,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeOffsetY(value);
         }
-    }
+    };
 
     Game_Map.prototype.setGaugeBackColor = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1186,7 +1239,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeBackColor(value);
         }
-    }
+    };
 
     Game_Map.prototype.setGaugeColor1 = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1202,7 +1255,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeColor1(value);
         }
-    }
+    };
 
     Game_Map.prototype.setGaugeColor2 = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1218,7 +1271,7 @@ Imported.MKR_EventGauge = true;
         if(eventId > 0 && eventId < this._events.length) {
             this.event(eventId).setGaugeColor2(value);
         }
-    }
+    };
 
     Game_Map.prototype.setGaugeOpacity = function(eventId, value) {
         value = String(value).replace(/\\/g, '\x1b');
@@ -1235,7 +1288,7 @@ Imported.MKR_EventGauge = true;
             console.log(eventId + " set opacity:" + value);
             this.event(eventId).setGaugeOpacity(value);
         }
-    }
+    };
 
 
     //=========================================================================
@@ -1253,12 +1306,15 @@ Imported.MKR_EventGauge = true;
     };
 
     Game_Event.prototype.addMembers = function() {
-        var vr, value, metas;
+        var vr, mvr, value, metas;
 
+        vr = 0;
+        mvr = 0;
         this._gauge = 0;
         this._gaugeMax = 0;
         this._gaugeNum = -1;
         this._gaugeVr = 0;
+        this._gaugeMvr = 0;
         this._gaugeType = "num";
         this._gaugeOption = {
             "Width"   : Params.GaugeW[0],
@@ -1275,116 +1331,176 @@ Imported.MKR_EventGauge = true;
 
         metas = GetMeta(this.event().meta, "egauge", " ");
 
-        if(metas && metas.length) {
-            metas.forEach(function(meta) {
-                meta = meta.trim().toLowerCase();
-                if(/^vr(\d+)$/.test(meta)) {
-                    vr = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
-                    if(vr > 0) {
-                        this._gaugeVr = vr;
-                        this._gauge = 0;
-                        this._gaugeType = "vr";
-                        value = $gameVariables.value(vr);
-                        if(isFinite(value)) {
-                            this._gaugeMax = parseInt(value, 10);
-                        }
-                    }
-                }
-                if(/^(\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
-                    if(value > 0 && this._gaugeType == "num") {
-                        this._gauge = value;
-                        this._gaugeMax = value;
-                    }
-                }
-                if(/^wh(\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
-                    if(value > 0) {
-                        this._gaugeOption["Width"] = value;
-                    }
-                }
-                if(/^ht(\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
-                    if(value > 0) {
-                        this._gaugeOption["Height"] = value;
-                    }
-                }
-                if(/^xs(-?\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
-                    if(value != null) {
-                        this._gaugeOption["OffsetX"] = value;
-                    }
-                }
-                if(/^ys(-?\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
-                    if(value != null) {
-                        this._gaugeOption["OffsetY"] = value;
-                    }
-                }
-                if(/^fx([1-3])$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
-                    if(value != null) {
-                        this._gaugeOption["Fix"] = value;
-                    }
-                }
-                if(/^vs([0-1])$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
-                    if(value != null) {
-                        this._gaugeOption["Visible"] = value;
-                    }
-                }
-                if(/^fc(\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
-                    if(value >= 0 && value <= 31) {
-                        this._gaugeOption["Color1"] = value;
-                    }
-                }
-                if(/^sc(\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
-                    if(value >= 0 && value <= 31) {
-                        this._gaugeOption["Color2"] = value;
-                    }
-                }
-                if(/^bc(\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
-                    if(value >= 0 && value <= 31) {
-                        this._gaugeOption["BackC"] = value;
-                    }
-                }
-                if(/^op(\d+)$/.test(meta)) {
-                    value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
-                    if(value >= 0 && value <= 255) {
-                        this._gaugeOption["PaintO"] = value;
-                    }
-                }
-            }, this);
+        if(!metas || metas.length <= 0) {
+            return false;
         }
+
+        metas.forEach(function(meta) {
+            meta = meta.trim().toLowerCase();
+            if(/^vr(\d+)$/.test(meta)) {
+                vr = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
+                this._gaugeType = "vr";
+            }
+            if(/^mvr(\d+)$/.test(meta)) {
+                mvr = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
+                this._gaugeType = "vr";
+            }
+            if(/^(\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
+                if(value > 0 && this._gaugeType == "num") {
+                    this._gauge = value;
+                    this._gaugeMax = value;
+                }
+            }
+            if(/^wh(\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
+                if(value > 0) {
+                    this._gaugeOption["Width"] = value;
+                }
+            }
+            if(/^ht(\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : 0;
+                if(value > 0) {
+                    this._gaugeOption["Height"] = value;
+                }
+            }
+            if(/^xs(-?\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
+                if(value != null) {
+                    this._gaugeOption["OffsetX"] = value;
+                }
+            }
+            if(/^ys(-?\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
+                if(value != null) {
+                    this._gaugeOption["OffsetY"] = value;
+                }
+            }
+            if(/^fx([1-3])$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
+                if(value != null) {
+                    this._gaugeOption["Fix"] = value;
+                }
+            }
+            if(/^vs([0-1])$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : null;
+                if(value != null) {
+                    this._gaugeOption["Visible"] = value;
+                }
+            }
+            if(/^fc(\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
+                if(value >= 0 && value <= 31) {
+                    this._gaugeOption["Color1"] = value;
+                }
+            }
+            if(/^sc(\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
+                if(value >= 0 && value <= 31) {
+                    this._gaugeOption["Color2"] = value;
+                }
+            }
+            if(/^bc(\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
+                if(value >= 0 && value <= 31) {
+                    this._gaugeOption["BackC"] = value;
+                }
+            }
+            if(/^op(\d+)$/.test(meta)) {
+                value = isFinite(RegExp.$1) ? parseInt(RegExp.$1, 10) : -1;
+                if(value >= 0 && value <= 255) {
+                    this._gaugeOption["PaintO"] = value;
+                }
+            }
+        }, this);
+
+        if(vr > 0 && mvr > 0) {
+            this._gaugeVr = vr;
+            this._gaugeMvr = mvr;
+            // this._gauge = 0;
+            // this._gaugeMax = 0;
+            this._gaugeType = "vr";
+            value = $gameVariables.value(mvr);
+            if(isFinite(value)) {
+                this._gaugeMax = parseInt(value, 10);
+            }
+            value = $gameVariables.value(vr);
+            if(isFinite(value)) {
+                this._gauge = parseInt(value, 10);
+            }
+        } else if(vr > 0) {
+            this._gaugeVr = vr;
+            this._gaugeMvr = 0;
+            // this._gaugeMax = 0;
+            this._gaugeType = "a_vr";
+            value = $gameVariables.value(vr);
+            if(isFinite(value)) {
+                this._gaugeMax = parseInt(value, 10);
+                this._gauge = parseInt(value, 10);
+            }
+        } else if(mvr > 0) {
+            this._gaugeVr = 0;
+            this._gaugeMvr = mvr;
+            // this._gaugeMax = 0;
+            this._gaugeType = "a_mvr";
+            value = $gameVariables.value(mvr);
+            if(isFinite(value)) {
+                this._gaugeMax = parseInt(value, 10);
+                this._gauge = parseInt(value, 10);
+            }
+        }
+
+    };
+
+    var _Game_Event_update = Game_Event.prototype.update;
+    Game_Event.prototype.update = function() {
+        _Game_Event_update.call(this);
+
+        this.checkGaugeVariable();
+    };
+
+    // ゲージ残量と最大値の関係チェック
+    Game_Event.prototype.checkGaugeVariable = function() {
+        let gaugeValue, gaugeMaxValue;
+
+        if(!this.gaugeEnable()) {
+            return false;
+        }
+
+        gaugeValue = this.getGaugeValue();
+        gaugeMaxValue = this.getGaugeMaxValue();
+
+        if(gaugeValue > gaugeMaxValue) {
+            this.setGaugeValue(gaugeMaxValue);
+        }
+
     };
 
     Game_Event.prototype.gaugeEnable = function() {
         return this._gaugeType !== undefined;
-    }
+    };
 
     Game_Event.prototype.gaugeRate = function() {
         var value, maxValue;
 
-        if(this.gaugeEnable()) {
-            value = this.getGaugeValue();
-            maxValue = this.getGaugeMaxValue();
-            if(maxValue == 0) {
-                return 0;
-            }
-            return value / maxValue;
-        } else {
+        if(!this.gaugeEnable()) {
             return 0;
         }
+
+        value = this.getGaugeValue();
+        maxValue = this.getGaugeMaxValue();
+        if(maxValue == 0) {
+            return 0;
+        }
+
+        return value / maxValue;
     };
 
     Game_Event.prototype.setGaugeNum = function(index) {
         if(this.gaugeEnable()) {
             this._gaugeNum = index;
         }
-    }
+    };
 
     Game_Event.prototype.getGaugeNum = function() {
         var value;
@@ -1393,93 +1509,147 @@ Imported.MKR_EventGauge = true;
         if(this.gaugeEnable()) {
             value = this._gaugeNum;
         }
+
         return value;
-    }
+    };
 
     Game_Event.prototype.addGaugeValue = function(value) {
         var gameValue, result;
         value = isFinite(value) ? parseInt(value, 10) : 0;
 
-        if(this.gaugeEnable()) {
-            gameValue = this.getGaugeValue();
-
-            if(value != 0) {
-                result = gameValue + value;
-                gameValue = this.getGaugeMaxValue();
-                if(result < 0) {
-                    result = 0;
-                } else if(result > gameValue) {
-                    result = gameValue;
-                }
-                this.setGaugeValue(result);
-            }
+        if(!this.gaugeEnable()) {
+            return false;
         }
-    }
+
+        gameValue = this.getGaugeValue();
+
+        if(value != 0) {
+            result = gameValue + value;
+            gameValue = this.getGaugeMaxValue();
+            if(result < 0) {
+                result = 0;
+            } else if(result > gameValue) {
+                result = gameValue;
+            }
+            this.setGaugeValue(result);
+        }
+
+    };
 
     Game_Event.prototype.setGaugeValue = function(value) {
         var maxValue;
         value = isFinite(value) ? parseInt(value, 10) : -1;
 
-        if(this.gaugeEnable()) {
-            maxValue = this.getGaugeMaxValue();
+        if(!this.gaugeEnable()) {
+            return false;
+        }
 
-            if(value >= 0 && maxValue >= value) {
-                if(this._gaugeType == "vr") {
+        maxValue = this.getGaugeMaxValue();
+        if(value > maxValue) {
+            value = maxValue;
+        }
+
+        if(value >= 0) {
+            switch(this._gaugeType) {
+                case "vr":
+                case "a_vr":
                     $gameVariables.setValue(this._gaugeVr, value);
-                } else if(this._gaugeType == "num") {
+                    break;
+                case "a_mvr":
+                case "num":
                     this._gauge = value;
-                }
+                    break;
             }
         }
-    }
+
+    };
 
     Game_Event.prototype.getGaugeValue = function() {
         var value;
         value = -1;
 
-        if(this.gaugeEnable()) {
-            if(this._gaugeType == "vr") {
+        if(!this.gaugeEnable()) {
+            return value;
+        }
+
+        switch(this._gaugeType) {
+            case "vr":
+            case "a_vr":
                 value = $gameVariables.value(this._gaugeVr);
-            } else if(this._gaugeType == "num") {
+                break;
+            case "a_mvr":
+            case "num":
                 value = this._gauge;
-            }
+                break;
         }
 
         return value;
-    }
+    };
 
     Game_Event.prototype.setGaugeMaxValue = function(value) {
-        var gameValue;
+        var maxValue;
         value = isFinite(value) ? parseInt(value, 10) : 0;
 
-        if(this.gaugeEnable()) {
-            if(value > 0) {
-                if(this._gaugeType == "vr") {
-                    gameValue = $gameVariables.value(this._gaugeVr);
-                    if(value < gameValue) {
-                        $gameVariables.setValue(this._gaugeVr, value);
-                    }
-                } else if(this._gaugeType == "num") {
-                    gameValue = this._gauge;
-                    if(value < gameValue) {
-                        this._gauge = value;
-                    }
+        if(!this.gaugeEnable()) {
+            return false;
+        }
+
+        if(value <= 0) {
+            return false;
+        }
+
+        maxValue = this.getGaugeMaxValue();
+
+        switch(this._gaugeType) {
+            case "vr":
+                if(value < maxValue) {
+                    $gameVariables.setValue(this._gaugeVr, value);
+                }
+                $gameVariables.setValue(this._gaugeMvr, value);
+                break;
+            case "a_vr":
+                if(value < maxValue) {
+                    $gameVariables.setValue(this._gaugeVr, value);
                 }
                 this._gaugeMax = value;
-            }
+                break;
+            case "a_mvr":
+                if(value < maxValue) {
+                    this._gauge = value;
+                }
+                $gameVariables.setValue(this._gaugeMvr, value);
+                break;
+            case "num":
+                if(value < maxValue) {
+                    this._gauge = value;
+                }
+                this._gaugeMax = value;
+                break;
         }
-    }
+
+    };
 
     Game_Event.prototype.getGaugeMaxValue = function() {
         var value;
         value = -1;
 
-        if(this.gaugeEnable()) {
-            value = this._gaugeMax;
+        if(!this.gaugeEnable()) {
+            return value;
+        }
+
+        switch(this._gaugeType) {
+            case "vr":
+            case "a_mvr":
+                value = $gameVariables.value(this._gaugeMvr);
+                break;
+            case "a_vr":
+            case "num":
+                value = this._gaugeMax;
+                break;
         }
 
         return value;
-    }
+    };
 
     Game_Event.prototype.setGaugeOffsetX = function(value) {
         value = isFinite(value) ? parseInt(value, 10) : null;
@@ -1487,7 +1657,7 @@ Imported.MKR_EventGauge = true;
         if(this.gaugeEnable() && value !== null) {
             this._gaugeOption["OffsetX"] = value;
         }
-    }
+    };
 
     Game_Event.prototype.setGaugeOffsetY = function(value) {
         value = isFinite(value) ? parseInt(value, 10) : null;
@@ -1495,11 +1665,11 @@ Imported.MKR_EventGauge = true;
         if(this.gaugeEnable() && value !== null) {
             this._gaugeOption["OffsetY"] = value;
         }
-    }
+    };
 
     Game_Event.prototype.getGaugeOption = function() {
         return this._gaugeOption;
-    }
+    };
 
     Game_Event.prototype.hideGauge = function() {
         if(this.gaugeEnable()) {
@@ -1514,11 +1684,7 @@ Imported.MKR_EventGauge = true;
     };
 
     Game_Event.prototype.isHideGauge = function() {
-        if(this.gaugeEnable()) {
-            return !this._gaugeOption["Visible"];
-        } else {
-            return false;
-        }
+        return this.gaugeEnable() ? !this._gaugeOption["Visible"] : false;
     };
 
     Game_Event.prototype.setGaugeBackColor = function(value) {
@@ -1527,7 +1693,7 @@ Imported.MKR_EventGauge = true;
         if(this.gaugeEnable() && value !== null) {
             this._gaugeOption["BackC"] = value;
         }
-    }
+    };
 
     Game_Event.prototype.setGaugeColor1 = function(value) {
         value = isFinite(value) ? parseInt(value, 10) : null;
@@ -1535,7 +1701,7 @@ Imported.MKR_EventGauge = true;
         if(this.gaugeEnable() && value !== null) {
             this._gaugeOption["Color1"] = value;
         }
-    }
+    };
 
     Game_Event.prototype.setGaugeColor2 = function(value) {
         value = isFinite(value) ? parseInt(value, 10) : null;
@@ -1543,7 +1709,7 @@ Imported.MKR_EventGauge = true;
         if(this.gaugeEnable() && value !== null) {
             this._gaugeOption["Color2"] = value;
         }
-    }
+    };
 
     Game_Event.prototype.setGaugeOpacity = function(value) {
         var gameValue;
@@ -1552,7 +1718,7 @@ Imported.MKR_EventGauge = true;
         if(this.gaugeEnable() && value !== null) {
             this._gaugeOption["PaintO"] = value;
         }
-    }
+    };
 
     Game_Event.prototype.delMember = function() {
         if(this._gauge !== undefined) {
@@ -1567,13 +1733,16 @@ Imported.MKR_EventGauge = true;
         if(this._gaugeVr !== undefined) {
             delete this._gaugeVr;
         }
+        if(this._gaugeMvr !== undefined) {
+            delete this._gaugeMvr;
+        }
         if(this._gaugeType !== undefined) {
             delete this._gaugeType;
         }
         if(this._gaugeOption !== undefined) {
             delete this._gaugeOption;
         }
-    }
+    };
 
 
     //=========================================================================
@@ -1592,7 +1761,7 @@ Imported.MKR_EventGauge = true;
         }
 
         return str;
-    }
+    };
 
 
 })();
