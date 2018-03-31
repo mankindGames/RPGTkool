@@ -1,11 +1,14 @@
 //=============================================================================
 // MKR_StateMessageVariation.js
 //=============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// Copyright (c) 2016-2018 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.1 2018/04/01 表示メッセージが1つのみの場合、
+//                  正常に動作していなかった問題を修正
+//
 // 1.0.0 2017/01/21 初版公開
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -149,7 +152,7 @@
     //  messageID3:対象ステートが解除されたときに表示するメッセージID
     //
     //=========================================================================
-    var _Window_BattleLog_initialize = Window_BattleLog.prototype.initialize;
+    const _Window_BattleLog_initialize = Window_BattleLog.prototype.initialize;
     Window_BattleLog.prototype.initialize = function() {
         _Window_BattleLog_initialize.call(this);
 
@@ -157,8 +160,8 @@
     };
 
     Window_BattleLog.prototype.setBattlerNotes = function(target) {
-        var battlerPattern, battler, notes, i, item, m, stateId, mesIds;
-        battlerPattern = /<(?:state)(\d+)\:(\d[,\d]+|,[,\d]+)>/i;
+        let battlerPattern, battler, notes, i, item, m, stateId, mesIds;
+        battlerPattern = /<(?:state)(\d+)\:(\d[,\d]*|,[,\d]*)>/i;
         this._battlerNotes = [];
         if(target.isActor()) {
             battler = target.actor();
@@ -189,15 +192,15 @@
         }
     };
 
-    var _Window_BattleLog_displayChangedStates = Window_BattleLog.prototype.displayChangedStates;
+    const _Window_BattleLog_displayChangedStates = Window_BattleLog.prototype.displayChangedStates;
     Window_BattleLog.prototype.displayChangedStates = function(target) {
         this.setBattlerNotes(target);
         _Window_BattleLog_displayChangedStates.call(this, target);
     };
 
-    var _Window_BattleLog_displayAddedStates = Window_BattleLog.prototype.displayAddedStates;
+    const _Window_BattleLog_displayAddedStates = Window_BattleLog.prototype.displayAddedStates;
     Window_BattleLog.prototype.displayAddedStates = function(target) {
-        var statePattern, notes, i, item, m, mesId, mesFlg, stateMsg, mes, key;
+        let statePattern, notes, i, item, m, mesId, mesFlg, stateMsg, mes, key;
         statePattern = /<(?:statemes)(\d+)\:(.+)>/i;
         mesFlg = false;
         stateMsg = "";
@@ -247,9 +250,9 @@
         }
     };
 
-    var _Window_BattleLog_displayRemovedStates = Window_BattleLog.prototype.displayRemovedStates;
+    const _Window_BattleLog_displayRemovedStates = Window_BattleLog.prototype.displayRemovedStates;
     Window_BattleLog.prototype.displayRemovedStates = function(target) {
-        var statePattern, notes, i, item, m, mesId, mesFlg, stateMsg, mes, key;
+        let statePattern, notes, i, item, m, mesId, mesFlg, stateMsg, mes, key;
         statePattern = /<(?:statemes)(\d+)\:(.+)>/i;
         mesFlg = false;
         stateMsg = "";
@@ -295,9 +298,9 @@
         }
     };
 
-    var _Window_BattleLog_displayCurrentState = Window_BattleLog.prototype.displayCurrentState
+    const _Window_BattleLog_displayCurrentState = Window_BattleLog.prototype.displayCurrentState
     Window_BattleLog.prototype.displayCurrentState = function(subject) {
-        var statePattern, notes, i, item, m, mesId, mesFlg, stateMsg, mes, key, states,
+        let statePattern, notes, i, item, m, mesId, mesFlg, stateMsg, mes, key, states,
             state;
         statePattern = /<(?:statemes)(\d+)\:(.+)>/i;
         mesFlg = false;
