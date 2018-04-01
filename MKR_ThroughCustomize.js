@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.1 2018/04/01 イベントページに対しすり抜けの不許可設定を行えるようにした。
+//
 // 1.0.0 2018/03/25 初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,15 +17,21 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.0) すり抜けカスタマイズ
+ * @plugindesc (v1.0.1) すり抜けカスタマイズ
  * @author マンカインド
  *
- * @help = すり抜けカスタマイズ ver 1.0.0 =
+ * @help = すり抜けカスタマイズ ver 1.0.1 =
  * MKR_ThroughCustomize.js
  *
  * プラグインパラメータで指定したスイッチがONの間、
  * プレイヤーがすり抜け状態ですり抜けられる対象が他イベントのみに制限されます。
  * = 壁や障害物など、通行不可能な地形がすり抜けられなくなります。
+ *
+ * また、イベントページ最初の注釈文に以下の記述がされたイベントは
+ * プレイヤーがすり抜けることができなくなります。
+ * (そのページの出現条件を満たしている場合のみ)
+ *
+ *   <すり抜け禁止>
  *
  * オマケ機能として、プラグインパラメータからリージョン、地形タグを
  * 指定することでそれらが設定されたマスもすり抜け不可になります。
@@ -152,20 +160,41 @@ Imported.MKR_ThroughCustomize = true;
         }),
     };
 
+    const Regex = {
+        "ThroughDisable" : /<すり抜け禁止>/,
+    };
+
 
     //=========================================================================
-    //
-    //  ・
+    // Game_Player
+    //  ・プレイヤーの移動可能判定処理を再定義します。
     //
     //=========================================================================
     const _Game_Player_canPass = Game_Player.prototype.canPass;
     Game_Player.prototype.canPass = function(x, y, d) {
-        let ret, x2, y2, regionId, terrainTag;
+        let ret;
         ret = _Game_Player_canPass.apply(this, arguments);
+
+
+        if(this.canThrough(ret, x, y, d)) {
+            return ret;
+        }
+
+        return false;
+    };
+
+    Game_Player.prototype.canThrough = function(ret, x, y, d) {
+        let x2, y2, regionId, terrainTag, events, hasThroughTag;
         x2 = $gameMap.xWithDirection(x, d);
         y2 = $gameMap.yWithDirection(y, d);
         regionId = $gameMap.regionId(x2, y2);
         terrainTag = $gameMap.terrainTag(x2, y2);
+        events = $gameMap.eventsXy(x2, y2);
+        hasThroughTag = function(events) {
+            return events.some(function(ev) {
+                return ev.hasThroughTag();
+            });
+        };
 
         if(!ret || !$gameSwitches.value(Params.EnableSwitch)) {
             return ret;
@@ -182,8 +211,71 @@ Imported.MKR_ThroughCustomize = true;
         if(Params.TerrainSetting.indexOf(terrainTag) != -1) {
             return false;
         }
+        if(hasThroughTag(events)) {
+            return false;
+        }
+
+        // switch(true) {
+        //     case !ret || !$gameSwitches.value(Params.EnableSwitch):
+        //     case !this.isThrough() || this.isDebugThrough():
+        //         return ret;
+        //     case !this.isMapPassable(x, y, d):
+        //     case Params.RegionSetting.indexOf(regionId) != -1:
+        //     case Params.TerrainSetting.indexOf(terrainTag) != -1:
+        //     case hasThroughTag(events):
+        //         return false;
+        // }
 
         return ret;
     };
+
+
+    //=========================================================================
+    // Game_Event
+    //  ・ページセットアップに注釈文を解釈する処理を定義します。
+    //  ・イベントごとにすり抜け禁止設定を追加します。
+    //
+    //=========================================================================
+    const _Game_Event_initMembers = Game_Event.prototype.initMembers;
+    Game_Event.prototype.initMembers = function() {
+        _Game_Event_initMembers.call(this);
+        this._throughTag = 0;
+    };
+
+    const _Game_Event_setupPage = Game_Event.prototype.setupPage;
+    Game_Event.prototype.setupPage = function() {
+        _Game_Event_setupPage.call(this);
+
+        this.setupThroughTag();
+    };
+
+    Game_Event.prototype.setupThroughTag = function() {
+        let page, comment;
+        this._throughTag = 0;
+        page = this.page();
+        comment = "";
+
+        if(!page) {
+            return;
+        }
+
+        page.list.forEach(function(list) {
+            if(!list || list.code != 108 && list.code != 408) {
+                return false;
+            }
+            if(comment.length > 0) {
+                comment += "\n";
+            }
+            comment += list.parameters[0];
+        });
+
+        if(Regex.ThroughDisable.test(comment)) {
+            this._throughTag = 1;
+        }
+    };
+
+    Game_Event.prototype.hasThroughTag = function() {
+        return this._throughTag;
+    }
 
 })();
