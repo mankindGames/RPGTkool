@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.8 2018/05/29 ・一部プラグインとの競合を修正。
+//
 // 1.1.7 2018/03/18 ・ゲージ不透明度をイベントごとに設定可能に。
 //                  ・ゲージ量設定を残量、最大値で分離させた。
 //
@@ -52,10 +54,10 @@
 
 /*:
  *
- * @plugindesc (v1.1.7) イベントゲージプラグイン
+ * @plugindesc (v1.1.8) イベントゲージプラグイン
  * @author マンカインド
  *
- * @help = イベントゲージプラグイン (v1.1.7) =
+ * @help = イベントゲージプラグイン (v1.1.8) =
  *
  * 指定したイベントの足元にゲージを表示します。(表示位置は調節が可能)
  * ゲージの最大値/残量はイベント生成(マップ移動)時に
@@ -912,8 +914,12 @@ Imported.MKR_EventGauge = true;
 
     Window_Gauge.prototype.windowX = function() {
         var option, value;
-
         value = 0;
+
+        if(!$gameMap.event(this._gaugeNum)) {
+            return;
+        }
+
         option = $gameMap.event(this._gaugeNum).getGaugeOption();
         switch(option["Fix"]) {
             case 1:
@@ -935,8 +941,12 @@ Imported.MKR_EventGauge = true;
 
     Window_Gauge.prototype.windowY = function() {
         var option, value;
-
         value = 0;
+
+        if(!$gameMap.event(this._gaugeNum)) {
+            return;
+        }
+
         option = $gameMap.event(this._gaugeNum).getGaugeOption();
         if(option["Fix"] != null) {
             value = Graphics.boxHeight - this.height;
@@ -960,10 +970,12 @@ Imported.MKR_EventGauge = true;
         chara = $gameMap.event(this._gaugeNum);
 
         if(!chara) {
+            $gameMap.delGaugeInfo(this._gaugeNum);
+            this.parent.removeChild(this);
             return false;
         }
 
-        if (chara.isHideGauge() || chara.isTransparent() || chara.characterName() == "" || $gameMap.getGaugeInfo(this._gaugeNum) < 0) {
+        if (chara.isHideGauge() || chara.isTransparent() || chara.characterName() == "" || !$gameMap.getGaugeInfo(this._gaugeNum)) {
             this.hide();
         } else if(!chara.isHideGauge()) {
             this.show();
@@ -981,6 +993,10 @@ Imported.MKR_EventGauge = true;
         width = this.contents.width;
         height = this.contents.height;
 
+        if(!$gameMap.event(this._gaugeNum)) {
+            return;
+        }
+
         option = $gameMap.event(this._gaugeNum).getGaugeOption();
         color1 = this.textColor(option["Color1"]);
         color2 = this.textColor(option["Color2"]);
@@ -996,6 +1012,10 @@ Imported.MKR_EventGauge = true;
     };
 
     Window_Gauge.prototype.updatePosition = function() {
+        if(!$gameMap.event(this._gaugeNum)) {
+            return;
+        }
+
         this.x = this.windowX();
         this.y = this.windowY();
         this.z = $gameMap.event(this._gaugeNum).screenZ();
@@ -1009,36 +1029,49 @@ Imported.MKR_EventGauge = true;
     //=========================================================================
     var _Spriteset_Map_createUpperLayer = Spriteset_Map.prototype.createUpperLayer;
     Spriteset_Map.prototype.createUpperLayer = function() {
-        if(Params.GaugeInPict[0] > 0) {
-            _Spriteset_Map_createUpperLayer.call(this);
-            this.createGaugeWindow();
-        } else {
-            this.createGaugeWindow();
-            _Spriteset_Map_createUpperLayer.call(this);
-        }
-    };
-
-    Spriteset_Map.prototype.createGaugeWindow = function() {
-        var gaugeIdx, gaugeNum, gaugeWindow, gaugeWindows, i, j;
-        i = 0;
-        j = 1;
-        gaugeWindows = [];
+        _Spriteset_Map_createUpperLayer.call(this);
 
         $gameMap.events().forEach(function(event) {
             if(event && GetMeta(event.event().meta, "egauge") != "") {
-                gaugeWindows[j] = new Window_Gauge(event.eventId());
-                $gameMap.addGaugeInfo(event.eventId());
-                if(gaugeWindows[j] != null) {
-                    if(Params.GaugeInPict[0] > 0) {
-                        this._pictureContainer.addChildAt(gaugeWindows[j], Params.GaugeInPict[0] + i);
-                        i++;
-                    } else {
-                        this.addChild(gaugeWindows[j]);
-                    }
-                }
-                j++;
+                $gameMap.addGaugeInfo({id:event.eventId(), generated:false});
             }
         }, this);
+    };
+
+    const _Spriteset_Map_update = Spriteset_Map.prototype.update;
+    Spriteset_Map.prototype.update = function() {
+        _Spriteset_Map_update.call(this);
+
+        this.createGaugeWindow();
+    };
+
+    Spriteset_Map.prototype.createGaugeWindow = function() {
+        let i, id, push, event, gaugeWindow;
+        i = 0;
+        push = $gameMap.getGaugePush();
+
+        if(!push || push.length < 1) {
+            return;
+        }
+
+        while(push.length) {
+            event = $gameMap.event(push.shift());
+            if(!event) {
+                break;
+            }
+            gaugeWindow = new Window_Gauge(event.eventId());
+            if(gaugeWindow != null) {
+                if(Params.GaugeInPict[0] > 0) {
+                    this._pictureContainer.addChildAt(gaugeWindow, Params.GaugeInPict[0] + i);
+                    i++;
+                } else {
+                    // this.addChildAt(gaugeWindow, 100 + i);
+                    this._tilemap.addChild(gaugeWindow);
+                    i++
+                }
+                $gameMap.generatedGauge(event.eventId());
+            }
+        }
     };
 
 
@@ -1053,31 +1086,102 @@ Imported.MKR_EventGauge = true;
         _Game_Map_setup.call(this, mapId);
 
         this._gaugeInfos = [];
+        this._gaugePush = [];
     };
 
     Game_Map.prototype.getGaugeInfo = function(id) {
-        if(id < 1) {
-            return -1;
+        let info, i, cnt;
+        info = null;
+        i = 0;
+
+        if(id < 1 || !this._gaugeInfos) {
+            return info;
         }
-        return this._gaugeInfos.indexOf(id);
+
+        cnt = this._gaugeInfos.length;
+        for(i; i < cnt; i++) {
+            if(this._gaugeInfos[i].id == id) {
+                info = this._gaugeInfos[i];
+                break;
+            }
+        }
+
+        // return this._gaugeInfos.indexOf(id);
+        return info;
     };
 
-    Game_Map.prototype.addGaugeInfo = function(id) {
-        this._gaugeInfos.push(id);
-    };
+    Game_Map.prototype.generatedGauge = function(id) {
+        let info, i, cnt;
+        info = null;
+        cnt = this._gaugeInfos.length;
+        i = 0;
 
-    Game_Map.prototype.delGaugeInfo = function(id) {
-        var num;
-
-        if(id > 0) {
+        if(id < 1) {
             return false;
         }
 
-        this.event(id).delMember();
-        num = this._gaugeInfos.indexOf(id);
+        for(i; i < cnt; i++) {
+            if(this._gaugeInfos[i].id == id) {
+                this._gaugeInfos[i].generated = true;
+                break;
+            }
+        }
+
+        return true;
+    };
+
+    Game_Map.prototype.isGeneratedGauge = function(id) {
+        let info, i, cnt;
+        cnt = this._gaugeInfos.length;
+        i = 0;
+
+        if(id < 1) {
+            return true;
+        }
+
+        for(i; i < cnt; i++) {
+            if(this._gaugeInfos[i].id == id) {
+                return this._gaugeInfos[i].generated;
+            }
+        }
+
+        return true;
+    };
+
+    Game_Map.prototype.addGaugeInfo = function(info) {
+        this._gaugeInfos.push(info);
+        this._gaugePush.push(info.id);
+    };
+
+    Game_Map.prototype.delGaugeInfo = function(id) {
+        let num, i, cnt;
+        cnt = this._gaugeInfos.length;
+        num = -1;
+        i = 0;
+
+        if(id < 1) {
+            return false;
+        }
+
+        // num = this._gaugeInfos.indexOf(id);
+        for(; i < cnt; i++) {
+            if(this._gaugeInfos[i].id == id) {
+                num = i;
+                break;
+            }
+        }
         if(num > -1) {
             this._gaugeInfos.splice(num, 1);
         }
+
+        if(!this.event(id)) {
+            return;
+        }
+        this.event(id).delMember();
+    };
+
+    Game_Map.prototype.getGaugePush = function() {
+        return this._gaugePush;
     };
 
     Game_Map.prototype.showGaugeWindow = function(eventId) {
@@ -1450,6 +1554,7 @@ Imported.MKR_EventGauge = true;
             }
         }
 
+        $gameMap.addGaugeInfo({id:this.eventId(), generated:false});
     };
 
     var _Game_Event_update = Game_Event.prototype.update;
