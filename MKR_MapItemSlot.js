@@ -1,11 +1,13 @@
 //===============================================================================
 // MKR_MapItemSlot.js
 //===============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.1.7 2018/07/06 ・一部プラグインとの競合を解決。
+//
 // 1.1.6 2018/01/19 ・アイテムスロットへの武器登録を無効にしたとき、
 //                    メニューから戻ると装備武器が外れてしまう問題を修正。
 //                  ・アイテムスロットメニューに背景画像を指定しない場合、
@@ -51,11 +53,10 @@
 //===============================================================================
 
 /*:
- *
- * @plugindesc (v1.1.6) マップアイテムスロットプラグイン
+ * @plugindesc (v1.1.7) マップアイテムスロットプラグイン
  * @author マンカインド
  *
- * @help = マップアイテムスロットプラグイン ver 1.1.6 =
+ * @help = マップアイテムスロットプラグイン ver 1.1.7 =
  * MKR_MapItemSlot.js
  *
  * マップ画面上に表示したアイテムスロットからアイテムの使用/装備を
@@ -96,7 +97,7 @@
  * なお、選択カーソルが武器の登録されたスロットから外れると
  * アクターの装備も外れます。
  *
- * 装備中武器(=選択カーソルが武器の登録されているスロット上にある)の場合、
+ * 装備中武器(=カーソルが武器の登録されているスロット上にある)の場合、
  * スロット左上に E と表示されます。
  *
  * なお、プラグインパラメータ[武器登録可否]がONのとき、
@@ -2314,6 +2315,7 @@ Imported.MKR_MapItemSlot = true;
         lastIndex = win.lastIndex();
 
         // 表示判定
+        // console.log("eventRun:"+$gameMap.isEventRunning());
         if(isEnableEventToSlot()) {
             if ((win.isHide() || win.isHiding()) && !win.isShowing()) {
                 win.fadeIn();
@@ -2340,6 +2342,10 @@ Imported.MKR_MapItemSlot = true;
         if( isEnableEventToUse() &&
                 (isEnableMouseToUse() || isEnableKeyboardToUse()) ) {
             win.callHandler("ok");
+        }
+
+        if(!actor) {
+            return ;
         }
 
         // 装備アイテム
