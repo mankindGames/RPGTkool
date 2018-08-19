@@ -1,11 +1,13 @@
 //===============================================================================
 // MKR_BalloonPosition.js
 //===============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.3 2018/08/19 フキダシの位置調整を行うスクリプトコマンドを追加。
+//
 // 1.0.2 2017/11/25 フキダシの位置調整をプレイヤーに対しても行われるよう修正。
 //
 // 1.0.1 2017/11/24 メモ欄を使用しない場合に
@@ -20,13 +22,14 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.2) フキダシ位置変更プラグイン
+ * @plugindesc (v1.0.3) フキダシ位置変更プラグイン
  * @author マンカインド
  *
  * @help イベント/プレイヤーの頭上に表示されるフキダシの位置を調整します。
- * プラグインパラメータによる調整の他、イベントのメモ欄を使うことでも
- * フキダシ位置の調整が可能です。
- * (メモ欄による調整はプラグインパラメータより優先されます)
+ * プラグインパラメータによる調整の他、イベントのメモ欄、スクリプトコマンドを
+ * 使うことでもフキダシ位置の調整が可能です。
+ * (メモ欄による調整はプラグインパラメータより優先され、
+ *  スクリプトコマンドによる調整はメモ欄より優先されます)
  *
  *
  * メモ欄による位置調整:
@@ -39,7 +42,19 @@
  *
  *
  * スクリプトコマンド:
- *   ありません。
+ *   $gameMap.setBalloonPosition(eventId, [x, y]);
+ *     ・XとYに指定した数値分、
+ *       eventIdにて指定したイベントに表示されるフキダシの
+ *       X座標とY座標を調整します。
+ *
+ *   $gameMap.resetBalloonPosition(eventId);
+ *     ・eventIdにて指定したイベントに対するフキダシの位置調整をリセットします。
+ *       (スクリプトコマンドで指定された数値のみ)
+ *
+ *   ※ eventIdはイベントのIDを表します。通常、1から始まりますが
+ *      -1と0については特別な意味を持ちます。
+ *        -1 : プレイヤーを指定
+ *         0 : コマンドを実行したイベントを指定
  *
  *
  * 補足：
@@ -90,7 +105,7 @@ Imported.MKR_BalloonPosition = true;
     const PN = "MKR_BalloonPosition";
 
     const CheckParam = function(type, param, def, min, max) {
-        let Parameters, regExp, value;
+        let Parameters, value;
         Parameters = PluginManager.parameters(PN);
 
         if(arguments.length < 4) {
@@ -176,6 +191,72 @@ Imported.MKR_BalloonPosition = true;
 
 
     //=========================================================================
+    // Game_Interpreter
+    //  ・フキダシの表示位置情報をイベント毎に操作する処理を定義します。
+    //
+    //=========================================================================
+    Game_Interpreter.prototype.resetBalloonPosition = function(eventId) {
+        let event;
+        event = this.character(eventId);
+
+        if(!event) {
+            return null;
+        }
+
+        event.resetBalloonPosition();
+    };
+
+    Game_Interpreter.prototype.setBalloonPosition = function(eventId, pos) {
+        let event;
+        event = this.character(eventId);
+
+        if(!event) {
+            return null;
+        }
+        if(!pos || !('length' in pos) || pos.length != 2) {
+            return;
+        }
+
+        event.setBalloonPosition(pos);
+    };
+
+    Game_Interpreter.prototype.balloonPosition = function(eventId) {
+        let event;
+        event = this.character(eventId);
+
+        if(!event) {
+            return null;
+        }
+
+        return event.balloonPosition();
+    };
+
+
+    //=========================================================================
+    // Game_Character
+    //  ・フキダシの表示位置情報を保持する変数を定義します。
+    //
+    //=========================================================================
+    const _Game_Character_initMembers = Game_Character.prototype.initMembers;
+    Game_Character.prototype.initMembers = function() {
+        _Game_Character_initMembers.call(this);
+        this._balloonPosition = null;
+    };
+
+    Game_Character.prototype.resetBalloonPosition = function() {
+        this._balloonPosition = null;
+    };
+
+    Game_Character.prototype.setBalloonPosition = function(pos) {
+        this._balloonPosition = {x:pos[0], y:pos[1]};
+    };
+
+    Game_Character.prototype.balloonPosition = function() {
+        return this._balloonPosition;
+    };
+
+
+    //=========================================================================
     // Sprite_Character
     //  ・フキダシの表示位置を再定義します。
     //
@@ -184,7 +265,7 @@ Imported.MKR_BalloonPosition = true;
     Sprite_Character.prototype.updateBalloon = function() {
         _Sprite_Character_updateBalloon.call(this);
 
-        let chara, offsetX, offsetY, metas;
+        let chara, offsetX, offsetY, metas, pos;
         offsetX = Params.OffsetX;
         offsetY = Params.OffsetY;
 
@@ -192,9 +273,15 @@ Imported.MKR_BalloonPosition = true;
             chara = this._character;
             metas = GetMeta(chara.event().meta, "balloon", ",");
             if(metas) {
-                offsetX =  isFinite(metas[0]) ? parseInt(metas[0]) : offsetX;
-                offsetY =  isFinite(metas[1]) ? parseInt(metas[1]) : offsetY;
+                offsetX =  isFinite(metas[0]) ? parseInt(metas[0], 10) : offsetX;
+                offsetY =  isFinite(metas[1]) ? parseInt(metas[1], 10) : offsetY;
             }
+        }
+
+        pos = this._character.balloonPosition();
+        if(pos != null) {
+            offsetX = isFinite(pos.x) ? parseInt(pos.x, 10) : offsetX;
+            offsetY =isFinite(pos.y) ? parseInt(pos.y, 10) : offsetX;
         }
 
         if(this._balloonSprite) {
@@ -202,5 +289,6 @@ Imported.MKR_BalloonPosition = true;
             this._balloonSprite.y = this.y - this.height + offsetY;
         }
     };
+
 
 })();
