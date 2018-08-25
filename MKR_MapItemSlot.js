@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.1.8 2018/08/25 ・アイテムスロットの初回非表示機能が使えなかった問題を修正。
+//
 // 1.1.7 2018/07/06 ・一部プラグインとの競合を解決。
 //
 // 1.1.6 2018/01/19 ・アイテムスロットへの武器登録を無効にしたとき、
@@ -53,7 +55,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.1.7) マップアイテムスロットプラグイン
+ * @plugindesc (v1.1.8) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン ver 1.1.7 =
@@ -2296,6 +2298,8 @@ Imported.MKR_MapItemSlot = true;
         this.addChild(this._mapItemSlotWindow);
         if(this._mapItemSlotWindow.lastIndex() <= -1 && !Params.SlotVisible[0]) {
             $gameParty.setItemSlotVisible(false);
+            this._mapItemSlotWindow.opacity = 0;
+            this._mapItemSlotWindow.contentsOpacity = 0;
         }
         this._mapItemSlotWindow.selectLast();
     };
@@ -2316,7 +2320,7 @@ Imported.MKR_MapItemSlot = true;
 
         // 表示判定
         // console.log("eventRun:"+$gameMap.isEventRunning());
-        if(isEnableEventToSlot()) {
+        if(isEnableEventToSlot() && !$gameParty.isItemSlotHide()) {
             if ((win.isHide() || win.isHiding()) && !win.isShowing()) {
                 win.fadeIn();
             }
@@ -2326,9 +2330,9 @@ Imported.MKR_MapItemSlot = true;
             }
         }
 
-        // if($gameParty.isItemSlotHide() || win.isHide()) {
-        //     return;
-        // }
+        if($gameParty.isItemSlotHide() || win.isHide()) {
+            return;
+        }
 
         if(index < 0) {
             win.selectLast();
