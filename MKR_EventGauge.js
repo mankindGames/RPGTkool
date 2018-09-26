@@ -1,11 +1,15 @@
 //=============================================================================
 // MKR_EventGauge.js
 //=============================================================================
-// Copyright (c) 2016-2018 マンカインド
+// Copyright (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.9 2018/09/26 ・イベント画像にタイルセットを選択時、
+//                    イベントゲージを表示するかどうかを
+//                    プラグインパラメータで切替可能にした。
+//
 // 1.1.8 2018/05/29 ・一部プラグインとの競合を修正。
 //
 // 1.1.7 2018/03/18 ・ゲージ不透明度をイベントごとに設定可能に。
@@ -54,16 +58,15 @@
 
 /*:
  *
- * @plugindesc (v1.1.8) イベントゲージプラグイン
+ * @plugindesc (v1.1.9) イベントゲージプラグイン
  * @author マンカインド
  *
- * @help = イベントゲージプラグイン (v1.1.8) =
+ * @help = イベントゲージプラグイン =
+ * MKR_EventGauge.js
  *
  * 指定したイベントの足元にゲージを表示します。(表示位置は調節が可能)
  * ゲージの最大値/残量はイベント生成(マップ移動)時に
  * イベント_メモ欄で指定した値(変数も使用可能)で設定されます。
- * (最大値の設定はイベント生成時に1度だけ設定されます。
- *  最大値の変更は後述するプラグイン/スクリプトコマンドにより可能です)
  *
  * (ゲージ最大値/残量に変数を使用した場合、)
  * ゲージ最大値/残量は変数の値に対応し、変数の値とゲージ残量が同期します。
@@ -74,6 +77,9 @@
  * 透明化を解除すると再表示されます。
  *
  * イベント画像が設定されていないイベント(ページ)の場合、ゲージは表示されません。
+ * タイルセット画像を使ったイベントの場合、プラグインパラメータでゲージを表示させるか
+ * 設定することが可能です。
+ * (タイルセットBの一番左上は[何もない]マス扱いとなりゲージが表示されません)
  *
  * ただし、後述するプラグイン/スクリプトコマンドで
  * ゲージを非表示設定にした場合は透明化や画像設定の有無に関わらず、
@@ -651,6 +657,13 @@
  * @desc 指定した番号のピクチャーよりゲージを上に表示します。(0の場合、ゲージは全ピクチャーの下に表示)(デフォルト:0)
  * @default 0
  *
+ * @param Tile_Gauge_Enable
+ * @desc タイルセットイベントに対してゲージを表示させるか選択します。(デフォルト:表示させない)
+ * @type boolean
+ * @on 表示させる
+ * @off 表示させない
+ * @default false
+ *
 */
 
 var Imported = Imported || {};
@@ -781,6 +794,7 @@ Imported.MKR_EventGauge = true;
         "GaugeBackColor" : CheckParam("num", "Gauge_Back_Color", 19, 0, 31),
         "GaugeOpacity" : CheckParam("num", "Gauge_Opacity", 255, 0, 255),
         "GaugeInPict" : CheckParam("num", "Gauge_In_Picture", 0, 0),
+        "TileGaugeEnable" : CheckParam("bool", "Tile_Gauge_Enable", false),
     };
 
 
@@ -975,7 +989,9 @@ Imported.MKR_EventGauge = true;
             return false;
         }
 
-        if (chara.isHideGauge() || chara.isTransparent() || chara.characterName() == "" || !$gameMap.getGaugeInfo(this._gaugeNum)) {
+        if (chara.isHideGauge() || chara.isTransparent() || !$gameMap.getGaugeInfo(this._gaugeNum)) {
+            this.hide();
+        } else if((!Params.TileGaugeEnable[0] && chara.characterName() == "") || chara.tileId() == 0) {
             this.hide();
         } else if(!chara.isHideGauge()) {
             this.show();
