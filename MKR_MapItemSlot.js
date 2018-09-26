@@ -6,6 +6,16 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.1.9 2018/09/26 ・アイテムスロットに防具を登録できるようにした。
+//                  ・防具に関するプラグインパラメータを追加。
+//                  ・防具の扱いに関してプラグインヘルプを修正。
+//                  ・アイテムスロットメニュー上で、アイテムスロットウィンドウの
+//                    背景をマップ上アイテムスロット背景と同じにできる
+//                    プラグインパラメータを追加。
+//                  ・アイテムスロットメニューのアイテムウィンドウで、
+//                    カテゴリウィンドウに寄らないアイテム分類を行える
+//                    プラグインパラメータを追加
+//
 // 1.1.8 2018/08/25 ・アイテムスロットの初回非表示機能が使えなかった問題を修正。
 //
 // 1.1.7 2018/07/06 ・一部プラグインとの競合を解決。
@@ -55,10 +65,10 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.1.8) マップアイテムスロットプラグイン
+ * @plugindesc (v1.1.9) マップアイテムスロットプラグイン
  * @author マンカインド
  *
- * @help = マップアイテムスロットプラグイン ver 1.1.7 =
+ * @help = マップアイテムスロットプラグイン =
  * MKR_MapItemSlot.js
  *
  * マップ画面上に表示したアイテムスロットからアイテムの使用/装備を
@@ -94,36 +104,60 @@
  * アイテムスロットからそのアイテムを削除するか、
  * グレーアウトさせた状態で残しておくかはプラグインパラメータから設定可能です。
  *
- * 選択したスロットに武器が登録されていた場合、
+ * 選択したスロットに装備が登録されていた場合、
  * 装備可能なものであれば選択と同時にパーティ先頭のアクターに装備されます。
- * なお、選択カーソルが武器の登録されたスロットから外れると
+ * なお、選択カーソルが装備の登録されたスロットから外れると
  * アクターの装備も外れます。
  *
- * 装備中武器(=カーソルが武器の登録されているスロット上にある)の場合、
+ * 装備中アイテム(=カーソルが装備の登録されているスロット上にある)の場合、
  * スロット左上に E と表示されます。
  *
- * なお、プラグインパラメータ[武器登録可否]がONのとき、
+ * プラグインパラメータ[武器登録可否]がONのとき、
  * メニューの装備画面から先頭アクターの武器変更をすることができなくなります。
  * (アイテムスロットの選択によって武器の変更を行ってください)
+ *
+ * プラグインパラメータ[防具登録可否]がONのとき、
+ * メニューの装備画面から先頭アクターの防具変更をすることができなくなります。
+ * (アイテムスロットの選択によって防具の変更を行ってください)
  *
  * アイテムスロットは先頭から、
  * 既に所持しているアイテム、または入手したアイテムが自動的に
  * 登録されていきます。
- * (スロットが空いている場合のみ。ゲーム開始時に武器を装備済みの場合は
- * その武器がスロットの先頭に登録されます)
+ * (スロットが空いている場合のみ。ゲーム開始時にアイテムを装備済みの場合は
+ * そのアイテムがスロットの先頭に登録されます)
  * プラグインパラメータ:[アイテム自動使用機能]をOFFにすることで
  * この機能を無効にすることができます。
  *
  * メニュー画面の項目[アイテムスロット]からスロットに
- * 登録するアイテム、武器を変更可能です。
+ * 登録するアイテムを変更可能です。
  *
  * [登録]はアイテムスロットにアイテムを登録します。
  * マップ画面で選択されているスロットに
- * 武器を登録した場合は自動的に装備されます。
+ * 装備アイテムを登録した場合は自動的に装備されます。
  *
  * [削除]は選択したスロットを空にします。
- * 装備していた武器をアイテムスロットから削除した場合、
- * アクターから装備が外れます。
+ * 装備していたアイテムをアイテムスロットから削除した場合、
+ * アクターからその装備が外れます。
+ *
+ *
+ * カテゴリー並び替え方式について:
+ *   プラグインパラメータ[カテゴリー並び替え方式]にて、
+ *   アイテムスロットメニュー画面上のカテゴリウィンドウの扱いを
+ *   変更することができます。
+ *   (アイテムカテゴリウィンドウは、アイテムと武器、といった
+ *    2種類以上のアイテムをアイテムスロットへ登録する設定となっているときに
+ *    表示されます)
+ *
+ *   ・カテゴリを表示する
+ *       カテゴリウィンドウからアイテムのカテゴリを選択することで、
+ *       選択したカテゴリに沿ったアイテムがアイテムリストに表示されます。
+ *       デフォルトの設定です。
+ *
+ *   ・アイテム->武器->防具  (これ以下の設定は、並び替えの順番が違うだけです)
+ *       カテゴリウィンドウを非表示にして、アイテムリスト上でアイテムを
+ *       カテゴリごとに分類し表示します。
+ *       この設定ではアイテム、武器、防具の順にアイテムリスト上のアイテムが
+ *       並び替えられます。
  *
  *
  * プラグインパラメータによる動作について:
@@ -168,6 +202,12 @@
  *       ONの場合、スロットに武器が登録可能になります。
  *       また、装備画面から武器の変更が行えなくなります。
  *       アイテムのみ登録させたい、武器は自由に変更したい場合は
+ *       OFFにしてください。
+ *
+ *     ・防具登録可否(Slot_Set_Armor)
+ *       ONの場合、スロットに防具が登録可能になります。
+ *       また、装備画面から防具の変更が行えなくなります。
+ *       アイテムのみ登録させたい、防具は自由に変更したい場合は
  *       OFFにしてください。
  *
  *     ・アイテム削除モード(Item_Remove_Mode)
@@ -222,9 +262,10 @@
  *       指定します。(空きスロットが存在しない場合は登録されません)
  *
  *     ・[アイテムタイプ]は登録したいアイテムの種類を指定します。
- *       (item か weapon)
+ *       (item / weapon / armor のいずれか)
  *       データベース【アイテム】のアイテムを登録したい場合は item を、
  *       データベース【武器】のアイテムを登録したい場合は weapon を
+ *       データベース【防具】のアイテムを登録したい場合は armor を
  *       指定してください。
  *
  *     ・[アイテムID]はアイテムのIDを指定します。
@@ -336,6 +377,14 @@
  * @on 登録する
  * @off 登録しない
  * @default true
+ *
+ * @param Slot_Set_Armor
+ * @text 防具登録可否
+ * @desc アイテムスロットに防具を登録可能にするか選択します。(デフォルト:登録しない)
+ * @type boolean
+ * @on 登録する
+ * @off 登録しない
+ * @default false
  *
  * @param Mouse_Mode
  * @text マウスモード
@@ -567,6 +616,15 @@
  * @dir img/pictures
  * @parent menu_setting
  *
+ * @param Map_Background_Enable
+ * @text マップスロット背景切替
+ * @desc メニュー画面のアイテムスロット背景に、マップ上で表示している背景画像を表示するか指定します。(デフォルト:表示しない)
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @default false
+ * @parent menu_setting
+ *
  * @param Menu_Slot_Window
  * @text ウィンドウ設定(メニュー)
  * @desc アイテムスロット画面のスロットウィンドウに関する設定です。(デフォルト:1.3 / 12 / 6)
@@ -618,7 +676,28 @@
  * @default 255
  * @parent menu_setting
  *
-*/
+ * @param Category_Sort_Type
+ * @text カテゴリ並び替え方式
+ * @desc スロット画面のカテゴリを表示せず、リスト内でアイテムの並び変えを行う場合変更します。(デフォルト:カテゴリを表示する)
+ * @type select
+ * @option カテゴリを表示する
+ * @value 0
+ * @option アイテム->武器->防具
+ * @value 1
+ * @option アイテム->防具->武器
+ * @value 2
+ * @option 武器->アイテム->防具
+ * @value 3
+ * @option 武器->防具->アイテム
+ * @value 4
+ * @option 防具->アイテム->武器
+ * @value 5
+ * @option 防具->武器->アイテム
+ * @value 6
+ * @default 0
+ * @parent menu_setting
+ *
+ */
 /*~struct~Key:
  *
  * @param Key
@@ -799,85 +878,6 @@ Imported.MKR_MapItemSlot = true;
         return [value, type, def, min, max];
     };
 
-    const CEC = function(params) {
-        let text, value, type, def, min, max;
-        type = params[1];
-        text = String(params[0]);
-        text = text.replace(/\\/g, '\x1b');
-        text = text.replace(/\x1b\x1b/g, '\\');
-        type = params[1];
-        def = params[2];
-        min = params[3];
-        max = params[4];
-
-        text = convertEscapeCharacters(text)
-
-        switch(type) {
-            case "bool":
-                if(text == "") {
-                    value = (def)? true : false;
-                } else {
-                    value = text.toUpperCase() === "ON" || text.toUpperCase() === "TRUE" || text.toUpperCase() === "1";
-                }
-                break;
-            case "num":
-                value = (isFinite(text))? parseInt(text, 10) : (isFinite(def))? parseInt(def, 10) : 0;
-                value = value.clamp(min, max);
-                break;
-            case "float":
-                value = (isFinite(text))? parseFloat(text) : (isFinite(def))? parseFloat(def) : 0.0;
-                value = value.clamp(min, max);
-                break;
-            case "string":
-            case "select":
-                if(text == "") {
-                    value = (def != "")? def : value;
-                } else {
-                    value = text;
-                }
-                break;
-            default:
-                throw new Error("[CEC] " + param + "のタイプが不正です: " + type);
-                break;
-        }
-
-        return value;
-    };
-
-    const convertEscapeCharacters = function(text) {
-        let windowChild;
-
-        if(typeof text == "string") {
-            if(SceneManager._scene) {
-                windowChild = SceneManager._scene._windowLayer.children[0];
-                text = windowChild ? windowChild.convertEscapeCharacters(text) : text;
-            } else {
-                text = ConvVb(text);
-            }
-        }
-
-        return text;
-    };
-
-    const ConvVb = function(text) {
-        let num;
-
-        if(typeof text == "string") {
-            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
-            // text = text.replace(/\\V\[(\d+)\]/i, function() {
-                num = parseInt(arguments[1]);
-                return $gameVariables.value(num);
-            }.bind(this));
-            text = text.replace(/\x1bV\[(\d+)\]/i, function() {
-            // text = text.replace(/\\V\[(\d+)\]/i, function() {
-                num = parseInt(arguments[1]);
-                return $gameVariables.value(num);
-            }.bind(this));
-        }
-
-        return text;
-    };
-
     const GetMeta = function(meta, name, sep) {
         let value, values, i, count;
         value = "";
@@ -923,11 +923,11 @@ Imported.MKR_MapItemSlot = true;
         "SlotVisible" : CheckParam("bool", "Slot_Visible", Parameters["Slot_Visible"], true),
         "SlotOpacityOffset" : CheckParam("num", "Slot_Opacity_Offset", Parameters["Slot_Opacity_Offset"], 16, 1, 255),
         "SlotBackground" : CheckParam("string", "Slot_Background", Parameters["Slot_Background"], ""),
-        "SlotBackgroundNo" : CheckParam("num", "Slot_Background_No", Parameters["Slot_Background_No"], 10, 1, 100),
         "SlotNumber" : CheckParam("num", "Slot_Number", Parameters["Slot_Number"], 10, 1, 10),
         "SlotX" : CheckParam("string", "Slot_X", Parameters["Slot_X"], "center"),
         "SlotY" : CheckParam("string", "Slot_Y", Parameters["Slot_Y"], "bottom"),
         "SlotSetW" : CheckParam("bool", "Slot_Set_Weapon", Parameters["Slot_Set_Weapon"], true),
+        "SlotSetA" : CheckParam("bool", "Slot_Set_Armor", Parameters["Slot_Set_Armor"], true),
         "SlotCursorVisible" : CheckParam("bool", "Slot_Cursor_Visible", Parameters["Slot_Cursor_Visible"], true),
         "MapSlotOpacity" : CheckParam("num", "Map_Slot_Opacity", Parameters["Map_Slot_Opacity"], 255, 0, 255),
         "SlotAddMode" : CheckParam("bool", "Slot_Add_Mode", Parameters["Slot_Add_Mode"], true),
@@ -935,6 +935,7 @@ Imported.MKR_MapItemSlot = true;
         "ItemUseMode" : CheckParam("bool", "Item_Use_Mode", Parameters["Item_Use_Mode"], false),
         "MenuSlotMode" : CheckParam("num", "Menu_Slot_Mode", Parameters["Menu_Slot_Mode"], "コマンド有効状態で追加"),
         "MenuBackground" : CheckParam("string", "Menu_Background", Parameters["Menu_Background"], ""),
+        "MapBackgroundEnable" : CheckParam("bool", "Map_Background_Enable", Parameters["Map_Background_Enable"], false),
         "MenuSlotName" : CheckParam("string", "Menu_Slot_Name", Parameters["Menu_Slot_Name"], "アイテムスロット"),
         "SlotSetName" : CheckParam("string", "Slot_Set_Name", Parameters["Slot_Set_Name"], "登録"),
         // "SlotChangeName" : CheckParam("string", "Slot_Change_Name", Parameters["Slot_Change_Name"], "入れ替え"),
@@ -943,6 +944,7 @@ Imported.MKR_MapItemSlot = true;
         "SlotChangeDesc" : CheckParam("string", "Slot_Change_Desc", Parameters["Slot_Change_Desc"], "移動元のスロットを選択し、\n交換先のスロットを選択してください。"),
         "SlotRemoveDesc" : CheckParam("string", "Slot_Remove_Desc", Parameters["Slot_Remove_Desc"], "アイテムの登録を解除するスロットを選択してください。"),
         "MenuSlotOpacity" : CheckParam("num", "Menu_Slot_Opacity", Parameters["Menu_Slot_Opacity"], 255, 0, 255),
+        "CateSortType" : CheckParam("num", "Category_Sort_Type", Parameters["Category_Sort_Type"], 0),
         "MapSlotWindow" : {
             "SizeRate" : CheckParam("float", "Map_Slot_Window.Size_Rate", Parameters["Map_Slot_Window"]["Size_Rate"], 1.0, 1.0, 2.0),
             "Padding" : CheckParam("num", "Map_Slot_Window.Padding", Parameters["Map_Slot_Window"]["Padding"], 12, 7),
@@ -984,6 +986,15 @@ Imported.MKR_MapItemSlot = true;
     const ITEM = "item";
     const WEAPON = "weapon";
     const ARMOR = "armor";
+    const CATEGORYSORT = {
+        "DEFAULT":0,
+        "I_W_A":1,
+        "I_A_W":2,
+        "W_I_A":3,
+        "W_A_I":4,
+        "A_I_W":5,
+        "A_W_I":6,
+    };
 
 
     //=========================================================================
@@ -1057,7 +1068,7 @@ Imported.MKR_MapItemSlot = true;
                         index = parseInt(args[1], 10) - 1;
                     }
                     if(args[2]) {
-                        if((args[2].toLowerCase() == WEAPON && Params.SlotSetW[0]) || (args[2].toLowerCase() == ITEM)) {
+                        if((args[2].toLowerCase() == WEAPON && Params.SlotSetW[0]) || (args[2].toLowerCase() == ARMOR && Params.SlotSetA[0]) || (args[2].toLowerCase() == ITEM)) {
                             type = args[2].toLowerCase();
                         }
                     }
@@ -1081,10 +1092,15 @@ Imported.MKR_MapItemSlot = true;
                         equip = false;
                     }
 
+                    if(type == ARMOR && !actor.isEquipAtypeOk(item.atypeId)) {
+                        equip = false;
+                    }
+
                     if(item && $gameParty.hasItemType(item)) {
                         $gameParty.setItemSlot(index, item, equip);
                         // if(!equip) {
-                            $gameParty.gainItem(item, 1, false);
+                            // スロットセット時にアイテムを増やす必要はあるか？
+                            // $gameParty.gainItem(item, 1, false);
                         // }
                     }
                     break;
@@ -1170,11 +1186,17 @@ Imported.MKR_MapItemSlot = true;
             this._itemSlot = [];
             items = this.allItems();
             cnt = Params.SlotNumber[0];
-            // アクターが武器を装備済みの場合、先にスロットに登録する。
+            // アクターがアイテムを装備済みの場合、先にスロットに登録する。
             if($gameParty && Params.SlotAddMode[0]) {
                 actor = $gameParty.leader();
                 if(actor.weapons().length > 0) {
                     actor.weapons().forEach(function(item) {
+                        this.setItemSlot(i, item);
+                        i++;
+                    }, this);
+                }
+                if(actor.armors().length > 0) {
+                    actor.armors().forEach(function(item) {
                         this.setItemSlot(i, item);
                         i++;
                     }, this);
@@ -1225,7 +1247,7 @@ Imported.MKR_MapItemSlot = true;
                 type = DataManager.getItemType(item);
                 index = this.getItemSlotNumber(type, item.id);
 
-                if(index == -1) {
+                if(index == -1 && SceneManager._scene.constructor !== Scene_ItemSlot) {
                     this.setItemSlot(index, item);
                 }
             }
@@ -1250,6 +1272,8 @@ Imported.MKR_MapItemSlot = true;
             index = -1;
         } else if(DataManager.isWeapon(item) && this.getItemSlotNumber(WEAPON, item.id) >= 0) {
             index = -1;
+        } else if(DataManager.isArmor(item) && this.getItemSlotNumber(ARMOR, item.id) >= 0) {
+            index = -1;
         }
 
         actor = $gameParty.leader();
@@ -1258,30 +1282,35 @@ Imported.MKR_MapItemSlot = true;
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
                 this._itemSlot[index].type = ITEM;
-            } else if(Params.SlotSetW[0] && DataManager.isWeapon(item) && actor.isEquipWtypeOk(item.wtypeId)) {
+            } else if((Params.SlotSetW[0] && DataManager.isWeapon(item) && actor.isEquipWtypeOk(item.wtypeId)) || (Params.SlotSetA[0] && DataManager.isArmor(item) && actor.isEquipAtypeOk(item.atypeId))) {
                 equipFlg = actor.isEquipped(item);
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
-                this._itemSlot[index].type = WEAPON;
-                this._itemSlot[index].kind = item.wtypeId;
+                this._itemSlot[index].type = DataManager.isWeapon(item) ? WEAPON : ARMOR;
+                this._itemSlot[index].etypeId = item.etypeId;
                 this._itemSlot[index].equip = equipFlg;
 
                 if(equip) {
                     $gameParty.setItemSlotLastIndex(index);
                     this._itemSlot[index].equip = true;
-                    actor.changeEquip(0, item);
+                    actor.changeEquipById(item.etypeId, item.id);
                 }
             }
         }
     };
 
     Game_Party.prototype.removeItemSlot = function(index) {
-        let cnt;
+        let cnt, item;
         cnt = this._itemSlot.length;
 
         if(index >= 0 && index < cnt) {
             if(this._itemSlot[index] && this._itemSlot[index].type == WEAPON) {
-                this.leader().changeEquip(0, null);
+                item = $dataWeapons[this._itemSlot[index].id];
+                this.leader().changeEquipById(item.etypeId, 0);
+            }
+            if(this._itemSlot[index] && this._itemSlot[index].type == ARMOR) {
+                item = $dataArmors[this._itemSlot[index].id];
+                this.leader().changeEquipById(item.etypeId, 0);
             }
             this._itemSlot[index] = null
         }
@@ -1310,7 +1339,7 @@ Imported.MKR_MapItemSlot = true;
 
         if(type == WEAPON && !Params.SlotSetW[0]) {
             return false;
-        } else if(type == ARMOR) {
+        } else if(type == ARMOR && !Params.SlotSetA[0]) {
             return false;
         }
 
@@ -1413,7 +1442,7 @@ Imported.MKR_MapItemSlot = true;
 
     Game_Party.prototype.setSlotEquipItem = function(item) {
         if(item) {
-            if(DataManager.getItemType(item) == WEAPON) {
+            if(DataManager.getItemType(item) == WEAPON || DataManager.getItemType(item) == ARMOR) {
                 this._slotEquipItem = item;
             } else {
                 this._slotEquipItem = null;
@@ -1486,15 +1515,20 @@ Imported.MKR_MapItemSlot = true;
             ret = false;
         }
 
+        if(Params.SlotSetA[0] && this == $gameParty.leader() && slotId > 0 && ret) {
+            ret = false;
+        }
+
         return ret;
     };
 
     const _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
     Game_Actor.prototype.changeEquip = function(slotId, item) {
-        let index;
+        let index, type;
 
-        if(Params.SlotSetW[0] && this == $gameParty.leader() && slotId == 0 && DataManager.getItemType(item) == WEAPON) {
-            index = $gameParty.getItemSlotNumber(WEAPON, item.id);
+        if(this == $gameParty.leader() && ((Params.SlotSetW[0] && DataManager.isWeapon(item)) || (Params.SlotSetA[0] && DataManager.isArmor(item)))) {
+            type = DataManager.isWeapon(item) ? WEAPON : ARMOR;
+            index = $gameParty.getItemSlotNumber(type, item.id);
             if(index == -1) {
                 index = $gameParty.getItemSlotFreeNumber() - 1;
                 if(index >= 0) {
@@ -1621,7 +1655,7 @@ Imported.MKR_MapItemSlot = true;
                 rect = this.itemRect(index);
                 num = $gameParty.numItems(item);
 
-                if(type == WEAPON && actor.isEquipped(item)) {
+                if((type == WEAPON || type == ARMOR) && actor.isEquipped(item)) {
                     this.changePaintOpacity(true);
                 } else {
                     this.changePaintOpacity(num > 0);
@@ -1639,6 +1673,8 @@ Imported.MKR_MapItemSlot = true;
                     this._type[index] = ITEM;
                 } else if(type == WEAPON) {
                     this._type[index] = WEAPON;
+                } else if(type == ARMOR) {
+                    this._type[index] = ARMOR;
                 }
                 this._num[index] = num;
             } else {
@@ -1820,7 +1856,7 @@ Imported.MKR_MapItemSlot = true;
                 if(this._type[index] != itemSlot.type || this._num[index] != $gameParty.numItems(item)) {
                     return true;
                 }
-                // if(itemSlot.type == WEAPON) {
+                // if(itemSlot.type == WEAPON || itemSlot.type = ARMOR) {
                 //     if(itemSlot.equip != actor.isEquipped(item)) {
                 //         console.log("itemSlot equip:"+itemSlot.equip);
                 //         console.log("actor equip:"+actor.isEquipped(item));
@@ -1847,7 +1883,7 @@ Imported.MKR_MapItemSlot = true;
             item = this.item(index);
             if (item) {
                 rect = this.itemRect(index);
-                if(type == WEAPON) {
+                if(type == WEAPON || type == ARMOR) {
                     equipFlg = actor.isEquipped(item);
                     if(equipFlg) {
                         fontSize = this.contents.fontSize;
@@ -2058,7 +2094,7 @@ Imported.MKR_MapItemSlot = true;
                 if(this._type[index] != itemSlot.type || this._num[index] != $gameParty.numItems(item)) {
                     return true;
                 }
-                // if(itemSlot.type == WEAPON) {
+                // if(itemSlot.type == WEAPON || itemSlot.type == ARMOR) {
                 //     if(itemSlot.equip != actor.isEquipped(item)) {
                 //         console.log("itemSlot equip:"+itemSlot.equip);
                 //         console.log("actor equip:"+actor.isEquipped(item));
@@ -2085,7 +2121,7 @@ Imported.MKR_MapItemSlot = true;
             item = this.item(index);
             if (item) {
                 rect = this.itemRect(index);
-                if(type == WEAPON) {
+                if(type == WEAPON || type == ARMOR) {
                     equipFlg = actor.isEquipped(item);
                     if(equipFlg) {
                         fontSize = this.contents.fontSize;
@@ -2105,7 +2141,7 @@ Imported.MKR_MapItemSlot = true;
         ret = true;
 
         if(item) {
-            // if(DataManager.getItemType(item) == WEAPON) {
+            // if(DataManager.isWeapon(item) || DataManager.isArmor(item)) {
             //     ret = !actor.isEquipped(item);
             // }
         } else {
@@ -2166,12 +2202,23 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Window_ItemSlotCategory.prototype.maxCols = function() {
-        return 2;
+        if(Params.SlotSetW[0] && Params.SlotSetA[0]) {
+            return 3;
+        } else if(Params.SlotSetW[0] || Params.SlotSetA[0]) {
+            return 2;
+        }
+
+        return 1;
     };
 
     Window_ItemSlotCategory.prototype.makeCommandList = function() {
         this.addCommand(TextManager.item,    'item');
-        this.addCommand(TextManager.weapon,  'weapon');
+        if(Params.SlotSetW[0]) {
+            this.addCommand(TextManager.weapon,  'weapon');
+        }
+        if(Params.SlotSetA[0]) {
+            this.addCommand(TextManager.armor,  'armor');
+        }
     };
 
 
@@ -2200,12 +2247,25 @@ Imported.MKR_MapItemSlot = true;
             meta = GetMeta(item.meta, "itemslot");
         }
 
+        if(meta.toLowerCase() == "noadd") {
+            return false;
+        }
+
+        if(Params.CateSortType[0] > 0) {
+            return (DataManager.isItem(item) && item.itypeId === 1)
+                || (DataManager.isWeapon(item) && Params.SlotSetW[0])
+                || (DataManager.isArmor(item) && Params.SlotSetA[0]);
+        }
+
         switch (this._category) {
             case 'item':
-                ret = DataManager.isItem(item) && item.itypeId === 1 && meta.toLowerCase() != "noadd";
+                ret = DataManager.isItem(item) && item.itypeId === 1;
                 break;
             case 'weapon':
-                ret = DataManager.isWeapon(item) && meta.toLowerCase() != "noadd";
+                ret = DataManager.isWeapon(item);
+                break;
+            case 'armor':
+                ret = DataManager.isArmor(item);
                 break;
             default:
                 ret = false;
@@ -2228,6 +2288,9 @@ Imported.MKR_MapItemSlot = true;
             if(type == WEAPON && !actor.isEquipWtypeOk(item.wtypeId)) {
                 ret = false;
             }
+            if(type == ARMOR && !actor.isEquipAtypeOk(item.atypeId)) {
+                ret = false;
+            }
         }
 
         return ret;
@@ -2246,6 +2309,51 @@ Imported.MKR_MapItemSlot = true;
         // }
 
         // return ret;
+    };
+
+    Window_ItemSlotList.prototype.makeItemList = function() {
+        let itemData, weaponData, armorData;
+        if((!Params.SlotSetW[0] && !Params.SlotSetA[0]) || Params.CateSortType[0] == 0) {
+            Window_ItemList.prototype.makeItemList.call(this);
+            return;
+        }
+
+        itemData = $gameParty.items().filter(function(item) {
+            return this.includes(item);
+        }, this);
+
+        weaponData = $gameParty.weapons().filter(function(item) {
+            return this.includes(item);
+        }, this);
+
+        armorData = $gameParty.armors().filter(function(item) {
+            return this.includes(item);
+        }, this);
+
+        switch(Params.CateSortType[0]) {
+            case CATEGORYSORT.I_W_A:
+                this._data = itemData.concat(weaponData.concat(armorData));
+                break;
+            case CATEGORYSORT.I_A_W:
+                this._data = itemData.concat(armorData.concat(weaponData));
+                break;
+            case CATEGORYSORT.W_I_A:
+                this._data = weaponData.concat(itemData.concat(armorData));
+                break;
+            case CATEGORYSORT.W_A_I:
+                this._data = weaponData.concat(armorData.concat(itemData));
+                break;
+            case CATEGORYSORT.A_I_W:
+                this._data = armorData.concat(itemData.concat(weaponData));
+                break;
+            case CATEGORYSORT.A_W_I:
+                this._data = armorData.concat(weaponData.concat(itemData));
+                break;
+        }
+
+        if (this.includes(null)) {
+            this._data.push(null);
+        }
     };
 
 
@@ -2354,28 +2462,29 @@ Imported.MKR_MapItemSlot = true;
 
         // 装備アイテム
         itemSlot = $gameParty.getItemSlot(lastIndex);
-        if(Params.SlotSetW[0] && itemSlot && itemSlot.type == WEAPON) {
+        if(itemSlot && ((Params.SlotSetW[0] && itemSlot.type == WEAPON) || (Params.SlotSetA[0] && itemSlot.type == ARMOR))) {
             // lastIndex の装備を先に外すこと
             if(lastIndex != index) {
                 item = win.item(lastIndex);
-                if(itemSlot && itemSlot.type == WEAPON && actor.isEquipped(item)) {
-                    actor.changeEquip(0, null);
+                if(actor.isEquipped(item)) {
+                    actor.changeEquipById(item.etypeId, 0);
                     win.redrawItem(lastIndex);
                 }
             }
         }
         itemSlot = $gameParty.getItemSlot(index);
-        if(Params.SlotSetW[0] && itemSlot && itemSlot.type == WEAPON) {
+        if(itemSlot && ((Params.SlotSetW[0] && itemSlot.type == WEAPON) || (Params.SlotSetA[0] && itemSlot.type == ARMOR))) {
             item = win.item();
-            if(itemSlot && itemSlot.type == WEAPON && !actor.isEquipped(item)) {
-                actor.changeEquipById(1, itemSlot.id);
+            if(!actor.isEquipped(item)) {
+                actor.changeEquipById(item.etypeId, item.id);
                 $gameParty.setSlotEquipItem(item);
                 win.redrawCurrentItem();
             }
         }
-        if(Params.SlotSetW[0] && (itemSlot == null || itemSlot.type == ITEM) && actor.weapons().length > 0) {
-            // 武器以外のスロット選択時に装備を確実に外す
-            actor.changeEquip(0, null);
+        if((itemSlot == null || itemSlot.type == ITEM) && ((Params.SlotSetW[0] && actor.weapons().length > 0) || (Params.SlotSetA[0] && actor.armors().length > 0))) {
+            // 装備アイテム以外のスロット選択時に装備を確実に外す
+            item = win.item(lastIndex);
+            actor.changeEquipById(item.etypeId, 0);
         }
 
         // アイテムスロットのアイテム削除判定
@@ -2383,7 +2492,7 @@ Imported.MKR_MapItemSlot = true;
             itemSlot = $gameParty.getItemSlot(index);
             item = win.item();
             if(itemSlot) {
-                if((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || (itemSlot.type == WEAPON && !actor.isEquipped(item))) {
+                if((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || ((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && !actor.isEquipped(item))) {
                     $gameParty.removeItemSlot(index);
                     win.redrawCurrentItem();
                 }
@@ -2490,6 +2599,13 @@ Imported.MKR_MapItemSlot = true;
         this._itemSlotWindow.setHandler('ok',     this.onItemSlotOk.bind(this));
         this._itemSlotWindow.setHandler('cancel', this.onItemSlotCancel.bind(this));
         this._itemSlotWindow.opacity = Params.MenuSlotOpacity[0];
+        if(Params.MapBackgroundEnable[0] && Params.SlotBackground[0] != "") {
+            this._itemSlotWindow._windowSpriteContainer.removeChild(this._itemSlotWindow._windowBackSprite);
+            this._itemSlotWindow._windowSpriteContainer.removeChild(this._itemSlotWindow._windowFrameSprite);
+            this._itemSlotWindow._windowBackSprite = new Sprite();
+            this._itemSlotWindow._windowBackSprite.bitmap = ImageManager.loadPicture(Params.SlotBackground[0]);
+            this._itemSlotWindow._windowSpriteContainer.addChild(this._itemSlotWindow._windowBackSprite);
+        }
         this.addWindow(this._itemSlotWindow);
     };
 
@@ -2539,7 +2655,16 @@ Imported.MKR_MapItemSlot = true;
 
         switch (this._commandWindow.currentSymbol()) {
             case "slotset":
-                if(Params.SlotSetW[0]) {
+                if(Params.SlotSetW[0] || Params.SlotSetA[0]) {
+                    if(Params.CateSortType[0] > 0) {
+                        this._categoryWindow.select(0);
+                        this._itemWindow.activate();
+                        this._itemWindow.selectLast();
+                        this._itemWindow.show();
+                        this._itemWindow.refresh();
+                        this._itemSlotWindow.deactivate();
+                        break;
+                    }
                     this._categoryWindow.show();
                     this._categoryWindow.activate();
                     this._categoryWindow.select(0);
@@ -2608,7 +2733,7 @@ Imported.MKR_MapItemSlot = true;
     Scene_ItemSlot.prototype.onItemCancel = function() {
         this._itemWindow.deselect();
         this._itemWindow.deactivate();
-        if(Params.SlotSetW[0]) {
+        if((Params.SlotSetW[0] || Params.SlotSetA[0]) && Params.CateSortType[0] == 0) {
             this._categoryWindow.activate();
         } else {
             this._itemSlotWindow.activate();
@@ -2625,7 +2750,6 @@ Imported.MKR_MapItemSlot = true;
         let pressKey, index, win, itemSlot, item, actor, lastIndex;
         win = this._itemSlotWindow;
         index = win.index();
-        lastIndex = win.lastIndex();
         actor = $gameParty.leader();
 
         // アイテムスロット選択
@@ -2633,16 +2757,27 @@ Imported.MKR_MapItemSlot = true;
         index = win.index();
 
         // 装備アイテム
-        itemSlot = $gameParty.getItemSlot($gameParty.getItemSlotLastIndex());
+        lastIndex = $gameParty.getItemSlotLastIndex();
+        itemSlot = $gameParty.getItemSlot(lastIndex);
+        item = win.item(lastIndex);
         if(itemSlot) {
             if(itemSlot.type == WEAPON) {
-                if(!actor.isEquipped(win.item($gameParty.getItemSlotLastIndex()))) {
-                    actor.changeEquipById(1, itemSlot.id);
+                if(!actor.isEquipped(item)) {
+                    actor.changeEquipById(item.etypeId, item.id);
                     win.redrawItem($gameParty.getItemSlotLastIndex());
                 }
             } else if(actor.weapons().length > 0) {
-                actor.changeEquipById(1, 0);
-                win.redrawItem($gameParty.getItemSlotLastIndex());
+                // actor.changeEquipById(1, 0);
+                // win.redrawItem($gameParty.getItemSlotLastIndex());
+            }
+            if(itemSlot.type == ARMOR) {
+                if(!actor.isEquipped(item)) {
+                    actor.changeEquipById(item.etypeId, item.id);
+                    win.redrawItem($gameParty.getItemSlotLastIndex());
+                }
+            } else if(actor.armors().length > 0) {
+                // actor.changeEquipById(1, 0);
+                // win.redrawItem($gameParty.getItemSlotLastIndex());
             }
         }
     };
