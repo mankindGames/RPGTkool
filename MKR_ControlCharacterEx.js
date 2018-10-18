@@ -1,11 +1,14 @@
 //===============================================================================
 // MKR_ControlCharacterEx.js
 //===============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// Copyright (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.1 2018/10/18 制御文字「\n」「\p」の名前表示に
+//                  名前となる文字列の途中まで表示できる機能を追加。
+//
 // 1.2.0 2017/07/19 制御文字「\im[n]」を追加、文中アイコンの余白を指定可能に。
 //
 // 1.1.4 2016/10/16 制御文字「\me[n]」を追加、文中でMEを再生可能に。
@@ -31,10 +34,12 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.2.0) 制御文字拡張プラグイン
+ * @plugindesc (v1.2.1) 制御文字拡張プラグイン
  * @author マンカインド
  *
- * @help = 制御文字拡張プラグイン ver 1.2.0 = (作:マンカインド)
+ * @help = 制御文字拡張プラグイン =
+ * MKR_ControlCharacterEx.js
+ *
  * メッセージ内で利用可能な制御文字を追加/拡張します。
  *
  *
@@ -109,7 +114,7 @@
  *       本プラグインでは、待機フレーム数をプラグインパラメーターで
  *       指定できます。
  *
- *   \n[X]
+ *   \n[X] (\n[X,Y])
  *     ・メッセージ中に挿入すると、アクターID:Xの名前に置き換わる制御文字です。
  *       本プラグインでは、名前の部分に自動的に色をつけて表示します。
  *       (つまり、\c[2]\n[X]\c[0] のように制御文字\cで囲むのと同じ状態ですが、
@@ -121,7 +126,13 @@
  *       本プラグインによる色変更を行わず、直前に記述されている
  *       色変更の制御文字に従い色が変更されます。
  *
- *   \p[X]
+ *       [X,Y]と指定されている場合、アクターID:Xの名前を
+ *       最初からY文字目まで切り取った文字列を表示します。
+ *       例)
+ *         \n[1] = ハロルド
+ *         \n[1,2] = ハロ
+ *
+ *   \p[X] (\p[X,Y])
  *     ・メッセージ中に挿入すると、パーティーメンバーX番目の
  *       アクターの名前に置き換わる制御文字です。
  *       本プラグインでは、自動的に名前の部分に色をつけて表示します。
@@ -133,6 +144,12 @@
  *       この制御文字の直前に色変更の制御文字が記述されていた場合は、
  *       本プラグインによる色変更を行わず、直前に記述されている
  *       色変更の制御文字に従い色が変更されます。
+ *
+ *       [X,Y]と指定されている場合、パーティーメンバーX番目の名前を
+ *       最初からY文字目まで切り取った文字列を表示します。
+ *       例)
+ *         \n[1] = マーシャ
+ *         \n[1,2] = マー
  *
  *   \$
  *     ・メッセージ中に挿入すると、画面右上に所持金ウィンドウを表示します。
@@ -449,24 +466,34 @@ Imported.MKR_ControlCharacterEx = true;
 
     var _Window_Base_convertEscapeCharacters = Window_Base.prototype.convertEscapeCharacters;
     Window_Base.prototype.convertEscapeCharacters = function(text) {
-        var nameColor;
+        var name, nameColor;
         nameColor = CEC(DefNameColor);
 
         text = text.replace(/\\/g, '\x1b');
         text = text.replace(/\x1b\x1b/g, '\\');
 
-        text = text.replace(/\x1bC\[(\d+)\]\x1bN\[(\d+)\]/gi, function() {
-            return '\x1bC['+parseInt(arguments[1])+']'+this.actorName(parseInt(arguments[2]))+'\x1bC[0]';
+        text = text.replace(/\x1bC\[(\d+)\]\x1bN\[([\d,]+)\]/gi, function() {
+            name = this.sliceName(arguments[2], "Actor");
+            return '\x1bC['+parseInt(arguments[1])+']'+name+'\x1bC[0]';
         }.bind(this));
-        text = text.replace(/\x1bN\[(\d+)\]/gi, function() {
-            return '\x1bC['+nameColor+']'+this.actorName(parseInt(arguments[1]))+'\x1bC[0]';
+        text = text.replace(/\x1bN\[([\d,]+)\]/gi, function() {
+            name = this.sliceName(arguments[1], "Actor");
+            if(nameColor != 0) {
+                return '\x1bC['+nameColor+']'+name+'\x1bC[0]';
+            }
+            return name != "" ? name : arguments[0];
         }.bind(this));
 
-        text = text.replace(/\x1bC\[(\d+)\]\x1bP\[(\d+)\]/gi, function() {
-            return '\x1bC['+parseInt(arguments[1])+']'+this.partyMemberName(parseInt(arguments[2]))+'\x1bC[0]';
+        text = text.replace(/\x1bC\[(\d+)\]\x1bP\[([\d,]+)\]/gi, function() {
+            name = this.sliceName(arguments[2], "Party");
+            return '\x1bC['+parseInt(arguments[1])+']'+name+'\x1bC[0]';
         }.bind(this));
-        text = text.replace(/\x1bP\[(\d+)\]/gi, function() {
-            return '\x1bC['+nameColor+']'+this.partyMemberName(parseInt(arguments[1]))+'\x1bC[0]';
+        text = text.replace(/\x1bP\[([\d,]+)\]/gi, function() {
+            name = this.sliceName(arguments[1], "Party");
+            if(nameColor != 0) {
+                return '\x1bC['+nameColor+']'+name+'\x1bC[0]';
+            }
+            return name != "" ? name : arguments[0];
         }.bind(this));
 
         return _Window_Base_convertEscapeCharacters.call(this,text);
@@ -483,9 +510,27 @@ Imported.MKR_ControlCharacterEx = true;
         return ret;
     };
 
+    Window_Base.prototype.sliceName = function(param, type) {
+        let arg, num, name, len;
+        arg = param.split(",");
+        num = 0;
+        name = "";
+
+        if(isFinite(arg[0])) {
+            num = parseInt(arg[0]);
+            name = type == "Actor" ? this.actorName(parseInt(num)) : this.partyMemberName(parseInt(num));
+        }
+        len = (arg.length > 1 && isFinite(arg[1])) ? parseInt(arg[1]) : name.length;
+        if(name != "" && len > 0 && name.length >= len) {
+            name = name.slice(0, len);
+        }
+
+        return name;
+    };
+
 
     //=========================================================================
-    // Window_Messge
+    // Window_Message
     //  制御文字を追加定義します。
     //
     //=========================================================================
@@ -542,8 +587,6 @@ Imported.MKR_ControlCharacterEx = true;
                     this._goldWindow.open(goldBackground, goldPosition, $gameMessage.positionType());
                     break;
                 case 'IM':
-                    console.log("IM");
-                    console.log(arr);
                     if(arr[2] != "" && isFinite(arr[2])) {
                         iconMargin = parseInt(arr[2], 10);
                         if(iconMargin >= 0) {
