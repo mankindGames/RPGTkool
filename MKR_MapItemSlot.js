@@ -6,7 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
-// 1.1.9 2018/09/26 ・アイテムスロットに防具を登録できるようにした。
+// 1.2.0 2018/10/19 ・アイテムスロットに登録されたアイテムの
+//                    所持数を非表示にするプラグインパラメータを追加
+//
+// 1.1.9 2018/09/24 ・アイテムスロットに防具を登録できるようにした。
 //                  ・防具に関するプラグインパラメータを追加。
 //                  ・防具の扱いに関してプラグインヘルプを修正。
 //                  ・アイテムスロットメニュー上で、アイテムスロットウィンドウの
@@ -65,7 +68,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.1.9) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.0) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -100,6 +103,8 @@
  *
  * 同じアイテムを複数個所持している場合、
  * その個数がスロット右下に数字として表示されます。
+ * (プラグインパラメータで非表示に設定可能)
+ *
  * アイテム個数が0になったとき、
  * アイテムスロットからそのアイテムを削除するか、
  * グレーアウトさせた状態で残しておくかはプラグインパラメータから設定可能です。
@@ -385,6 +390,14 @@
  * @on 登録する
  * @off 登録しない
  * @default false
+ *
+ * @param Item_Count_Visible
+ * @text アイテム個数の表示
+ * @desc アイテムスロットに登録されたアイテムの個数を表示するか選択します。(デフォルト:表示する)
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @default true
  *
  * @param Mouse_Mode
  * @text マウスモード
@@ -933,6 +946,7 @@ Imported.MKR_MapItemSlot = true;
         "SlotAddMode" : CheckParam("bool", "Slot_Add_Mode", Parameters["Slot_Add_Mode"], true),
         "ItemRemoveMode" : CheckParam("bool", "Item_Remove_Mode", Parameters["Item_Remove_Mode"], true),
         "ItemUseMode" : CheckParam("bool", "Item_Use_Mode", Parameters["Item_Use_Mode"], false),
+        "ItemCountVisible" : CheckParam("bool", "Item_Count_Visible", Parameters["Item_Count_Visible"], true),
         "MenuSlotMode" : CheckParam("num", "Menu_Slot_Mode", Parameters["Menu_Slot_Mode"], "コマンド有効状態で追加"),
         "MenuBackground" : CheckParam("string", "Menu_Background", Parameters["Menu_Background"], ""),
         "MapBackgroundEnable" : CheckParam("bool", "Map_Background_Enable", Parameters["Map_Background_Enable"], false),
@@ -1665,7 +1679,7 @@ Imported.MKR_MapItemSlot = true;
                 y = rect.y + rect.height / 2 - Window_Base._iconHeight * sizeRate / 2;
                 this.drawIconEx(item.iconIndex, x, y, sizeRate);
 
-                if(type == ITEM) {
+                if(type == ITEM && Params.ItemCountVisible[0]) {
                     fontSize = this.contents.fontSize;
                     this.contents.fontSize = 20;
                     this.contents.drawText("" + num, rect.x, rect.height - 20, rect.width - 2, 24, 'right');
@@ -2252,9 +2266,7 @@ Imported.MKR_MapItemSlot = true;
         }
 
         if(Params.CateSortType[0] > 0) {
-            return (DataManager.isItem(item) && item.itypeId === 1)
-                || (DataManager.isWeapon(item) && Params.SlotSetW[0])
-                || (DataManager.isArmor(item) && Params.SlotSetA[0]);
+            return true;
         }
 
         switch (this._category) {
@@ -2767,6 +2779,7 @@ Imported.MKR_MapItemSlot = true;
                     win.redrawItem($gameParty.getItemSlotLastIndex());
                 }
             } else if(actor.weapons().length > 0) {
+                console.log("updateItemSlot WEAPON:%o", item);
                 // actor.changeEquipById(1, 0);
                 // win.redrawItem($gameParty.getItemSlotLastIndex());
             }
@@ -2776,6 +2789,7 @@ Imported.MKR_MapItemSlot = true;
                     win.redrawItem($gameParty.getItemSlotLastIndex());
                 }
             } else if(actor.armors().length > 0) {
+                console.log("updateItemSlot ARMOR:%o", item);
                 // actor.changeEquipById(1, 0);
                 // win.redrawItem($gameParty.getItemSlotLastIndex());
             }
