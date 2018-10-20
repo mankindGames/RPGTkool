@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.2.0 2018/10/20 ・一部イベントにゲージが表示されなくなっていた問題を修正。
+//
 // 1.1.9 2018/09/26 ・イベント画像にタイルセットを選択時、
 //                    イベントゲージを表示するかどうかを
 //                    プラグインパラメータで切替可能にした。
@@ -58,7 +60,7 @@
 
 /*:
  *
- * @plugindesc (v1.1.9) イベントゲージプラグイン
+ * @plugindesc (v1.2.0) イベントゲージプラグイン
  * @author マンカインド
  *
  * @help = イベントゲージプラグイン =
@@ -991,7 +993,7 @@ Imported.MKR_EventGauge = true;
 
         if (chara.isHideGauge() || chara.isTransparent() || !$gameMap.getGaugeInfo(this._gaugeNum)) {
             this.hide();
-        } else if((!Params.TileGaugeEnable[0] && chara.characterName() == "") || chara.tileId() == 0) {
+        } else if(chara.characterName() == "" && (chara.tileId() == 0 || !Params.TileGaugeEnable[0])) {
             this.hide();
         } else if(!chara.isHideGauge()) {
             this.show();
