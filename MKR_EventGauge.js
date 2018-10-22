@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.2.1 2018/10/22 ・ニューゲーム開始時点マップにゲージ設定された
+//                    イベントがいた場合、エラーになる問題を修正。
+//
 // 1.2.0 2018/10/20 ・一部イベントにゲージが表示されなくなっていた問題を修正。
 //
 // 1.1.9 2018/09/26 ・イベント画像にタイルセットを選択時、
@@ -60,7 +63,7 @@
 
 /*:
  *
- * @plugindesc (v1.2.0) イベントゲージプラグイン
+ * @plugindesc (v1.2.1) イベントゲージプラグイン
  * @author マンカインド
  *
  * @help = イベントゲージプラグイン =
@@ -1103,6 +1106,12 @@ Imported.MKR_EventGauge = true;
     Game_Map.prototype.setup = function(mapId) {
         _Game_Map_setup.call(this, mapId);
 
+        if(!this._gaugeInfos) {
+            this.initGauge();
+        }
+    };
+
+    Game_Map.prototype.initGauge = function() {
         this._gaugeInfos = [];
         this._gaugePush = [];
     };
@@ -1167,6 +1176,9 @@ Imported.MKR_EventGauge = true;
     };
 
     Game_Map.prototype.addGaugeInfo = function(info) {
+        if(!this._gaugeInfos) {
+            this.initGauge();
+        }
         this._gaugeInfos.push(info);
         this._gaugePush.push(info.id);
     };
