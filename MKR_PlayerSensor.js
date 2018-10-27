@@ -1,11 +1,19 @@
 //=============================================================================
 // MKR_PlayerSensor.js
 //=============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// Copyright (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.3.5 2018/10/27 ・視界をイベントの下に描画するプラグインパラメータを追加。
+//                  ・探索停止時にプレイヤー発見状態をクリアするように修正。
+//                  ・プレイヤー発見状態の場合に、
+//                    強制ロストさせるコマンドを追加。
+//                  ・全てのイベントを探索開始状態にするコマンドを追加
+//                  ・探索状態のイベントを一時消去したときに
+//                    探索が続けられていた問題を修正。
+//
 // 2.3.4 2017/12/30 ・一部メモ欄のオプション指定方法でスイッチ/変数指定対応が
 //                    不完全だったため修正。
 //                  ・プレイヤーをロストした場合にONにできる(セルフ)スイッチの
@@ -105,20 +113,23 @@
 
 /*:
  *
- * @plugindesc (v2.3.4) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.5) プレイヤー探索プラグイン
  * @author マンカインド
  *
- * @help 対象イベント(以下、探索者)の視界の範囲を描画し、
+ * @help = プレイヤー探索プラグイン =
+ * MKR_PlayerSensor.js
+ *
+ * 対象イベント(以下、探索者)の視界の範囲を描画し、
  * 範囲内にプレイヤーが存在した場合、
  * その探索者は発見状態となり指定されたスイッチをONにします。
  * (スイッチがONの間、探索者は話しかけられた方向に振り向かないようになります)
  *
  * プレイヤーが視界範囲マス外に出た場合、
  * ロスト状態となりONになったスイッチがOFFになります。
- * (設定により状態以降までの時間が調整できます)
+ * (設定により状態移行までの時間が調整できます)
  *
  * ※ トリガー[自動実行]によるイベント動作中の場合、ゲーム動作負荷を考慮して
- *    探索処理は停止します(=プレイヤーを発見/未発見状態の更新が行われません)。
+ *    探索処理は停止します。
  *    (イベントメモ欄で設定変更が可能です)
  *
  *
@@ -128,15 +139,21 @@
  *   そのマップにいる全ての探索者が探索を開始します。
  *   (探索一時無効状態になっている探索者を除く)
  *
+ *   探索者がいるマップでプラグインコマンド PSS force_start を実行すると、
+ *   そのマップにいる全ての探索者が探索を開始します。
+ *   (探索一時無効状態になっている探索者も探索を開始します)
+
  *   探索者のイベント内でプラグインコマンド PSS t_start を実行すると、
  *   その探索者が探索を開始します。
  *   (探索一時無効状態となっている探索者に対しても探索を開始させます。)
  *
  *   探索者のイベント内でプラグインコマンド PSS t_stop を実行すると、
  *   その探索者が探索を停止します。
+ *   (プレイヤーを未発見として状態が更新されます。)
  *
  *   探索者がいるマップでプラグインコマンド  PSS stop を実行すると、
  *   そのマップにいる全探索者が探索を停止します。
+ *   (プレイヤーを未発見として状態が更新されます。)
  *
  *
  * メモ欄_基本設定(Xは正の整数):
@@ -374,9 +391,15 @@
  *       探索開始処理になります。
  *       (探索一時無効状態の探索者は対象外です)
  *
+ *   PSS force_start
+ *     ・コマンドを実行したマップ上に存在する全ての探索者が
+ *       探索開始処理になります。
+ *       (探索一時無効状態の探索者も対象となります)
+ *
  *   PSS stop
  *     ・コマンドを実行したマップ上に存在する全ての探索者が
  *       探索停止処理状態になります。
+ *       (プレイヤーを未発見として状態が更新されます。)
  *
  *   PSS reset X Y ...
  *     ・コマンドを実行したマップ上に存在する全ての探索者を対象に、
@@ -390,6 +413,11 @@
  *       (X,Y はセルフスイッチ/スイッチ番号。
  *        スペース区切りで記載してください)
  *
+ *   PSS lost
+ *     ・コマンドを実行したマップ上に存在するプレイヤー発見状態の探索者を
+ *       ロスト状態へ強制移行させます。
+ *       (ロストするまでの時間は[プレイヤーロスト時設定]に従います)
+ *
  *   PSS t_start
  *     ・このコマンドを実行した探索者を
  *       探索開始状態にします。
@@ -399,6 +427,7 @@
  *
  *   PSS t_stop
  *     ・このコマンドを実行した探索者を探索停止状態にします。
+ *       (プレイヤーを未発見として状態が更新されます。)
  *
  *   PSS t_reset X Y ...
  *     ・このコマンドを実行した探索者を対象に、
@@ -410,6 +439,11 @@
  *     ・"X", "Y" は(セルフ)スイッチを表し、ここに記載した(セルフ)スイッチも
  *       同様にOFFにします。まとめてOFFにしたい場合に指定してください。
  *       (セルフスイッチ/スイッチ番号はスペース区切りで記載してください)
+ *
+ *   PSS t_lost
+ *     ・このコマンドを実行したプレイヤー発見状態の探索者を
+ *       ロスト状態へ強制移行させます。
+ *       (ロストするまでの時間は[プレイヤーロスト時設定]に従います)
  *
  *   PSS t_move X
  *     ・このコマンドを実行した時点のプレイヤー位置に隣接する位置まで、
@@ -436,10 +470,12 @@
  *     ・指定したイベントIDを持つ探索者を探索開始状態にします。
  *       探索停止/一時無効状態の探索者に対し探索を再開させる場合に使用します。
  *
- *     ・探索を開始させるためには事前にPSS startコマンドの実行が必要です。
+ *     ・探索を開始させるためには事前にPSS start(PSS force_start)コマンドの
+ *       実行が必要です。
  *
  *   $gameSystem.offSensor(eventId)
  *     ・指定したイベントIDを持つ探索者を探索停止状態にします。
+ *       (プレイヤーを未発見として状態が更新されます。)
  *
  *   $gameSystem.neutralSensor(eventId, ["X","Y",...])
  *     ・現在のマップに存在する、指定したイベントIDを持つ探索者に対し、
@@ -452,8 +488,18 @@
  *       (カンマ区切りで指定してください)
  *
  *   $gameSystem.isFoundPlayer()
- *     ・プレイヤーが探索者に発見されている場合にtrueを返します。
+ *     ・現在のマップで、プレイヤーが探索者に発見されている場合にtrueを返します。
  *       (それ以外ならfalse)
+ *
+ *   $gameSystem.allForceLost()
+ *     ・現在のマップに存在する、プレイヤー発見状態の探索者を
+ *       ロスト状態へ強制移行させます。
+ *       (ロストするまでの時間は[プレイヤーロスト時設定]に従います)
+ *
+ *   $gameSystem.forceLost(eventId)
+ *     ・指定したイベントIDを持つ探索者がプレイヤー発見状態である場合、
+ *       ロスト状態へ強制移行させます。
+ *       (ロストするまでの時間は[プレイヤーロスト時設定]に従います)
  *
  *
  * 補足：
@@ -511,7 +557,6 @@
  * @text ロスト後操作スイッチ
  * @desc [初期値] プレイヤーロスト時にONにするスイッチ番号またはセルフスイッチを指定。(発見後操作スイッチはOFFになります)
  * @type combo
- * @value 0
  * @option A
  * @option B
  * @option C
@@ -609,6 +654,17 @@
  * @min 0
  * @max 255
  * @default 80
+ * @parent 視界設定
+ *
+ * @param Range_Position
+ * @text 視界範囲位置
+ * @desc 探索者の視界範囲を表示する位置を選択します。デフォルト:1(イベントの上に表示する)
+ * @type select
+ * @option イベントの上に表示する
+ * @value 1
+ * @option イベントの下に表示する
+ * @value 2
+ * @default 1
  * @parent 視界設定
  *
  * @param Player_Found
@@ -895,7 +951,8 @@
         DefAutoSensor, DefEventDecision, DefRegionDecisions,
         DefRealRangeX, DefRealRangeY, DefLostSensorSwitch,
         DefFoundBallon, DefFoundCommon, DefFoundDelay, DefFoundSe,
-        DefLostBallon, DefLostCommon, DefLostDelay, DefLostSe;
+        DefLostBallon, DefLostCommon, DefLostDelay, DefLostSe,
+        DefRangePosition;
     DefSensorSwitch = CheckParam("switch", "Sensor_Switch", Parameters["Sensor_Switch"], "D");
     DefLostSensorSwitch = CheckParam("switch", "Lost_Sensor_Switch", Parameters["Lost_Sensor_Switch"]);
     DefBothSensor = CheckParam("bool", "Both_Sensor", Parameters["Both_Sensor"], false);
@@ -903,6 +960,7 @@
     DefTerrainDecision = CheckParam("bool", "Terrain_Decision", Parameters["Terrain_Decision"], false);
     DefRangeColor = CheckParam("string", "Range_Color", Parameters["Range_Color"], "white");
     DefRangeOpacity = CheckParam("num", "Range_Opacity", Parameters["Range_Opacity"], 80, 0, 255);
+    DefRangePosition = CheckParam("num", "Range_Position", Parameters["Range_Position"], 1);
     DefAutoSensor = CheckParam("bool", "Auto_Sensor", Parameters["Auto_Sensor"], false);
     DefEventDecision = CheckParam("bool", "Event_Decision", Parameters["Event_Decision"], false);
     DefRegionDecisions = [];
@@ -935,7 +993,6 @@
     DIR_RIGHT = 6;
     DIR_LEFT = 4;
 
-
     //=========================================================================
     // Game_Interpreter
     //  ・プレイヤー探索制御プラグインコマンド
@@ -945,16 +1002,23 @@
     const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.call(this, command, args);
+
         if (command.toLowerCase() === "pss") {
             switch (args[0].toLowerCase()) {
                 case "start":// 探索開始
                     $gameSystem.startSensor();
+                    break;
+                case "force_start":// 全て探索開始
+                    $gameSystem.startSensor(1);
                     break;
                 case "stop":// 探索停止
                     $gameSystem.stopSensor();
                     break;
                 case "reset":// 全探索者のセルフスイッチ初期化
                     $gameSystem.resetSensor(args);
+                    break;
+                case "lost":// 発見状態の探索者を強制ロスト状態に移行させる
+                    $gameSystem.allForceLost();
                     break;
                 case "t_start":// 対象探索者を探索開始状態にする
                     $gameSystem.onSensor(this.eventId());
@@ -967,6 +1031,9 @@
                     break;
                 case "t_move":// 対象探索者をプレイヤーの位置付近まで移動
                     this.moveNearPlayer(args[1]);
+                    break;
+                case "t_lost":// 対象探索者を強制ロスト状態に移行させる
+                    $gameSystem.forceLost(this.eventId());
                     break;
             }
         }
@@ -1028,9 +1095,12 @@
         this._switchStatuses  = {};
     };
 
-    Game_System.prototype.startSensor = function() {
+    Game_System.prototype.startSensor = function(type) {
+        if(!type) {
+            type = 0;
+        }
         this.setSensorStart(true);
-        this.setSensorStatusAll(1);
+        this.setSensorStatusAll(1, type);
         this.setViewRangeStatusAll(2);
     };
 
@@ -1061,6 +1131,7 @@
 
         if(event && event.getSensorType() != null) {
             event.setSensorStatus(0);
+            event.setFoundStatus(0);
         }
     };
 
@@ -1102,10 +1173,23 @@
         return this._sensorStart;
     };
 
-    Game_System.prototype.setSensorStatusAll = function(status) {
+    Game_System.prototype.setSensorStatusAll = function(status, type) {
+        if(!type) {
+            type = 0;
+        }
+        if(type) {
+            $gameMap.events().forEach(function(event) {
+                if(event.getSensorType() != null) {
+                    event.setSensorStatus(status);
+                    event.setFoundStatus(0);
+                }
+            }, this);
+            return;
+        }
         $gameMap.events().forEach(function(event) {
             if(event.getSensorType() != null && event.getSensorStatus() != -1) {
                 event.setSensorStatus(status);
+                event.setFoundStatus(0);
             }
         }, this);
     }
@@ -1191,19 +1275,29 @@
         });
     };
 
+    Game_System.prototype.allForceLost = function() {
+        if(!this.isSensorStart()) return false;
 
-    //=========================================================================
-    // Game_Map
-    //  プレイヤー探索制御を定義
-    //=========================================================================
-    // const _Game_Map_setupStartingEvent = Game_Map.prototype.setupStartingEvent;
-    // Game_Map.prototype.setupStartingEvent = function() {
-    //     this.refreshIfNeeded();
-    //     if (this._interpreter.setupReservedCommonEventEx()) {
-    //         return true;
-    //     }
-    //     return _Game_Map_setupStartingEvent.call(this);
-    // };
+        $gameMap.events().filter(function(event) {
+            return event.getFoundStatus() == 1;
+        }).forEach(function(event) {
+            event.setForceLost(1);
+        });
+    };
+
+    Game_System.prototype.forceLost = function(eventId) {
+        let event;
+
+        if(!this.isSensorStart()) return false;
+        if(!eventId || !isFinite(eventId) || !$gameMap.event(eventId)) {
+            return ;
+        }
+
+        event = $gameMap.event(eventId);
+        if(event.getFoundStatus() != 1) return false;
+
+        event.setForceLost(1);
+    };
 
 
     //=========================================================================
@@ -1213,7 +1307,7 @@
     //
     //  センサー状態：
     //   -2 = センサー初期化前
-    //   -1 = 探索停止(setSensorStatusAllの対象外)
+    //   -1 = 探索一時停止
     //    0 = 探索停止
     //    1 = 探索中
     //  視界描画状態：
@@ -1223,6 +1317,10 @@
     //  発見状態：
     //    0 = 未発見
     //    1 = 発見済み
+    //  強制ロスト：
+    //    0 = 無効
+    //    1 = 設定反映ロスト
+    //    2 = 即ロスト
     //=========================================================================
     const _Game_CharacterBaseInitMembers = Game_CharacterBase.prototype.initMembers;
     Game_CharacterBase.prototype.initMembers = function() {
@@ -1268,6 +1366,7 @@
         this._lostMaxDelay = lostDelay;
         this._lostDelay = this._lostMaxDelay;
         this._activeMode = 0;
+        this._forceLost = 0;
     };
 
     const _Game_CharacterBaseMoveStraight = Game_CharacterBase.prototype.moveStraight;
@@ -1328,7 +1427,10 @@
     };
 
     Game_CharacterBase.prototype.getSensorRange = function() {
-        return parseInt(ConvVb(this._sensorRange), 10);
+        let value;
+        value = parseInt(ConvVb(this._sensorRange), 10);
+
+        return this.getSensorType() == "df" ? value % 2 ? 2 : value : value;
     };
 
     Game_CharacterBase.prototype.setSensorRangeC = function(sensorRangeC) {
@@ -1336,7 +1438,10 @@
     };
 
     Game_CharacterBase.prototype.getSensorRangeC = function() {
-        return parseInt(ConvVb(this._sensorRangeC), 10);
+        let value;
+        value = parseInt(ConvVb(this._sensorRangeC), 10);
+
+        return this.getSensorType() == "df" ? value % 2 ? 2 : value : value;
     };
 
     Game_CharacterBase.prototype.setViewRangeStatus = function(viewRangeStatus) {
@@ -1581,6 +1686,14 @@
         return parseInt(ConvSw(this._activeMode, this), 10);;
     };
 
+    Game_CharacterBase.prototype.setForceLost = function(forceLost) {
+        this._forceLost = forceLost;
+    };
+
+    Game_CharacterBase.prototype.getForceLost = function() {
+        return this._forceLost;
+    };
+
 
     //=========================================================================
     // Game_Map
@@ -1642,11 +1755,14 @@
                             break;
                     }
                     if(match[3]) { // 探索対象マス数
-                        value = match[3];
+                        value = String(match[3]);
                         value = value.replace(/\\/g, '\x1b');
                         value = value.replace(/\x1b\x1b/g, '\\');
-                        this.setSensorRange(match[3]);
-                        this.setSensorRangeC(match[3]);
+                        if(this.getSensorType() == "df" && isFinite(value) && (value <= 1 || (value % 2))) {
+                            value = 2;
+                        }
+                        this.setSensorRange(value);
+                        this.setSensorRangeC(value);
                     }
                     if(match[4]) { // オプション
                         options = match[4].trim().split(" ");
@@ -1711,27 +1827,52 @@
     const _Game_EventUpdate = Game_Event.prototype.update;
     Game_Event.prototype.update = function() {
         _Game_EventUpdate.call(this);
-        if($gameSystem.isSensorStart()) this.sensorUpdate();
+        if(!this._erased && $gameSystem.isSensorStart()) {
+            this.sensorUpdate();
+        }
     };
 
     Game_Event.prototype.sensorUpdate = function() {
         // 探索中のイベントであること
-        if(this.getSensorStatus() == 1){
-            // マップイベント実行中でないこと or 探索続行オプションが付与されている
-            if(!this.isStarting() || this.getActiveMode() == 1) {
-                if(this.isFoundPlayer()) {
-                    if(this.getFoundStatus() == 0) {
-                        this.foundPlayer();
-                    }
-                    if(this.getLostDelay() < this.getLostMaxDelay()) this.resetLostDelay();
-                } else if(this.getFoundStatus() == 1) {
-                    this.lostPlayer();
-                    if(this.getFoundDelay() < this.getFoundMaxDelay()) this.resetFoundDelay();
-                } else {
-                    if(this.getFoundDelay() < this.getFoundMaxDelay()) this.resetFoundDelay();
+        // マップイベント実行中でないこと or 探索続行オプションが付与されている
+        if(this.getSensorStatus() == 1 && (!this.isStarting() || this.getActiveMode() == 1)){
+            // プレイヤーを発見して、かつ強制ロストが無効
+            if(this.isFoundPlayer() && this.getForceLost() == 0) {
+                if(this.getFoundStatus() == 0) {
+                    this.foundPlayer();
+                }
+                if(this.getLostDelay() < this.getLostMaxDelay()) this.resetLostDelay();
+            // プレイヤー発見状態または、強制ロストが有効
+            } else if(this.getFoundStatus() == 1 || this.getForceLost() > 0) {
+                this.lostPlayer();
+                if(this.getFoundDelay() < this.getFoundMaxDelay()) {
+                    this.resetFoundDelay();
+                    this.setForceLost(0);
+                }
+            } else {
+                if(this.getFoundDelay() < this.getFoundMaxDelay()) {
+                    this.resetFoundDelay();
+                    this.setForceLost(0);
                 }
             }
         }
+        // // 探索中のイベントであること
+        // if(this.getSensorStatus() == 1){
+        //     // マップイベント実行中でないこと or 探索続行オプションが付与されている
+        //     if(!this.isStarting() || this.getActiveMode() == 1) {
+        //         if(this.isFoundPlayer()) {
+        //             if(this.getFoundStatus() == 0) {
+        //                 this.foundPlayer();
+        //             }
+        //             if(this.getLostDelay() < this.getLostMaxDelay()) this.resetLostDelay();
+        //         } else if(this.getFoundStatus() == 1) {
+        //             this.lostPlayer();
+        //             if(this.getFoundDelay() < this.getFoundMaxDelay()) this.resetFoundDelay();
+        //         } else {
+        //             if(this.getFoundDelay() < this.getFoundMaxDelay()) this.resetFoundDelay();
+        //         }
+        //     }
+        // }
     };
 
     Game_Event.prototype.foundPlayer = function() {
@@ -1805,6 +1946,7 @@
             mapId = $gameMap.mapId();
             eventId = this.eventId();
 
+            this.setForceLost(0);
             this.setFoundStatus(0);
             this.resetLostDelay();
             this.resetFoundDelay();
@@ -2489,6 +2631,14 @@
         }
     };
 
+    const _Game_Event_erase = Game_Event.prototype.erase;
+    Game_Event.prototype.erase = function() {
+        this.setSensorStatus(0);
+        this.setFoundStatus(0);
+        this.setViewRangeStatus(0);
+        _Game_Event_erase.call(this);
+    };
+
 
     //=========================================================================
     // Spriteset_Map
@@ -2513,15 +2663,15 @@
         }
     };
 
-    const _Spriteset_Base_update = Spriteset_Base.prototype.update;
-    Spriteset_Base.prototype.update = function() {
-        _Spriteset_Base_update.call(this);
+    const _Spriteset_Map_update = Spriteset_Map.prototype.update;
+    Spriteset_Map.prototype.update = function() {
+        _Spriteset_Map_update.call(this);
         if(this._viewRangeSprites) {
             this.updateViewRange();
         }
     };
 
-    Spriteset_Base.prototype.updateViewRange = function() {
+    Spriteset_Map.prototype.updateViewRange = function() {
         let cnt;
         cnt = this._viewRangeSprites.length - 1;
         cnt = cnt >= 0 ? cnt : 0;
@@ -2557,7 +2707,7 @@
         this.initMembers();
         this.setCharacter(character);
         this._frameCount = 0;
-        this.z = 6;
+        this.z = DefRangePosition[0] == 1 ? 6 : 2;
     };
 
     Sprite_ViewRange.prototype.initMembers = function() {
@@ -2579,7 +2729,11 @@
         rangeVisible = this._character.getRangeVisible();
         defVisible = CEC(DefRangeVisible);
 
-        if(sensorStatus == 1 && (rangeVisible == 1 || (rangeVisible == -1 && defVisible))) {
+        if(this._character && this._character._erased) {
+            this.parent.removeChild(this);
+        }
+
+        if(this._character && !this._character._erased && sensorStatus == 1 && (rangeVisible == 1 || (rangeVisible == -1 && defVisible))) {
             this.updatePosition();
             if(this.bitmap) {
                 if(rangeStatus == 1) {
@@ -2621,8 +2775,8 @@
         tileHeight = $gameMap.tileHeight();
         sideSensorR = this._character.getBothSensorRight();
         sideSensorL = this._character.getBothSensorLeft();
-        bias = (bothSensor)? 3
-            : (this._character.getBothSensor() > 0)? 3 : 1;
+        bias = (bothSensor) ? 3
+            : (this._character.getBothSensor() > 0) ? 3 : 1;
         color = DefRangeColor[0];
         opacity = DefRangeOpacity[0];
 
@@ -2630,7 +2784,7 @@
             case "l":
                 if(direction == DIR_UP) {
                     width = tileWidth * bias;
-                    height = tileHeight * sensorRange + tileWidth;
+                    height = tileHeight * sensorRange + tileHeight;
                     this.anchor.x = 0.5;
                     this.anchor.y = 1;
                 } else if(direction == DIR_RIGHT) {
@@ -2655,7 +2809,7 @@
             case "f":
                 if(direction == DIR_UP) {
                     width = tileWidth * sensorRange * 2 + tileWidth;
-                    height = tileHeight * sensorRange + tileWidth;
+                    height = tileHeight * sensorRange + tileHeight;
                     this.anchor.x = 0.5;
                     this.anchor.y = 1;
                 } else if(direction == DIR_RIGHT) {
@@ -2675,7 +2829,12 @@
                     this.anchor.y = 0;
                 }
                 this.bitmap = new Bitmap(width, height);
-                this.bitmap.fillViewRangeFan(color, this._character);
+
+                if(sensorType == "f") {
+                    this.bitmap.fillViewRangeFan(color, this._character);
+                } else {
+                    this.bitmap.fillViewRangeFrontDiamond(color, this._character);
+                }
                 break;
             case "d":
                 width = tileWidth * sensorRange * 2 + tileWidth;
@@ -2790,7 +2949,11 @@
                     this.bitmap.clear();
                     this.bitmap = new Bitmap(width, height);
                 }
-                this.bitmap.fillViewRangeFan(color, this._character);
+                if(sensorType == "f") {
+                    this.bitmap.fillViewRangeFan(color, this._character);
+                } else {
+                    this.bitmap.fillViewRangeFrontDiamond(color, this._character);
+                }
                 break;
             case "d":
                 width = tileWidth * sensorRange * 2 + tileWidth;
@@ -2851,6 +3014,19 @@
                 }
                 break;
             case "f":
+                if(direction == DIR_UP) {
+                    this.y = cy + bias;
+                } else if(direction == DIR_RIGHT) {
+                    this.x = cx + tileWidth / 2 - tileWidth;
+                    this.y = cy - tileHeight / 2 + bias;
+                } else if(direction == DIR_LEFT) {
+                    this.x = cx + tileWidth / 2;
+                    this.y = cy - tileHeight / 2 + bias;
+                } else if(direction == DIR_DOWN) {
+                    this.y = cy - tileHeight + bias;
+                }
+                break;
+            case "df":
                 if(direction == DIR_UP) {
                     this.y = cy + bias;
                 } else if(direction == DIR_RIGHT) {
