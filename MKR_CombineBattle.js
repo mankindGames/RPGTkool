@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 0.0.2 2019/02/14 戦闘逃走時、エネミーがその場で一時停止するように修正
 // 0.0.1 2018/12/31 初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,7 +16,7 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v0.0.1) コンバインバトルプラグイン
+ * @plugindesc (v0.0.2) コンバインバトルプラグイン
  * @author マンカインド
  *
  * @help = コンバインバトルプラグイン =
@@ -56,8 +57,8 @@
  * 戦闘に勝利した場合、隣接していた敵イベントは「イベント一時消去」状態に
  * なります。(=マップを切り替えると復活します)
  *
- * 戦闘から逃走した場合、隣接していた敵イベントの不透明度が変化し、
- * 一時的にすり抜け状態となります。
+ * 戦闘から逃走した場合、隣接していた敵イベントが一時行動停止、
+ * 不透明度が変化し一時的にすり抜け状態となります。
  * 指定した時間が経過した場合元の状態に戻りますが、
  * 逃走中は他の敵イベントに接触しても何も起こりません。
  *
@@ -356,12 +357,21 @@ Imported.MKR_CombineBattle = true;
         if(this._AproachTime >= Params.ApproachTime) {
             this._phase = "battle";
 
-            let event;
-            event = $gameMap.event(this._eventList[0]);
-            if(event) {
-                event.unlock();
-            }
+            // let event;
+            // event = $gameMap.event(this._eventList[0]);
+            // if(event) {
+            //     event.unlock();
+            // }
             this.makeTroop();
+
+            this._eventList.forEach(function(eventId) {
+                let event;
+                event = $gameMap.event(eventId);
+                if(event) {
+                    event.lock();
+                }
+            });
+
             $gameMap._interpreter._params = [0, this._troopId, 1, 1];
             $gameMap._interpreter._indent = 0;
             $gameMap._interpreter.command301();
@@ -382,6 +392,7 @@ Imported.MKR_CombineBattle = true;
                 if(event) {
                     event.setOpacity(255);
                     event.setThrough(false);
+                    event.unlock();
                 }
             });
             $gameMap.requestRefresh();
