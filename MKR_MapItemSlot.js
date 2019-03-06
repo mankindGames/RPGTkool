@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.3 2019/03/06 ・プラグインコマンドによるスキル使用が
+//                    行えなかった問題を修正。
+//
 // 1.2.2 2019/03/04 ・アイテムを使用するためのタッチ操作探知範囲を画面全体か
 //                    スロット上のどちらかに変更できるようにした。
 //                  ・アイテムスロットにスキル(回復系のみ)を登録可能にした。
@@ -75,7 +78,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.2) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.3) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -1299,12 +1302,12 @@ Imported.MKR_MapItemSlot = true;
                     }
                     if (index >= 0) {
                         itemSlot = $gameParty.getItemSlot(index);
-                        if (itemSlot && itemSlot.type == ITEM) {
+                        if (itemSlot && (itemSlot.type == ITEM || itemSlot.type == SKILL)) {
                             item = DataManager.getItemByIdType(itemSlot.id, itemSlot.type);
                             $gameParty.useItemSlot(item);
 
                             // アイテムスロットのアイテム削除判定
-                            if (item && Params.ItemRemoveMode[0] && $gameParty.numItems(item) <= 0) {
+                            if (item && itemSlot.type == ITEM && Params.ItemRemoveMode[0] && $gameParty.numItems(item) <= 0) {
                                 $gameParty.removeItemSlot(index);
                                 if (scene && scene.constructor == Scene_Map) {
                                     scene._mapItemSlotWindow.redrawItem(index);
