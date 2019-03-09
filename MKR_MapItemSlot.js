@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.4 2019/03/07 ・プラグイン新規導入時に
+//                    パラメータの設定が行えなかったため修正。
+//
 // 1.2.3 2019/03/06 ・プラグインコマンドによるスキル使用が
 //                    行えなかった問題を修正。
 //
@@ -78,7 +81,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.3) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.4) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -486,7 +489,7 @@
  * @text マウスモード
  * @desc マウスでのアイテムスロット操作設定
  * @type struct<MouseMode>
- * @default {"Use_Enable":"true","Select_Enable":"true","Display_Click":1}
+ * @default {"Use_Enable":"true","Select_Enable":"true","Display_Click":"1"}
  *
  * @param Keyboard_Mode
  * @text キーボードモード
@@ -883,7 +886,6 @@
  * @value 1
  * @option アイテムスロット部分
  * @value 0
- * @default true
  *
  */
 /*~struct~EventMode:
@@ -894,7 +896,6 @@
  * @type boolean
  * @on 表示
  * @off 非表示
- * @default false
  *
  * @param Use_Enable
  * @text アイテム使用
@@ -902,7 +903,6 @@
  * @type boolean
  * @on 使用可能
  * @off 使用不可
- * @default false
  *
  * @param Select_Enable
  * @text スロット選択
@@ -910,7 +910,6 @@
  * @type boolean
  * @on 選択可能
  * @off 選択不可
- * @default false
  *
  */
 /*~struct~SlotWindow:
