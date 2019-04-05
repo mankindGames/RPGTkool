@@ -679,6 +679,27 @@
  * @type struct<Alert>
  * @default {"Ballon":"0","Se":"{\"Name\":\"\",\"Volume\":\"90\",\"Pitch\":\"100\",\"Pan\":\"0\"}","Common_Event":"0","Delay":"0"}
  *
+ * @param マップ設定
+ * @default ====================================
+ *
+ * @param Tracking_Priority
+ * @text 追跡優先度
+ * @desc プレイヤー発見状態のイベントが他イベントの上または下を通行可能にするか設定します。(デフォルト:通行不可)
+ * @type boolean
+ * @on 通行可能
+ * @off 通行不可
+ * @default false
+ * @parent マップ設定
+ *
+ * @param Location_Reset
+ * @text マップ移動時リセット
+ * @desc 場所移動コマンド使用時、元のマップに配置された探索者の追跡状態をリセットするか設定します。(デフォルト:リセットしない)
+ * @type boolean
+ * @on リセットする
+ * @off リセットしない
+ * @default false
+ * @parent マップ設定
+ *
 */
 /*~struct~Alert:
  *
@@ -952,7 +973,7 @@
         DefRealRangeX, DefRealRangeY, DefLostSensorSwitch,
         DefFoundBallon, DefFoundCommon, DefFoundDelay, DefFoundSe,
         DefLostBallon, DefLostCommon, DefLostDelay, DefLostSe,
-        DefRangePosition;
+        DefRangePosition, DefTrackingPriority, DefLocationReset;
     DefSensorSwitch = CheckParam("switch", "Sensor_Switch", Parameters["Sensor_Switch"], "D");
     DefLostSensorSwitch = CheckParam("switch", "Lost_Sensor_Switch", Parameters["Lost_Sensor_Switch"]);
     DefBothSensor = CheckParam("bool", "Both_Sensor", Parameters["Both_Sensor"], false);
@@ -987,6 +1008,8 @@
         "pitch" : CheckParam("num", "Player_Lost.Se.Pitch", Parameters["Player_Lost"]["Se"]["Pitch"], 100, 50, 150)[0],
         "pan" : CheckParam("num", "Player_Lost.Se.Pan", Parameters["Player_Lost"]["Se"]["Pan"], 0, -100, 100)[0],
     }
+    DefTrackingPriority = CheckParam("bool", "Tracking_Priority", Parameters["Tracking_Priority"], false);
+    DefLocationReset = CheckParam("bool", "Location_Reset", Parameters["Location_Reset"], false);
 
     DIR_UP = 8;
     DIR_DOWN = 2;
@@ -1271,7 +1294,8 @@
         if(!this.isSensorStart()) return false;
 
         return $gameMap.events().some(function(event) {
-            return event.getSensorStatus() == 1 && event.getFoundStatus() == 1;
+            // return event.getSensorStatus() == 1 && event.getFoundStatus() == 1;
+            return event.isSensorFound();
         });
     };
 
@@ -1297,6 +1321,21 @@
         if(event.getFoundStatus() != 1) return false;
 
         event.setForceLost(1);
+    };
+
+
+    //=========================================================================
+    // Game_Player
+    //  場所移動を行った際に追跡状態をリセットする処理を定義します。
+    //
+    //=========================================================================
+    const _Game_Player_reserveTransfer = Game_Player.prototype.reserveTransfer;
+    Game_Player.prototype.reserveTransfer = function(mapId, x, y, d, fadeType) {
+        if(DefLocationReset[0] && !$gameParty.inBattle() && !$gameMessage.isBusy()) {
+            $gameSystem.resetSensor();
+        }
+        _Game_Player_reserveTransfer.apply(this, arguments);
+
     };
 
 
@@ -1692,6 +1731,10 @@
 
     Game_CharacterBase.prototype.getForceLost = function() {
         return this._forceLost;
+    };
+
+    Game_CharacterBase.prototype.isSensorFound = function() {
+        return this.getSensorStatus() == 1 && this.getFoundStatus() == 1;
     };
 
 
@@ -2637,6 +2680,15 @@
         this.setFoundStatus(0);
         this.setViewRangeStatus(0);
         _Game_Event_erase.call(this);
+    };
+
+    const _Game_Event_isCollidedWithEvents = Game_Event.prototype.isCollidedWithEvents;
+    Game_Event.prototype.isCollidedWithEvents = function(x, y) {
+        if(this.isSensorFound() && DefTrackingPriority[0]) {
+            return Game_CharacterBase.prototype.isCollidedWithEvents.apply(this, arguments);
+        } else {
+            return _Game_Event_isCollidedWithEvents.apply(this, arguments);
+        }
     };
 
 
