@@ -6,6 +6,12 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.5 2019/05/01 ・ヘルプを更新。
+//                  ・指定スロット番号にセットされたアイテムの
+//                    タイプ、IDを取得する関数を追加。
+//                  ・スロットアイコン上に描画される文字のフォントサイズを
+//                    指定可能に。
+//
 // 1.2.4 2019/03/07 ・プラグイン新規導入時に
 //                    パラメータの設定が行えなかったため修正。
 //
@@ -81,7 +87,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.4) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.5) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -376,7 +382,7 @@
  *
  *   $gameParty.isItemSlotItem([スロット番号], [アイテムID]);
  *     ・指定したスロット番号(1～)に登録されたアイテムが、
- *       指定したID(1～)である場合にtrueを返します。
+ *       指定したアイテムID(1～)である場合にtrueを返します。
  *       [例]
  *         ◆条件分岐：スクリプト：$gameParty.isItemSlotItem(1, 10);
  *             ～スロット1番にID10のアイテムが
@@ -385,7 +391,7 @@
  *
  *   $gameParty.isItemSlotWeapon([スロット番号], [武器ID]);
  *     ・指定したスロット番号(1～)に登録された武器が、
- *       指定したID(1～)である場合にtrueを返します。
+ *       指定した武器ID(1～)である場合にtrueを返します。
  *       [例]
  *         ◆条件分岐：スクリプト：$gameParty.isItemSlotWeapon(2, 7);
  *             ～スロット2番にID7の武器が
@@ -394,7 +400,7 @@
  *
  *   $gameParty.isItemSlotArmor([スロット番号], [防具ID]);
  *     ・指定したスロット番号(1～)に登録された防具が、
- *       指定したID(1～)である場合にtrueを返します。
+ *       指定した防具ID(1～)である場合にtrueを返します。
  *       [例]
  *         ◆条件分岐：スクリプト：$gameParty.isItemSlotItem(3, 23);
  *             ～スロット3番にID23の防具が
@@ -403,13 +409,38 @@
  *
  *   $gameParty.isItemSlotSkill([スロット番号], [スキルID]);
  *     ・指定したスロット番号(1～)に登録されたスキルが、
- *       指定したID(1～)である場合にtrueを返します。
+ *       指定したスキルID(1～)である場合にtrueを返します。
  *       [例]
  *         ◆条件分岐：スクリプト：$gameParty.isItemSlotItem(4, 7);
  *             ～スロット1番にID7のスキルが
  *               登録されているときの処理～
  *         ：分岐終了
  *
+ *   $gameParty.getItemSlotLastIndex();
+ *     ・現在選択されているスロットインデックスを取得します。
+ *       (インデックス = スロット番号を-1した値)
+ *       [例]
+ *         ◆条件分岐：スクリプト：$gameParty.getItemSlotLastIndex() == 0
+ *             ～スロット1番が選択されているときの処理～
+ *         ：分岐終了
+ *         ◆条件分岐：スクリプト：$gameParty.getItemSlotLastIndex() == 1
+ *             ～スロット2番が選択されているときの処理～
+ *         ：分岐終了
+ *
+ *   $gameParty.getItemSlotId([スロット番号]);
+ *     ・指定したスロット番号(1～)に登録された
+ *       アイテム(武器/防具/スキルを含む)のIDを取得します。
+ *
+ *   $gameParty.getItemSlotType([スロット番号]);
+ *     ・指定したスロット番号(1～)に登録された
+ *       アイテム(武器/防具/スキルを含む)の種類を返します。
+ *       返ってくる値は以下のいずれかです。
+ *         値       :   意味
+ *          "ITEM"    セットされているのはアイテムです
+ *        "WEAPON"    セットされているのは武器です
+ *         "ARMOR"    セットされているのは防具です
+ *         "SKILL"    セットされているのはスキルです
+ *   null (空文字)    何もセットされていない。またはスロット番号が不正です
  *
  * 補足：
  *   ・このプラグインに関するメモ欄の設定、プラグインコマンド/パラメーター、
@@ -497,6 +528,7 @@
  * @type struct<Mode>
  * @default {"Use_Enable":"true","Select_Enable":"true"}
  *
+ *
  * @param map_setting
  * @text スロット(マップ)設定
  * @default ====================================
@@ -549,9 +581,9 @@
  *
  * @param Map_Slot_Window
  * @text ウィンドウ設定(マップ)
- * @desc マップ画面のスロットウィンドウに関する設定です。(デフォルト:1.0 / 12 / 6)
+ * @desc マップ画面のスロットウィンドウに関する設定です。(デフォルト:1.0 / 12 / 6 / 20)
  * @type struct<SlotWindow>
- * @default {"Size_Rate":"1.0","Padding":"12","Spacing":"6"}
+ * @default {"Size_Rate":"1.5","Padding":"12","Spacing":"0","Font_Size":"20"}
  * @parent map_setting
  *
  * @param Slot_Add_Mode
@@ -604,6 +636,15 @@
  * @desc マップ上でイベント実行中、アイテムスロットの動作を設定します。
  * @type struct<EventMode>
  * @default {"Slot_Enable":"false","Use_Enable":"false","Select_Enable":"false"}
+ * @parent map_setting
+ *
+ * @param Use_Buzzer
+ * @text アイテム使用不可ブザー
+ * @desc スロットにセットされたアイテムが使用不可の場合にブザーを鳴らすか設定します。(デフォルト:鳴らす)
+ * @type boolean
+ * @on 鳴らす
+ * @off 鳴らさない
+ * @default true
  * @parent map_setting
  *
  *
@@ -725,9 +766,9 @@
  *
  * @param Menu_Slot_Window
  * @text ウィンドウ設定(メニュー)
- * @desc アイテムスロット画面のスロットウィンドウに関する設定です。(デフォルト:1.3 / 12 / 6)
+ * @desc アイテムスロット画面のスロットウィンドウに関する設定です。(デフォルト:1.3 / 12 / 6 / 20)
  * @type struct<SlotWindow>
- * @default {"Size_Rate":"1.3","Padding":"12","Spacing":"6"}
+ * @default {"Size_Rate":"1.5","Padding":"12","Spacing":"0","Font_Size":"20"}
  * @parent menu_setting
  *
  * @param Menu_Slot_Name
@@ -934,6 +975,12 @@
  * @type number
  * @min 0
  *
+ * @param Font_Size
+ * @text フォントサイズ
+ * @desc スロットアイコンに描画する文字(所持数,装備状態)の大きさを指定します。(デフォルト:20)
+ * @type number
+ * @min 6
+ *
  * */
 
 var Imported = Imported || {};
@@ -1086,11 +1133,13 @@ Imported.MKR_MapItemSlot = true;
             "SizeRate": CheckParam("float", "Map_Slot_Window.Size_Rate", Parameters["Map_Slot_Window"]["Size_Rate"], 1.0, 1.0, 2.0),
             "Padding": CheckParam("num", "Map_Slot_Window.Padding", Parameters["Map_Slot_Window"]["Padding"], 12, 7),
             "Spacing": CheckParam("num", "Map_Slot_Window.Spacing", Parameters["Map_Slot_Window"]["Spacing"], 6, 0),
+            "FontSize": CheckParam("num", "Map_Slot_Window.Font_Size", Parameters["Map_Slot_Window"]["Font_Size"], 20, 6),
         },
         "MenuSlotWindow": {
             "SizeRate": CheckParam("float", "Menu_Slot_Window.Size_Rate", Parameters["Menu_Slot_Window"]["Size_Rate"], 1.0, 1.0, 2.0),
             "Padding": CheckParam("num", "Menu_Slot_Window.Padding", Parameters["Menu_Slot_Window"]["Padding"], 12, 7),
             "Spacing": CheckParam("num", "Menu_Slot_Window.Spacing", Parameters["Menu_Slot_Window"]["Spacing"], 6, 0),
+            "FontSize": CheckParam("num", "Menu_Slot_Window.Font_Size", Parameters["Map_Slot_Window"]["Font_Size"], 20, 6),
         },
         "KeyConfig": {
             "ItemUseKey": CheckParam("string", "Item_Use_Key", Parameters["Item_Use_Key"]["Key"], "control", null, null, ["lower"]),
@@ -1119,6 +1168,7 @@ Imported.MKR_MapItemSlot = true;
             "UseEnable": CheckParam("bool", "EventMode.Use_Enable", Parameters["Event_Mode"]["Use_Enable"], false),
             "SelectEnable": CheckParam("bool", "EventMode.Select_Enable", Parameters["Event_Mode"]["Select_Enable"], false),
         },
+        "UseBuzzer" : CheckParam("bool", "Use_Buzzer", Parameters["Use_Buzzer"], true),
     };
 
     const ITEM = "item";
@@ -1538,6 +1588,50 @@ Imported.MKR_MapItemSlot = true;
         return null;
     };
 
+    Game_Party.prototype.getItemSlotId = function (slotId) {
+        let itemSlot, index;
+
+
+        if (!isFinite(slotId)) {
+            return 0;
+        }
+        index = parseInt(slotId, 10) - 1;
+
+        if (index < 0) {
+            return 0;
+        }
+
+        itemSlot = this.getItemSlot(index);
+
+        if(itemSlot) {
+            return itemSlot.id;
+        }
+
+        return 0;
+    };
+
+    Game_Party.prototype.getItemSlotType = function (index) {
+        let itemSlot, index;
+
+
+        if (!isFinite(slotId)) {
+            return null;
+        }
+        index = parseInt(slotId, 10) - 1;
+
+        if (index < 0) {
+            return null;
+        }
+
+        itemSlot = this.getItemSlot(index);
+
+        if(itemSlot) {
+            return itemSlot.type;
+        }
+
+        return null;
+    };
+
     Game_Party.prototype.getItemSlotNumber = function (type, id) {
         let cnt, i, ret, itemSlot;
         cnt = this._itemSlot.length;
@@ -1640,7 +1734,7 @@ Imported.MKR_MapItemSlot = true;
             action.applyGlobal();
             // this._mapItemSlotWindow.redrawCurrentItem();
             return true;
-        } else if (item && (DataManager.getItemType(item) == ITEM || DataManager.getItemType(item) == SKILL)) {
+        } else if (item && (DataManager.getItemType(item) == ITEM || DataManager.getItemType(item) == SKILL) && Params.UseBuzzer[0]) {
             SoundManager.playBuzzer();
         }
 
@@ -2004,13 +2098,27 @@ Imported.MKR_MapItemSlot = true;
 
                 if (type == ITEM && Params.ItemCountVisible[0]) {
                     fontSize = this.contents.fontSize;
-                    this.contents.fontSize = 20;
+                    this.contents.fontSize = Params.MapSlotWindow.FontSize[0];
                     this.contents.drawText("" + num, rect.x, rect.height - 20, rect.width - 2, 24, 'right');
                     this.contents.fontSize = fontSize;
                     this._type[index] = ITEM;
                 } else if (type == WEAPON) {
+                    equipFlg = actor.isEquipped(item);
+                    if (equipFlg) {
+                        fontSize = this.contents.fontSize;
+                        this.contents.fontSize = Params.MapSlotWindow.FontSize[0];
+                        this.contents.drawText("E", rect.x, rect.y, rect.width - 2, 24, 'right');
+                        this.contents.fontSize = fontSize;
+                    }
                     this._type[index] = WEAPON;
                 } else if (type == ARMOR) {
+                    equipFlg = actor.isEquipped(item);
+                    if (equipFlg) {
+                        fontSize = this.contents.fontSize;
+                        this.contents.fontSize = Params.MapSlotWindow.FontSize[0];
+                        this.contents.drawText("E", rect.x, rect.y, rect.width - 2, 24, 'right');
+                        this.contents.fontSize = fontSize;
+                    }
                     this._type[index] = ARMOR;
                 } else if (type == SKILL) {
                     this._type[index] = SKILL;
@@ -2233,29 +2341,21 @@ Imported.MKR_MapItemSlot = true;
     Window_MapItemSlot.prototype.drawItem = function (index) {
         Window_ItemSlotBase.prototype.drawItem.call(this, index);
 
-        let item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize;
+        let item, type, itemSlot, equipFlg, actor;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
 
-        // 装備状態を表示&変更
-        if (itemSlot) {
-            type = itemSlot.type;
-            id = itemSlot.id;
-            item = this.item(index);
-            if (item) {
-                rect = this.itemRect(index);
-                if (type == WEAPON || type == ARMOR) {
-                    equipFlg = actor.isEquipped(item);
-                    if (equipFlg) {
-                        fontSize = this.contents.fontSize;
-                        this.contents.fontSize = 20;
-                        this.contents.drawText("E", rect.x, rect.y, rect.width - 2, 24, 'right');
-                        this.contents.fontSize = fontSize;
-                    }
-                    if (itemSlot.equip != equipFlg) {
-                        $gameParty.setEquipStatus(index, equipFlg);
-                    }
-                }
+        if (!itemSlot) {
+            return;
+        }
+
+        // 装備状態を変更
+        type = itemSlot.type;
+        item = this.item(index);
+        if (item && (type == WEAPON || type == ARMOR)) {
+            equipFlg = actor.isEquipped(item);
+            if (itemSlot.equip != equipFlg) {
+                $gameParty.setEquipStatus(index, equipFlg);
             }
         }
     };
@@ -2442,33 +2542,6 @@ Imported.MKR_MapItemSlot = true;
         }
 
         // this._lastIndex = this.index();
-    };
-
-    Window_ItemSlot.prototype.drawItem = function (index) {
-        Window_ItemSlotBase.prototype.drawItem.call(this, index);
-
-        let item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize;
-        itemSlot = $gameParty.getItemSlot(index);
-        actor = $gameParty.leader();
-
-        // 装備状態を表示
-        if (itemSlot) {
-            type = itemSlot.type;
-            id = itemSlot.id;
-            item = this.item(index);
-            if (item) {
-                rect = this.itemRect(index);
-                if (type == WEAPON || type == ARMOR) {
-                    equipFlg = actor.isEquipped(item);
-                    if (equipFlg) {
-                        fontSize = this.contents.fontSize;
-                        this.contents.fontSize = 20;
-                        this.contents.drawText("E", rect.x, rect.y, rect.width - 2, 24, 'right');
-                        this.contents.fontSize = fontSize;
-                    }
-                }
-            }
-        }
     };
 
     Window_ItemSlot.prototype.isCurrentItemEnabled = function () {
