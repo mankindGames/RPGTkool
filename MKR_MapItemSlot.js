@@ -433,13 +433,13 @@
  *
  *   $gameParty.getItemSlotType([スロット番号]);
  *     ・指定したスロット番号(1～)に登録された
- *       アイテム(武器/防具/スキルを含む)の種類を返します。
- *       返ってくる値は以下のいずれかです。
+ *       アイテム(武器/防具/スキルを含む)の種類文字列を返します。
+ *       返ってくる文字列は以下のいずれかです。
  *         値       :   意味
- *          "ITEM"    セットされているのはアイテムです
- *        "WEAPON"    セットされているのは武器です
- *         "ARMOR"    セットされているのは防具です
- *         "SKILL"    セットされているのはスキルです
+ *          "item"    セットされているのはアイテムです
+ *        "weapon"    セットされているのは武器です
+ *         "armor"    セットされているのは防具です
+ *         "skill"    セットされているのはスキルです
  *   null (空文字)    何もセットされていない。またはスロット番号が不正です
  *
  * 補足：
@@ -1610,7 +1610,7 @@ Imported.MKR_MapItemSlot = true;
         return 0;
     };
 
-    Game_Party.prototype.getItemSlotType = function (index) {
+    Game_Party.prototype.getItemSlotType = function (slotId) {
         let itemSlot, index;
 
 
