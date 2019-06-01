@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.7 2019/06/02 ・前バージョンの修正が不十分だったため再修正。
+//
 // 1.2.6 2019/06/01 ・特定状況でアイテムスロットの表示がチラつく問題を修正。
 //
 // 1.2.5 2019/05/01 ・ヘルプを更新。
@@ -89,7 +91,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.6) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.7) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -1430,7 +1432,7 @@ Imported.MKR_MapItemSlot = true;
 
         this._itemSlotLastIndex = -1;
         this._itemSlotSetIndex = -1;
-        this._itemSlotVisible = true;
+        this._itemSlotVisible = Params.SlotVisible[0];
         if (this._menuSlotStatus == undefined || this._menuSlotStatus == null) {
             this._menuSlotStatus = Params.MenuSlotMode[0];
         }
@@ -2268,7 +2270,7 @@ Imported.MKR_MapItemSlot = true;
         this._opacityOffset = 0;
         this._showing = false;
         this._hiding = false;
-        if(!$gameParty.isItemSlotHide() && Params.SlotVisible[0]) {
+        if(!$gameParty.isItemSlotHide()) {
             this.selectLast();
         }
     };
@@ -2870,14 +2872,12 @@ Imported.MKR_MapItemSlot = true;
             this._mapItemSlotWindow._windowSpriteContainer.addChild(this._mapItemSlotWindow._windowBackSprite);
         }
         this.addChild(this._mapItemSlotWindow);
-        if (!Params.SlotVisible[0] || $gameParty.isItemSlotHide()) {
+
         // if (this._mapItemSlotWindow.lastIndex() <= -1 && !Params.SlotVisible[0]) {
+        if($gameParty.isItemSlotHide()) {
             $gameParty.setItemSlotVisible(false);
             this._mapItemSlotWindow.opacity = 0;
             this._mapItemSlotWindow.contentsOpacity = 0;
-        }
-
-        if(!$gameParty.isItemSlotHide()) {
             this._mapItemSlotWindow.selectLast();
         }
     };
