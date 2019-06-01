@@ -6,6 +6,15 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+//
+// 2.3.7 2019/06/02 ・イベント画像が設定されていないとき、
+//                    探索処理を行わないよう修正
+//
+// 2.3.6 2019/04/06 ・プレイヤー追跡時、プレイヤーが通行可能なイベントを
+//                    探索者も通行可能にするプラグインパラメータを追加。
+//                  ・マップ移動時、追跡症スイッチを自動的にOFFにしてくれる
+//                    プラグインパラメ―タを追加。
+//
 // 2.3.5 2018/10/27 ・視界をイベントの下に描画するプラグインパラメータを追加。
 //                  ・探索停止時にプレイヤー発見状態をクリアするように修正。
 //                  ・プレイヤー発見状態の場合に、
@@ -113,7 +122,7 @@
 
 /*:
  *
- * @plugindesc (v2.3.5) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.7) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -1870,7 +1879,7 @@
     const _Game_EventUpdate = Game_Event.prototype.update;
     Game_Event.prototype.update = function() {
         _Game_EventUpdate.call(this);
-        if(!this._erased && $gameSystem.isSensorStart()) {
+        if(!this.isInvisible() && $gameSystem.isSensorStart()) {
             this.sensorUpdate();
         }
     };
@@ -2691,6 +2700,9 @@
         }
     };
 
+    Game_Event.prototype.isInvisible = function() {
+        return this._erased || this.characterIndex() < 1 || !this.characterName();
+    }
 
     //=========================================================================
     // Spriteset_Map
@@ -2781,7 +2793,7 @@
         rangeVisible = this._character.getRangeVisible();
         defVisible = CEC(DefRangeVisible);
 
-        if(this._character && this._character._erased) {
+        if(this._character) {
             this.parent.removeChild(this);
         }
 
