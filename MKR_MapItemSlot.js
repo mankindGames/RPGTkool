@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.6 2019/06/01 ・特定状況でアイテムスロットの表示がチラつく問題を修正。
+//
 // 1.2.5 2019/05/01 ・ヘルプを更新。
 //                  ・指定スロット番号にセットされたアイテムの
 //                    タイプ、IDを取得する関数を追加。
@@ -87,7 +89,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.5) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.6) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -2266,7 +2268,9 @@ Imported.MKR_MapItemSlot = true;
         this._opacityOffset = 0;
         this._showing = false;
         this._hiding = false;
-        this.selectLast();
+        if(!$gameParty.isItemSlotHide() && Params.SlotVisible[0]) {
+            this.selectLast();
+        }
     };
 
     Window_MapItemSlot.prototype.standardPadding = function () {
@@ -2866,12 +2870,16 @@ Imported.MKR_MapItemSlot = true;
             this._mapItemSlotWindow._windowSpriteContainer.addChild(this._mapItemSlotWindow._windowBackSprite);
         }
         this.addChild(this._mapItemSlotWindow);
-        if (this._mapItemSlotWindow.lastIndex() <= -1 && !Params.SlotVisible[0]) {
+        if (!Params.SlotVisible[0] || $gameParty.isItemSlotHide()) {
+        // if (this._mapItemSlotWindow.lastIndex() <= -1 && !Params.SlotVisible[0]) {
             $gameParty.setItemSlotVisible(false);
             this._mapItemSlotWindow.opacity = 0;
             this._mapItemSlotWindow.contentsOpacity = 0;
         }
-        this._mapItemSlotWindow.selectLast();
+
+        if(!$gameParty.isItemSlotHide()) {
+            this._mapItemSlotWindow.selectLast();
+        }
     };
 
     const _Scene_Map_update = Scene_Map.prototype.update;
