@@ -6,9 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.3.8 2019/06/02 ・前バージョンの修正が不十分だったので再修正。
 //
 // 2.3.7 2019/06/02 ・イベント画像が設定されていないとき、
-//                    探索処理を行わないよう修正
+//                    探索処理を行わないよう修正。
 //
 // 2.3.6 2019/04/06 ・プレイヤー追跡時、プレイヤーが通行可能なイベントを
 //                    探索者も通行可能にするプラグインパラメータを追加。
@@ -122,7 +123,7 @@
 
 /*:
  *
- * @plugindesc (v2.3.7) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.8) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -1879,6 +1880,7 @@
     const _Game_EventUpdate = Game_Event.prototype.update;
     Game_Event.prototype.update = function() {
         _Game_EventUpdate.call(this);
+        // if(!this._erased && $gameSystem.isSensorStart()) {
         if(!this.isInvisible() && $gameSystem.isSensorStart()) {
             this.sensorUpdate();
         }
@@ -2793,7 +2795,7 @@
         rangeVisible = this._character.getRangeVisible();
         defVisible = CEC(DefRangeVisible);
 
-        if(this._character) {
+        if(this._character && this._character._erased) {
             this.parent.removeChild(this);
         }
 
