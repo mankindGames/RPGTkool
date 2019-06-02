@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.3.9 2019/06/02 ・探索処理停止条件を緩和。
+//
 // 2.3.8 2019/06/02 ・前バージョンの修正が不十分だったので再修正。
 //
 // 2.3.7 2019/06/02 ・イベント画像が設定されていないとき、
@@ -123,7 +125,7 @@
 
 /*:
  *
- * @plugindesc (v2.3.8) プレイヤー探索プラグイン
+ * @plugindesc (v2.3.9) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -2703,7 +2705,7 @@
     };
 
     Game_Event.prototype.isInvisible = function() {
-        return this._erased || this.characterIndex() < 1 || !this.characterName();
+        return this._erased || this.characterName() == "";
     }
 
     //=========================================================================
