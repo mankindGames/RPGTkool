@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.2 2019/07/10 カスタマイズ対象をプレイヤーのみからイベントへと拡張
+//
 // 1.0.1 2018/04/01 イベントページに対しすり抜けの不許可設定を行えるようにした。
 //
 // 1.0.0 2018/03/25 初版公開。
@@ -17,10 +19,10 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.1) すり抜けカスタマイズ
+ * @plugindesc (v1.0.2) すり抜けカスタマイズ
  * @author マンカインド
  *
- * @help = すり抜けカスタマイズ ver 1.0.1 =
+ * @help = すり抜けカスタマイズ =
  * MKR_ThroughCustomize.js
  *
  * プラグインパラメータで指定したスイッチがONの間、
@@ -166,14 +168,14 @@ Imported.MKR_ThroughCustomize = true;
 
 
     //=========================================================================
-    // Game_Player
-    //  ・プレイヤーの移動可能判定処理を再定義します。
+    // Game_CharacterBase
+    //  ・キャラクターの移動可能判定処理を再定義します。
     //
     //=========================================================================
-    const _Game_Player_canPass = Game_Player.prototype.canPass;
-    Game_Player.prototype.canPass = function(x, y, d) {
+    const _Game_CharacterBase_canPass = Game_CharacterBase.prototype.canPass;
+    Game_CharacterBase.prototype.canPass = function(x, y, d) {
         let ret;
-        ret = _Game_Player_canPass.apply(this, arguments);
+        ret = _Game_CharacterBase_canPass.apply(this, arguments);
 
 
         if(this.canThrough(ret, x, y, d)) {
@@ -183,7 +185,7 @@ Imported.MKR_ThroughCustomize = true;
         return false;
     };
 
-    Game_Player.prototype.canThrough = function(ret, x, y, d) {
+    Game_CharacterBase.prototype.canThrough = function(ret, x, y, d) {
         let x2, y2, regionId, terrainTag, events, hasThroughTag;
         x2 = $gameMap.xWithDirection(x, d);
         y2 = $gameMap.yWithDirection(y, d);
@@ -214,17 +216,6 @@ Imported.MKR_ThroughCustomize = true;
         if(hasThroughTag(events)) {
             return false;
         }
-
-        // switch(true) {
-        //     case !ret || !$gameSwitches.value(Params.EnableSwitch):
-        //     case !this.isThrough() || this.isDebugThrough():
-        //         return ret;
-        //     case !this.isMapPassable(x, y, d):
-        //     case Params.RegionSetting.indexOf(regionId) != -1:
-        //     case Params.TerrainSetting.indexOf(terrainTag) != -1:
-        //     case hasThroughTag(events):
-        //         return false;
-        // }
 
         return ret;
     };
