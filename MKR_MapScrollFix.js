@@ -1,11 +1,14 @@
 //=============================================================================
 // MKR_MapScrollFix.js
 //=============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// Copyright (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.0.4 2019/07/15 画面固定時、画面のスクロールを
+//                  タイル単位で行わないようにできる設定を追加・
+//
 // 1.0.3 2017/10/24 画面固定時、ジャンプ移動で画面外へ移動できていた
 //                  問題を修正。
 //
@@ -23,10 +26,10 @@
 
 /*:
  *
- * @plugindesc (v1.0.3) マップスクロール固定プラグイン
+ * @plugindesc (v1.0.4) マップスクロール固定プラグイン
  * @author マンカインド
  *
- * @help
+ * @help = MKR_MapScrollFix.js =
  * 指定されたスイッチがオンの間、
  * プレイヤーの移動によるマップスクロールを固定します。
  *
@@ -40,6 +43,11 @@
  * スクロール固定はタイル(48px四方)単位で行われます。
  * そのため、解像度変更などでマップ画面の更新がタイル単位で行われなくなった場合、
  * 画面表示がタイル単位になるようスクロールされてから固定が行われます。
+ *
+ * プラグインパラメータ[画面固定方法]で「緩和する」を設定することで、
+ * タイル単位ではなくその場で画面が固定されます。
+ * ただし、移動はタイル単位となっているため、
+ * 画面に収まっていないタイルは画面外と判定されます。
  *
  *
  * プラグインコマンド:
@@ -93,6 +101,15 @@
  * @off 移動不可
  * @default true
  *
+ * @param Scroll_Fix_Type
+ * @text 画面固定方法
+ * @type select
+ * @option 厳格に行う
+ * @value 1
+ * @option 緩和する
+ * @value 0
+ * @default 1
+ * @desc ゲーム画面内にマップタイルが収まる(=画面解像度がタイル1マスのサイズ、48の倍数である)場合は[厳格に行う]を選択します。
  *
 */
 
@@ -154,6 +171,7 @@ Imported.MKR_MapScrollFix = true;
 
     Params = {
         "ScrollFixSw" : CheckParam("num", "Default_Scroll_Fix_Sw", Parameters["Default_Scroll_Fix_Sw"], 10, 0),
+        "ScrollFixType" : CheckParam("num", "Scroll_Fix_Type", Parameters["Scroll_Fix_Type"], 1),
         "IsDisplayOut" : CheckParam("bool", "Is_Display_Out", Parameters["Is_Display_Out"], true),
         "IsDisplayIn" : CheckParam("bool", "Is_Display_In", Parameters["Is_Display_In"], true),
     };
@@ -170,6 +188,11 @@ Imported.MKR_MapScrollFix = true;
             _Game_Player_updateScroll.apply(this, arguments);
             return;
         }
+
+        if(Params.ScrollFixType[0] != 1) {
+            return;
+        }
+
         if($gameMap.displayX() != Math.round($gameMap.displayX())) {
             $gameMap._displayX = Math.round($gameMap.displayX());
         }
@@ -211,16 +234,42 @@ Imported.MKR_MapScrollFix = true;
         realX = this._realX;
         realY = this._realY;
 
-        switch(true) {
-            case x == dx && x2 < dx:
-            case x == rdx && x2 > rdx:
-            case y == dy && y2 < dy:
-            case y == rdy && y2 > rdy:
-            case realX == dx && x2 < dx:
-            case realX == rdx && x2 > rdx:
-            case realY == dy && y2 < dy:
-            case realY == rdy && y2 > rdy:
-                return false;
+        // switch(true) {
+        //     case x == dx && x2 < dx:
+        //     case x == rdx && x2 > rdx:
+        //     case y == dy && y2 < dy:
+        //     case y == rdy && y2 > rdy:
+        //     case realX == dx && x2 < dx:
+        //     case realX == rdx && x2 > rdx:
+        //     case realY == dy && y2 < dy:
+        //     case realY == rdy && y2 > rdy:
+        //         return false;
+        // }
+
+        if(d == 8 || d == 2) {
+            switch(true) {
+                case y == Math.floor(dy) && y2 < dy:
+                case y == Math.ceil(dy) && y2 < dy:
+                case y == Math.floor(rdy) && y2 > rdy:
+                case y == Math.ceil(rdy) && y2 > rdy:
+                case realY == Math.floor(dy) && y2 < dy:
+                case realY == Math.ceil(dy) && y2 < dy:
+                case realY == Math.floor(rdy) && y2 > rdy:
+                case realY == Math.ceil(rdy) && y2 > rdy:
+                    return false;
+            }
+        } else if(d == 6 || d == 4) {
+            switch(true) {
+                case x == Math.floor(dx) && x2 < dx:
+                case x == Math.ceil(dx) && x2 < dx:
+                case x == Math.floor(rdx) && x2 > rdx:
+                case x == Math.ceil(rdx) && x2 > rdx:
+                case realX == Math.floor(dx) && x2 < dx:
+                case realX == Math.ceil(dx) && x2 < dx:
+                case realX == Math.floor(rdx) && x2 > rdx:
+                case realX == Math.ceil(rdx) && x2 > rdx:
+                    return false;
+            }
         }
 
         return true;
@@ -239,17 +288,44 @@ Imported.MKR_MapScrollFix = true;
         realX = this._realX;
         realY = this._realY;
 
-        switch(true) {
-            case x == dx && x2 > dx:
-            case x == rdx && x2 < rdx:
-            case y == dy && y2 > dy:
-            case y == rdy && y2 < rdy:
-            case realX == dx && x2 > dx:
-            case realX == rdx && x2 < rdx:
-            case realY == dy && y2 > dy:
-            case realY == rdy && y2 < rdy:
-                return false;
+        // switch(true) {
+        //     case x == dx && x2 > dx:
+        //     case x == rdx && x2 < rdx:
+        //     case y == dy && y2 > dy:
+        //     case y == rdy && y2 < rdy:
+        //     case realX == dx && x2 > dx:
+        //     case realX == rdx && x2 < rdx:
+        //     case realY == dy && y2 > dy:
+        //     case realY == rdy && y2 < rdy:
+        //         return false;
+        // }
+
+        if(d == 8 || d == 2) {
+            switch(true) {
+                case y == Math.floor(dy) && y2 > dy:
+                case y == Math.ceil(dy) && y2 > dy:
+                case y == Math.floor(rdy) && y2 < rdy:
+                case y == Math.ceil(rdy) && y2 < rdy:
+                case realY == Math.floor(dy) && y2 > dy:
+                case realY == Math.ceil(dy) && y2 > dy:
+                case realY == Math.floor(rdy) && y2 < rdy:
+                case realY == Math.ceil(rdy) && y2 < rdy:
+                    return false;
+            }
+        } else if(d == 6 || d == 4) {
+            switch(true) {
+                case x == Math.floor(dx) && x2 < dx:
+                case x == Math.ceil(dx) && x2 < dx:
+                case x == Math.floor(rdx) && x2 > rdx:
+                case x == Math.ceil(rdx) && x2 > rdx:
+                case realX == Math.floor(dx) && x2 > dx:
+                case realX == Math.ceil(dx) && x2 > dx:
+                case realX == Math.floor(rdx) && x2 < rdx:
+                case realX == Math.ceil(rdx) && x2 < rdx:
+                    return false;
+            }
         }
+
         return true;
     };
 
