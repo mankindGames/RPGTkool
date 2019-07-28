@@ -6,8 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.1.0 2019/07/28 DP_MapZoomプラグインとの競合を修正
+//
 // 1.0.4 2019/07/15 画面固定時、画面のスクロールを
-//                  タイル単位で行わないようにできる設定を追加・
+//                  タイル単位で行わないようにできる設定を追加
 //
 // 1.0.3 2017/10/24 画面固定時、ジャンプ移動で画面外へ移動できていた
 //                  問題を修正。
@@ -26,28 +28,37 @@
 
 /*:
  *
- * @plugindesc (v1.0.4) マップスクロール固定プラグイン
+ * @plugindesc (v1.1.0) マップスクロール固定プラグイン
  * @author マンカインド
  *
  * @help = MKR_MapScrollFix.js =
  * 指定されたスイッチがオンの間、
  * プレイヤーの移動によるマップスクロールを固定します。
  *
- * プラグインパラメーターでスクロールを禁止するためのスイッチ番号を指定します。
- * ゲーム中にそのスイッチがオンになると画面が固定されます。
+ * プラグインパラメータ(以下、パラメータ)でスクロールを禁止するための
+ * スイッチ番号を指定します。
+ * ゲーム中にそのスイッチがオンになると画面スクロールが固定されます。
  *
- * 同じくプラグインパラメータにより、イベントが固定された画面から外への離脱、
- * 画面内への侵入が可能か設定できます。
+ *
+ * パラメータ[画面外への離脱/画面内への侵入]により、
+ * イベントが固定された画面から外への離脱、画面内への侵入が可能か設定できます。
  * (プレイヤー/イベントがすり抜けONの場合、この設定は無視されます)
+ *
  *
  * スクロール固定はタイル(48px四方)単位で行われます。
  * そのため、解像度変更などでマップ画面の更新がタイル単位で行われなくなった場合、
  * 画面表示がタイル単位になるようスクロールされてから固定が行われます。
  *
- * プラグインパラメータ[画面固定方法]で「緩和する」を設定することで、
+ * パラメータ[画面固定方法]で「緩和する」を設定することで、
  * タイル単位ではなくその場で画面が固定されます。
- * ただし、移動はタイル単位となっているため、
- * 画面に収まっていないタイルは画面外と判定されます。
+ * ただし、キャラクター移動はタイル単位となっているため、
+ * 画面固定の結果、画面内に収まっていないタイルは画面外と判定されます。
+ *
+ *
+ * プラグイン:DP_MapZoom.js(以下、MapZoomプラグイン)併用時、
+ * プラグイン管理画面で本プラグインをMapZoomプラグインより下に登録し
+ * 本プラグインのプラグインパラメータ[MapZoom併用]を「有効にする」と
+ * 設定してください。
  *
  *
  * プラグインコマンド:
@@ -81,13 +92,13 @@
  *
  * @param Default_Scroll_Fix_Sw
  * @text スクロール固定スイッチ
- * @desc マップスクロールを固定するスイッチの番号を指定します。
+ * @desc 画面スクロールを固定するスイッチの番号を指定します。
  * @type switch
  * @default 10
  *
  * @param Is_Display_Out
  * @text 画面外への離脱
- * @desc スクロール固定時、イベントが画面外へと移動可能か選択します。
+ * @desc 画面スクロール固定時、イベントが画面外へと移動可能か選択します。
  * @type boolean
  * @on 移動可能
  * @off 移動不可
@@ -95,7 +106,7 @@
  *
  * @param Is_Display_In
  * @text 画面内への侵入
- * @desc スクロール固定時、画面外にいるイベントが画面内へと移動可能か選択します。
+ * @desc 画面スクロール固定時、画面外にいるイベントが画面内へと移動可能か選択します。
  * @type boolean
  * @on 移動可能
  * @off 移動不可
@@ -110,6 +121,14 @@
  * @value 0
  * @default 1
  * @desc ゲーム画面内にマップタイルが収まる(=画面解像度がタイル1マスのサイズ、48の倍数である)場合は[厳格に行う]を選択します。
+ *
+ * @param Enable_MapZoom
+ * @text MapZoom併用
+ * @desc DP_MapZoom.jsプラグイン併用時、「有効する」に設定してください
+ * @type boolean
+ * @on 有効にする
+ * @off 無効にする
+ * @default false
  *
 */
 
@@ -174,6 +193,7 @@ Imported.MKR_MapScrollFix = true;
         "ScrollFixType" : CheckParam("num", "Scroll_Fix_Type", Parameters["Scroll_Fix_Type"], 1),
         "IsDisplayOut" : CheckParam("bool", "Is_Display_Out", Parameters["Is_Display_Out"], true),
         "IsDisplayIn" : CheckParam("bool", "Is_Display_In", Parameters["Is_Display_In"], true),
+        "EnableMapZoom" : CheckParam("bool", "Enable_MapZoom", Parameters["Enable_MapZoom"], false),
     };
 
 
@@ -199,6 +219,44 @@ Imported.MKR_MapScrollFix = true;
         if($gameMap.displayY() != Math.round($gameMap.displayY())) {
             $gameMap._displayY = Math.round($gameMap.displayY());
         }
+    };
+
+
+    //=========================================================================
+    // Game_Map
+    //  ・マップスクロール処理を再定義します。
+    //
+    //=========================================================================
+    const _Game_Map_scrollDown = Game_Map.prototype.scrollDown;
+    Game_Map.prototype.scrollDown = function(distance) {
+        if(Params.EnableMapZoom[0] && $gameSwitches.value(Params.ScrollFixSw[0])) {
+            return;
+        }
+        _Game_Map_scrollDown.call(this, distance);
+    };
+
+    const _Game_Map_scrollLeft = Game_Map.prototype.scrollLeft;
+    Game_Map.prototype.scrollLeft = function(distance) {
+        if(Params.EnableMapZoom[0] && $gameSwitches.value(Params.ScrollFixSw[0])) {
+            return;
+        }
+        _Game_Map_scrollLeft.call(this, distance);
+    };
+
+    const _Game_Map_scrollRight = Game_Map.prototype.scrollRight;
+    Game_Map.prototype.scrollRight = function(distance) {
+        if(Params.EnableMapZoom[0] && $gameSwitches.value(Params.ScrollFixSw[0])) {
+            return;
+        }
+        _Game_Map_scrollRight.call(this, distance);
+    };
+
+    const _Game_Map_scrollUp = Game_Map.prototype.scrollUp;
+    Game_Map.prototype.scrollUp = function(distance) {
+        if(Params.EnableMapZoom[0] && $gameSwitches.value(Params.ScrollFixSw[0])) {
+            return;
+        }
+        _Game_Map_scrollUp.call(this, distance);
     };
 
 
