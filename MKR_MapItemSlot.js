@@ -6,6 +6,16 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.8 2019/10/22 ・スロット位置が左端以外だった場合に
+//                    スロットのタッチ操作が正しく動作していなかった問題を修正。
+//                  ・プラグインコマンドによるスロット選択を行った時、
+//                    エラーとなる場合があった問題を修正。
+//                  ・スクリプトコマンドでアイテムスロットメニューを表示させる
+//                    機能を追加。
+//                  ・アイテム使用以外でアイテムの個数が0になったとき、
+//                    スロットからアイテムを削除する処理が動作していなかった
+//                    問題を修正。
+//
 // 1.2.7 2019/06/02 ・前バージョンの修正が不十分だったため再修正。
 //
 // 1.2.6 2019/06/01 ・特定状況でアイテムスロットの表示がチラつく問題を修正。
@@ -91,7 +101,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.7) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.8) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -445,6 +455,10 @@
  *         "armor"    セットされているのは防具です
  *         "skill"    セットされているのはスキルです
  *   null (空文字)    何もセットされていない。またはスロット番号が不正です
+ *
+ *   $gameParty.openItemSlotMenu();
+ *     ・アイテムスロットメニューを開きます。
+ *
  *
  * 補足：
  *   ・このプラグインに関するメモ欄の設定、プラグインコマンド/パラメーター、
@@ -1373,7 +1387,10 @@ Imported.MKR_MapItemSlot = true;
                     if (args[1] != "") {
                         if (slotToIndex(args[1].toLowerCase()) != -1) {
                             if (scene && scene.constructor == Scene_Map) {
-                                scene._mapItemSlotWindow.select(slotToIndex(args[1].toLowerCase()));
+                                index  = slotToIndex(args[1].toLowerCase())
+                                console.log("plugin command: %d", index);
+                                // scene._mapItemSlotWindow.select(index);
+                                $gameParty.setItemSlotForceIndex(index);
                             }
                         }
                     }
@@ -1452,7 +1469,7 @@ Imported.MKR_MapItemSlot = true;
 
     const _Game_Party_gainItem = Game_Party.prototype.gainItem;
     Game_Party.prototype.gainItem = function (item, amount, includeEquip) {
-        let type, index, i, cnt, container, actor, meta;
+        let type, index, i, cnt, container, actor, meta, itemSlot, scene;
 
         meta = "";
         if (item && item.meta) {
@@ -1472,6 +1489,26 @@ Imported.MKR_MapItemSlot = true;
         }
 
         _Game_Party_gainItem.apply(this, arguments);
+
+        // アイテムスロットのアイテム削除判定
+        scene = SceneManager._scene;
+        if (Params.ItemRemoveMode[0] && item && amount < 0 && scene && scene.constructor == Scene_Map) {
+            type = DataManager.getItemType(item);
+            index = $gameParty.getItemSlotNumber(type, item.id);
+            if(index > -1) {
+                itemSlot = $gameParty.getItemSlot(index);
+                // item = win.item();
+                if (itemSlot) {
+                    actor = $gameParty.leader();
+                    // if ((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || ((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && !actor.isEquipped(item))) {
+                    if (itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) {
+                        $gameParty.removeItemSlot(index);
+                        // win.redrawCurrentItem();
+                        scene._mapItemSlotWindow.redrawItem(index);
+                    }
+                }
+            }
+        }
     };
 
     Game_Party.prototype.setItemSlot = function (index, item, equip) {
@@ -1851,6 +1888,10 @@ Imported.MKR_MapItemSlot = true;
         return this.isItemSlotType(index, id, SKILL);
     };
 
+    Game_Party.prototype.openItemSlotMenu = function () {
+        SceneManager.push(Scene_ItemSlot);
+    };
+
 
     //=========================================================================
     // Game_Actor
@@ -2225,7 +2266,7 @@ Imported.MKR_MapItemSlot = true;
         // クリック位置判定
         for(i = 0; i < Params.SlotNumber[0]; i++) {
             rect = this.itemRect(i);
-            if(touchX >= rect.x + padding && touchX <= rect.x + rect.width + padding) {
+            if(touchX >= x + rect.x + padding && touchX <= x + rect.x + rect.width + padding) {
                 // console.log("カーソル位置:%d", i);
                 return i;
             }
@@ -2963,6 +3004,7 @@ Imported.MKR_MapItemSlot = true;
         }
         if ((itemSlot == null || itemSlot.type == ITEM) && ((Params.SlotSetW[0] && actor.weapons().length > 0) || (Params.SlotSetA[0] && actor.armors().length > 0))) {
             // 装備アイテム以外のスロット選択時に装備を確実に外す
+            console.log("index:%d, lastIndex:%d", index, lastIndex);
             item = win.item(lastIndex);
             actor.changeEquipById(item.etypeId, 0);
         }
