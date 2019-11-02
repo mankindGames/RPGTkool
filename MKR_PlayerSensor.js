@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.4.0 2019/11/02 ・プラグインパラメータ[視界範囲描画]のスイッチ指定が
+//                    正しく機能しないようになっていたため修正
+//
 // 2.3.9 2019/06/02 ・探索処理停止条件を緩和。
 //
 // 2.3.8 2019/06/02 ・前バージョンの修正が不十分だったので再修正。
@@ -125,7 +128,7 @@
 
 /*:
  *
- * @plugindesc (v2.3.9) プレイヤー探索プラグイン
+ * @plugindesc (v2.4.0) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -858,14 +861,14 @@
         min = params[3];
         max = params[4];
 
-        text = convertEscapeCharacters(text)
+        text = convertEscapeCharacters(text);
 
         switch(type) {
             case "bool":
                 if(text == "") {
                     value = (def)? true : false;
                 } else {
-                    value = text.toUpperCase() === "ON" || text.toUpperCase() === "TRUE" || text.toUpperCase() === "1";
+                    value = text === true || text.toUpperCase() === "ON" || text.toUpperCase() === "TRUE" || text.toUpperCase() === "1";
                 }
                 break;
             case "num":
@@ -2795,7 +2798,7 @@
         sensorStatus = this._character.getSensorStatus();
         rangeStatus = this._character.getViewRangeStatus();
         rangeVisible = this._character.getRangeVisible();
-        defVisible = CEC(DefRangeVisible);
+        defVisible = ConvSw(DefRangeVisible[0]);
 
         if(this._character && this._character._erased) {
             this.parent.removeChild(this);
