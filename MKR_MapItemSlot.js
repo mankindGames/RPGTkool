@@ -6,6 +6,12 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.9 2020/01/02 ・アイテムスロット画面から装備済みアイテムのスロットを
+//                    装備不可アイテムに変更しマップ画面に戻ると
+//                    エラーとなっていた問題を修正。
+//                  ・ゲーム開始時、パーティに誰もいない状態だと
+//                    エラーとなっていた問題を修正
+//
 // 1.2.8 2019/10/22 ・スロット位置が左端以外だった場合に
 //                    スロットのタッチ操作が正しく動作していなかった問題を修正。
 //                  ・プラグインコマンドによるスロット選択を行った時、
@@ -101,7 +107,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.8) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.9) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -357,6 +363,8 @@
  *   itemslot menu [方式番号]
  *     ・メニュー項目[アイテムスロット]の表示方式を変更します。
  *       番号と方式の対応は以下のとおりです。
+ *       (パーティに誰も居ない場合、項目はメニューに表示されますが
+ *        選択不能状態となります)
  *       0 : メニューに追加しない
  *       1 : メニューに追加し選択有効状態
  *       2 : メニューに追加するが選択不能状態
@@ -1424,13 +1432,13 @@ Imported.MKR_MapItemSlot = true;
             // アクターがアイテムを装備済みの場合、先にスロットに登録する。
             if ($gameParty && Params.SlotAddMode[0]) {
                 actor = $gameParty.leader();
-                if (actor.weapons().length > 0) {
+                if (actor && actor.weapons().length > 0) {
                     actor.weapons().forEach(function (item) {
                         this.setItemSlot(i, item);
                         i++;
                     }, this);
                 }
-                if (actor.armors().length > 0) {
+                if (actor && actor.armors().length > 0) {
                     actor.armors().forEach(function (item) {
                         this.setItemSlot(i, item);
                         i++;
@@ -1543,18 +1551,20 @@ Imported.MKR_MapItemSlot = true;
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
                 this._itemSlot[index].type = SKILL;
-            } else if ((Params.SlotSetW[0] && DataManager.isWeapon(item) && actor.isEquipWtypeOk(item.wtypeId)) || (Params.SlotSetA[0] && DataManager.isArmor(item) && actor.isEquipAtypeOk(item.atypeId))) {
-                equipFlg = actor.isEquipped(item);
-                this._itemSlot[index] = {};
-                this._itemSlot[index].id = item.id;
-                this._itemSlot[index].type = DataManager.isWeapon(item) ? WEAPON : ARMOR;
-                this._itemSlot[index].etypeId = item.etypeId;
-                this._itemSlot[index].equip = equipFlg;
+            } else if (actor) {
+                if((Params.SlotSetW[0] && DataManager.isWeapon(item) && actor.isEquipWtypeOk(item.wtypeId)) || (Params.SlotSetA[0] && DataManager.isArmor(item) && actor.isEquipAtypeOk(item.atypeId))) {
+                    equipFlg = actor.isEquipped(item);
+                    this._itemSlot[index] = {};
+                    this._itemSlot[index].id = item.id;
+                    this._itemSlot[index].type = DataManager.isWeapon(item) ? WEAPON : ARMOR;
+                    this._itemSlot[index].etypeId = item.etypeId;
+                    this._itemSlot[index].equip = equipFlg;
 
-                if (equip) {
-                    $gameParty.setItemSlotLastIndex(index);
-                    this._itemSlot[index].equip = true;
-                    actor.changeEquipById(item.etypeId, item.id);
+                    if (equip) {
+                        $gameParty.setItemSlotLastIndex(index);
+                        this._itemSlot[index].equip = true;
+                        actor.changeEquipById(item.etypeId, item.id);
+                    }
                 }
             }
         }
@@ -1761,7 +1771,7 @@ Imported.MKR_MapItemSlot = true;
         let actor, action, i;
         actor = this.leader();
 
-        if (item && actor.canUse(item) && (item.scope === 0 || this.isItemEffectsValid(item))) {
+        if (actor && item && actor.canUse(item) && (item.scope === 0 || this.isItemEffectsValid(item))) {
             $gameParty.setLastItem(item);
             actor.useItem(item);
             action = new Game_Action(actor);
@@ -2879,7 +2889,7 @@ Imported.MKR_MapItemSlot = true;
         status = $gameParty.getMenuSlotStatus();
 
         if (status == 1) {
-            this.addCommand(Params.MenuSlotName[0], 'itemslot', true);
+            this.addCommand(Params.MenuSlotName[0], 'itemslot', $gameParty.exists());
         } else if (status == 2) {
             this.addCommand(Params.MenuSlotName[0], 'itemslot', false);
         }
@@ -3241,12 +3251,17 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_ItemSlot.prototype.onItemOk = function () {
-        let item;
+        let item, equipItem, actor;
         item = this.item();
+        actor = $gameParty.leader();
 
         // setslot専用
         // $gameParty.setLastItem(this.item());
         $gameParty.setSlotEquipItem(this._itemSlotWindow.item());
+        equipItem = $gameParty.getSlotEquipItem();
+        if(equipItem) {
+            actor.changeEquipById(equipItem.etypeId, 0);
+        }
         $gameParty.setItemSlot(this._itemSlotWindow.index(), this.item());
         $gameParty.setSlotEquipItem(this.item());
         this._itemSlotWindow.refresh();
