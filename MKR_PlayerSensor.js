@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.5.0 2020/01/20 ・プレイヤー追跡時、追跡者がフォロワーを
+//                    すり抜けるようになるプラグインパラメータを追加
+//
 // 2.4.1 2020/01/20 ・プラグインパラメータ[視界範囲の色]のタイプを変更
 //                  ・プラグインパラメータ[フキダシ表示]のタイプを変更
 //
@@ -131,7 +134,7 @@
 
 /*:
  *
- * @plugindesc (v2.4.1) プレイヤー探索プラグイン
+ * @plugindesc (v2.5.0) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -716,6 +719,15 @@
  * @default false
  * @parent マップ設定
  *
+ * @param Follower_Through
+ * @text フォロワー無視
+ * @desc プレイヤー発見状態のイベントがプレイヤーのフォロワー(隊列)をすり抜けるか設定します。(デフォルト:すり抜け不可)
+ * @type boolean
+ * @on すり抜け可
+ * @off すり抜け不可
+ * @default false
+ * @parent マップ設定
+ *
  * @param Location_Reset
  * @text マップ移動時リセット
  * @desc 場所移動コマンド使用時、元のマップに配置された探索者の追跡状態をリセットするか設定します。(デフォルト:リセットしない)
@@ -1029,7 +1041,7 @@
         DefRealRangeX, DefRealRangeY, DefLostSensorSwitch,
         DefFoundBallon, DefFoundCommon, DefFoundDelay, DefFoundSe,
         DefLostBallon, DefLostCommon, DefLostDelay, DefLostSe,
-        DefRangePosition, DefTrackingPriority, DefLocationReset;
+        DefRangePosition, DefTrackingPriority, DefFollowerThrough, DefLocationReset;
     DefSensorSwitch = CheckParam("switch", "Sensor_Switch", Parameters["Sensor_Switch"], "D");
     DefLostSensorSwitch = CheckParam("switch", "Lost_Sensor_Switch", Parameters["Lost_Sensor_Switch"]);
     DefBothSensor = CheckParam("bool", "Both_Sensor", Parameters["Both_Sensor"], false);
@@ -1065,6 +1077,7 @@
         "pan" : CheckParam("num", "Player_Lost.Se.Pan", Parameters["Player_Lost"]["Se"]["Pan"], 0, -100, 100)[0],
     }
     DefTrackingPriority = CheckParam("bool", "Tracking_Priority", Parameters["Tracking_Priority"], false);
+    DefFollowerThrough = CheckParam("bool", "Follower_Through", Parameters["Follower_Through"], false);
     DefLocationReset = CheckParam("bool", "Location_Reset", Parameters["Location_Reset"], false);
 
     DIR_UP = 8;
@@ -2751,6 +2764,24 @@
     Game_Event.prototype.isInvisible = function() {
         return this._erased || this.characterName() == "";
     }
+
+    const _Game_Event_isCollidedWithPlayerCharacters = Game_Event.prototype.isCollidedWithPlayerCharacters;
+    Game_Event.prototype.isCollidedWithPlayerCharacters = function(x, y) {
+        if(!this.isSensorFound() || !DefFollowerThrough[0]) {
+            return _Game_Event_isCollidedWithPlayerCharacters.call(this, x, y);
+        }
+        return this.isNormalPriority() && !$gamePlayer.isThrough() && $gamePlayer.pos(x, y);
+    };
+
+
+    //=========================================================================
+    // Game_Followers
+    //  フォロワーを返す処理を追加定義します。
+    //=========================================================================
+    // Game_Followers.prototype.member = function() {
+    //     return this._data;
+    // };
+
 
     //=========================================================================
     // Spriteset_Map
