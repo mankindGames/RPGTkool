@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.4.1 2020/01/20 ・プラグインパラメータ[視界範囲の色]のタイプを変更
+//                  ・プラグインパラメータ[フキダシ表示]のタイプを変更
+//
 // 2.4.0 2019/11/02 ・プラグインパラメータ[視界範囲描画]のスイッチ指定が
 //                    正しく機能しないようになっていたため修正
 //
@@ -128,7 +131,7 @@
 
 /*:
  *
- * @plugindesc (v2.4.0) プレイヤー探索プラグイン
+ * @plugindesc (v2.4.1) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -656,9 +659,16 @@
  *
  * @param Range_Color
  * @text 視界範囲の色
- * @desc 視界範囲を描画する際の色を英語で指定してください。デフォルト:white(白)
- * @type combo
- * @option white
+ * @desc 視界範囲を描画する際の色を選択してください。デフォルト:白
+ * @type select
+ * @option 白
+ * @value white
+ * @option 赤
+ * @value red
+ * @option 青
+ * @value blue
+ * @option 黄
+ * @value yellow
  * @default white
  * @parent 視界設定
  *
@@ -720,9 +730,40 @@
  *
  * @param Ballon
  * @text [初期値] フキダシ表示
- * @desc 探索者にフキダシを表示させる場合はアイコン番号を指定します。デフォルト:0(アイコンを表示しない)
- * @type number
- * @min 0
+ * @desc 探索者にフキダシを表示させる場合はアイコン番号を指定します。デフォルト:表示しない
+ * @type select
+ * @option 表示しない
+ * @value 0
+ * @option びっくり
+ * @value 1
+ * @option はてな
+ * @value 2
+ * @option 音符
+ * @value 3
+ * @option ハート
+ * @value 4
+ * @option 怒り
+ * @value 5
+ * @option 汗
+ * @value 6
+ * @option くしゃくしゃ
+ * @value 7
+ * @option 沈黙
+ * @value 8
+ * @option 電球
+ * @value 9
+ * @option Zzz
+ * @value 10
+ * @option ユーザー定義1
+ * @value 11
+ * @option ユーザー定義2
+ * @value 12
+ * @option ユーザー定義3
+ * @value 13
+ * @option ユーザー定義4
+ * @value 14
+ * @option ユーザー定義5
+ * @value 15
  * @default 0
  *
  * @param Se
