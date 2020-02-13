@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.2.2 2020/02/13 ・イベントの一時消去を行った際にエラーとなる問題を修正。
+//
 // 1.2.1 2018/10/22 ・ニューゲーム開始時点マップにゲージ設定された
 //                    イベントがいた場合、エラーになる問題を修正。
 //
@@ -63,7 +65,7 @@
 
 /*:
  *
- * @plugindesc (v1.2.1) イベントゲージプラグイン
+ * @plugindesc (v1.2.2) イベントゲージプラグイン
  * @author マンカインド
  *
  * @help = イベントゲージプラグイン =
@@ -935,7 +937,7 @@ Imported.MKR_EventGauge = true;
         var option, value;
         value = 0;
 
-        if(!$gameMap.event(this._gaugeNum)) {
+        if(!$gameMap.event(this._gaugeNum) || $gameMap.event(this._gaugeNum)._erased) {
             return;
         }
 
@@ -962,7 +964,7 @@ Imported.MKR_EventGauge = true;
         var option, value;
         value = 0;
 
-        if(!$gameMap.event(this._gaugeNum)) {
+        if(!$gameMap.event(this._gaugeNum) || $gameMap.event(this._gaugeNum)._erased) {
             return;
         }
 
@@ -1014,7 +1016,8 @@ Imported.MKR_EventGauge = true;
         width = this.contents.width;
         height = this.contents.height;
 
-        if(!$gameMap.event(this._gaugeNum)) {
+        if(!$gameMap.event(this._gaugeNum) || $gameMap.event(this._gaugeNum)._erased) {
+            this.contents.clear();
             return;
         }
 
@@ -1033,7 +1036,7 @@ Imported.MKR_EventGauge = true;
     };
 
     Window_Gauge.prototype.updatePosition = function() {
-        if(!$gameMap.event(this._gaugeNum)) {
+        if(!$gameMap.event(this._gaugeNum) || $gameMap.event(this._gaugeNum)._erased) {
             return;
         }
 
