@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.5.1 2020/02/27 ・パラメータ[視界範囲描画]がOFFのとき、
+//                    視界描画用spriteの更新を行わないように修正
+//
 // 2.5.0 2020/01/20 ・プレイヤー追跡時、追跡者がフォロワーを
 //                    すり抜けるようになるプラグインパラメータを追加
 //
@@ -134,7 +137,7 @@
 
 /*:
  *
- * @plugindesc (v2.5.0) プレイヤー探索プラグイン
+ * @plugindesc (v2.5.1) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -2809,7 +2812,7 @@
     const _Spriteset_Map_update = Spriteset_Map.prototype.update;
     Spriteset_Map.prototype.update = function() {
         _Spriteset_Map_update.call(this);
-        if(this._viewRangeSprites) {
+        if(this._viewRangeSprites && ConvSw(DefRangeVisible[0])) {
             this.updateViewRange();
         }
     };
