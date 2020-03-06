@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.1.0 2020/03/06 影の不透明度を指定できる機能を追加。
+//
 // 1.0.0 2019/07/06 初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,13 +17,14 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.0) アクターシャドウカスタマイズ
+ * @plugindesc (v1.1.0) アクターシャドウカスタマイズ
  * @author マンカインド
  *
  * @help = アクターシャドウカスタマイズ =
  * MKR_ActorShadowCustomize.js
  *
- * サイドビュー戦闘時、アクターの下に表示されている影の位置、拡大率を
+ * サイドビュー戦闘時、アクターの下に表示されている
+ * 影の位置、拡大率、不透明度を
  * アクター毎に変更することができます。
  *
  * [データベース]→[アクター]のメモ欄に以下のように設定します。
@@ -44,6 +47,11 @@
  *   アクターの影を指定した数値分、上下方向に拡大/縮小します。(元の値は1.0です)
  *   2.0で影の大きさが2倍、0.5で影の大きさが半分になります。
  *   0.0以下にはできません。
+ *
+ * <shadowOpacity:****>
+ *   アクターの影の不透明度を指定した数値に変更します。(元の値は255です)
+ *   0でアクターの影が透明になります。
+ *   0～255の間で指定してください。
  *
  *
  * プラグインパラメーター:
@@ -118,7 +126,6 @@ Imported.MKR_ActorShadowCustomize = true;
     };
 
 
-
     //=========================================================================
     // Sprite_Actor
     //  ・アクターシャドウを再定義します。
@@ -131,13 +138,16 @@ Imported.MKR_ActorShadowCustomize = true;
         _Sprite_Actor_setBattler.call(this, battler);
 
         if (battler !== actor) {
-            this.positionShadowSprite();
-            this.resizeShadowSprite();
+            this.opacityShadowSprite();
+            if(this._shadowSprite && this._shadowSprite.opacity > 0) {
+                this.positionShadowSprite();
+                this.resizeShadowSprite();
+            }
         }
     };
 
     Sprite_Actor.prototype.positionShadowSprite = function() {
-        if(!this._actor || !this._shadowSprite) {
+        if(!this._actor) {
             return;
         }
 
@@ -154,7 +164,7 @@ Imported.MKR_ActorShadowCustomize = true;
     };
 
     Sprite_Actor.prototype.resizeShadowSprite = function() {
-        if(!this._actor || !this._shadowSprite) {
+        if(!this._actor) {
             return;
         }
 
@@ -170,4 +180,19 @@ Imported.MKR_ActorShadowCustomize = true;
             this._shadowSprite.scale.y = scaleY * 1.0;
         }
     };
+
+    Sprite_Actor.prototype.opacityShadowSprite = function() {
+        if(!this._actor || !this._shadowSprite) {
+            return;
+        }
+
+        let opacity;
+        opacity = GetMeta(this._actor.actor().meta,"shadowOpacity");
+        opacity = (opacity === "" || !isFinite(opacity)) ? 255 : Number(opacity);
+
+        if (opacity >= 0 && opacity <= 255) {
+            this._shadowSprite.opacity = opacity;
+        }
+    };
+
 })();
