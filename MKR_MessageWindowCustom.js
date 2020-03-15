@@ -1,16 +1,19 @@
 //=============================================================================
 // MKR_MessageWindowCustom.js
 //=============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// Copyright (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.2 2017/08/13 ウィンドウ位置を調整できる機能を追加。
+// 1.0.3 2020/03/15 ・プラグインヘルプを修正。
+//                  ・プラグインコマンドが動作しなくなっていたため修正。
 //
-// 1.0.1 2017/06/25 余計なコードが残っていたため修正。
+// 1.0.2 2017/08/13 ・ウィンドウ位置を調整できる機能を追加。
 //
-// 1.0.0 2017/06/25 初版公開。
+// 1.0.1 2017/06/25 ・余計なコードが残っていたため修正。
+//
+// 1.0.0 2017/06/25 ・初版公開。
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -19,18 +22,17 @@
 
 /*:
  *
- * @plugindesc (v1.0.2) メッセージウィンドウカスタマイズプラグイン
+ * @plugindesc (v1.0.3) メッセージウィンドウカスタマイズプラグイン
  * @author マンカインド
  *
- * @help = メッセージウィンドウカスタマイズプラグイン ver1.0.2 =
- * MKR_MessageWindowCustom.js - マンカインド
+ * @help = メッセージウィンドウカスタマイズプラグイン =
+ * MKR_MessageWindowCustom.js
  *
  * このプラグインを導入することでメッセージウィンドウに
  * 以下の変更を加えることができます。
  *
  *   ・行数を変えることなく、ウィンドウ高さの調整
  *   ・ウィンドウ表示位置の調整
- *
  *
  * プラグインパラメータ[Window_Height_Offset]の数値を設定することにより
  * メッセージウィンドウ([文章の表示]コマンドで表示に使われるウィンドウ)の
@@ -43,12 +45,15 @@
  *
  * 以下のプラグインコマンドを実行することにより
  *
- *   windowMessage positon [X座標] [Y座標]
+ *   windowMessage position [X座標] [Y座標]
  *
  * メッセージウィンドウの表示位置を変更することができます。
  * 変更後のウィンドウサイズ・顔グラフィックサイズは自動的に調整されます。
  *
- * なお、ウィンドウメッセージを閉じと上記プラグインコマンドによる変更は
+ * [例 - ウィンドウの表示座標をX:10,Y10に設定する]
+ * ◆プラグインコマンド：windowMessage position 10 10
+ *
+ * なお、ウィンドウが閉じられると上記プラグインコマンドによる変更は
  * 元に戻ります。
  *
  *
@@ -142,14 +147,17 @@ Imported.MKR_MessageWindowCustom = true;
         x = $gameMessage.positionX();
         y = $gameMessage.positionY();
 
-        if (command.toLowerCase() === "messagewindow") {
+        if (command.toLowerCase() === "windowmessage") {
             switch (args[0].toLowerCase()) {
                 case "position":
+                    console.log("args:%o", args);
                     if(args[1] != "" && isFinite(args[1])) {
+                        console.log("args1:%s",args[1]);
                         x = parseInt(args[1], 10);
                         $gameMessage.setPositionX(x);
                     }
                     if(args[2] != "" && isFinite(args[2])) {
+                        console.log("args2:%s",args[2]);
                         y = parseInt(args[2], 10);
                         $gameMessage.setPositionY(y);
                     }
