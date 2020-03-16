@@ -6,7 +6,11 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
-// 0.0.1 2020/03/14 初版公開。
+// 0.1.0 2020/03/17 ・装備していない武器/防具を捨てられる機能を追加。
+//                  ・アクションウィンドウを表示したときの選択位置を
+//                    常に選択肢1となるように修正。
+//
+// 0.0.1 2020/03/14 ・初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -15,16 +19,16 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v0.0.1) マップ上アイテム廃棄プラグイン
+ * @plugindesc (v0.1.0) マップ上アイテム廃棄プラグイン
  * @author マンカインド
  *
  * @help = マップ上アイテム廃棄プラグイン =
  * MKR_ItemDisposeOnMap.js
  *
  * 所持しているアイテムを捨てることができるようになります。
- * (武器、防具、大事なものは対象外)
+ * (大事なものは対象外)
  *
- * 次のプラグインを本プラグインより上に導入した場合、
+ * 次の２つのプラグインを本プラグインより上に導入した場合、
  * 捨てたアイテムをマップ上に表示させることができます。
  *
  *   ・TemplateEvent.js - トリアコンタン様 作
@@ -41,7 +45,7 @@
  * ④本プラグイン設定「アイテムイベントID」に③で作成したイベントのIDを
  *   数字で指定します。(例:EV005→5)
  *
- * ※別マップに移動した、マップの再読み込みが行われた場合、
+ * ※別マップに移動した、またはマップの再読み込みが行われた場合、
  *   捨てたアイテムのイベントは消滅します。
  *
  *
@@ -101,6 +105,22 @@
  * @type number
  * @min 0
  * @default 0
+ *
+ * @param enableWeaponDispose
+ * @text 武器を捨てられる？
+ * @desc 装備していない武器を捨てられるようにする設定です。
+ * @type boolean
+ * @on 捨てられる
+ * @off 捨てられない
+ * @default false
+ *
+ * @param enableArmorDispose
+ * @text 防具を捨てられる？
+ * @desc 装備していない防具を捨てられるようにする設定です。
+ * @type boolean
+ * @on 捨てられる
+ * @off 捨てられない
+ * @default false
  *
 */
 /*~struct~se:
@@ -164,7 +184,7 @@ Imported.MKR_ItemDisposeOnMap = true;
         switch(type) {
             case "bool":
                 if(value == "") {
-                    value = (def)? true : false;
+                    value = (def)? "TRUE" : "FALSE";
                 }
                 value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
                 break;
@@ -211,23 +231,29 @@ Imported.MKR_ItemDisposeOnMap = true;
 
     Params = {
         "command" : {
-            "itemUse"     : CheckParam("string", "itemUseCommand",       Parameters["itemUseCommand"],      "使う"),
-            "itemDispose" : CheckParam("string", "itemDisposeCommand",   Parameters["itemDisposeCommand"],  "捨てる"),
-            "itemCancel"  : CheckParam("string", "itemCancelCommand",    Parameters["itemCancelCommand"],   "使う"),
+            "itemUse"         : CheckParam("string", "itemUseCommand",       Parameters["itemUseCommand"],      "使う"),
+            "itemDispose"     : CheckParam("string", "itemDisposeCommand",   Parameters["itemDisposeCommand"],  "捨てる"),
+            "itemCancel"      : CheckParam("string", "itemCancelCommand",    Parameters["itemCancelCommand"],   "使う"),
         },
-        "eventId"         : CheckParam("num",    "itemEventId",          Parameters["itemEventId"], 0, 0),
+        "eventId"             : CheckParam("num",    "itemEventId",          Parameters["itemEventId"], 0, 0),
+        "enableWeaponDispose" : CheckParam("bool",   "enableWeaponDispose",  Parameters["enableWeaponDispose"], false),
+        "enableArmorDispose"  : CheckParam("bool",   "enableArmorDispose",   Parameters["enableArmorDispose"],  false),
     };
     if(Parameters["itemDisposeSe"]) {
         Params["itemDisposeSe"] = {
             "itemDisposeSe" : {
-                "name"    : CheckParam("string", "itemDisposeSe.name",   Parameters["itemDisposeSe"]["name"],   ""),
-                "volume"  : CheckParam("num",    "itemDisposeSe.volume", Parameters["itemDisposeSe"]["volume"], 90,   0, 100),
-                "pitch"   : CheckParam("num",    "itemDisposeSe.pitch",  Parameters["itemDisposeSe"]["pitch"],  100, 50, 150),
-                "pan"     : CheckParam("num",    "itemDisposeSe.pan",    Parameters["itemDisposeSe"]["pan"],    0, -100, 100),
+                "name"        : CheckParam("string", "itemDisposeSe.name",   Parameters["itemDisposeSe"]["name"],   ""),
+                "volume"      : CheckParam("num",    "itemDisposeSe.volume", Parameters["itemDisposeSe"]["volume"], 90,   0, 100),
+                "pitch"       : CheckParam("num",    "itemDisposeSe.pitch",  Parameters["itemDisposeSe"]["pitch"],  100, 50, 150),
+                "pan"         : CheckParam("num",    "itemDisposeSe.pan",    Parameters["itemDisposeSe"]["pan"],    0, -100, 100),
             },
         };
     }
 
+    // アクションウィンドウの行数_アイテムの場合
+    const visibleRowItem  = 3;
+    // アクションウィンドウの行数_武器/防具の場合
+    const visibleRowEquip = 2;
 
     //=========================================================================
     // Scene_Item
@@ -314,6 +340,7 @@ Imported.MKR_ItemDisposeOnMap = true;
         }
     };
 
+
     //=========================================================================
     // Window_ItemAction
     //  ・アイテムアクションウィンドウを定義します。
@@ -327,10 +354,19 @@ Imported.MKR_ItemDisposeOnMap = true;
     Window_ItemAction.prototype.constructor = Window_ItemAction;
 
     Window_ItemAction.prototype.initialize = function() {
-        Window_Command.prototype.initialize.call(this, 0, 0);
+        this._x = 0;
+        this._y = 0;
+        Window_Command.prototype.initialize.call(this, this._x, this._y);
         this.hide();
         this.deactivate();
         this._item = null;
+    };
+
+    // 選択したアイテム種別によりウィンドウの可視行数を変更する。
+    Window_ItemAction.prototype.numVisibleRows = function() {
+        let result = Window_Command.prototype.numVisibleRows.call(this);
+        let item = this.item();
+        return !item ? result : DataManager.isItem(item) ? visibleRowItem : visibleRowEquip;
     };
 
     Window_ItemAction.prototype.setItem = function(item) {
@@ -342,13 +378,18 @@ Imported.MKR_ItemDisposeOnMap = true;
     };
 
     Window_ItemAction.prototype.makeCommandList = function() {
-        this.addCommand(Params.command.itemUse,     "itemUseAction", $gameParty.canUse(this.item()));
-        this.addCommand(Params.command.itemDispose, "itemDisposeAction", canDisposeItem(this.item()));
+        let item = this.item();
+        if(DataManager.isItem(item)) {
+            this.addCommand(Params.command.itemUse, "itemUseAction",     $gameParty.canUse(item));
+        }
+        this.addCommand(Params.command.itemDispose, "itemDisposeAction", canDisposeItem(item));
         this.addCommand(Params.command.itemCancel,  "itemCancelAction");
     };
 
     Window_ItemAction.prototype.show = function() {
+        this.move(this._x, this._y, this.windowWidth(), this.windowHeight());
         this.refresh();
+        this.select(0);
         Window_Base.prototype.show.call(this);
     }
 
@@ -360,8 +401,13 @@ Imported.MKR_ItemDisposeOnMap = true;
     //=========================================================================
     Window_ItemList.prototype.isEnabled = function(item) {
         // return !!item;
-        return !!item && DataManager.isItem(item);
+        return !!item
+            && (DataManager.isItem(item)
+                || (Params.enableWeaponDispose && DataManager.isWeapon(item))
+                || (Params.enableArmorDispose && DataManager.isArmor(item))
+            );
     };
+
 
     //=========================================================================
     // その他
