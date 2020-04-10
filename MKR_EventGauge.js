@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.2.3 2020/04/10 ・イベントの一時消去後、
+//                    メニュー開閉を行うとエラーとなる問題を修正。
+//
 // 1.2.2 2020/02/13 ・イベントの一時消去を行った際にエラーとなる問題を修正。
 //
 // 1.2.1 2018/10/22 ・ニューゲーム開始時点マップにゲージ設定された
@@ -65,7 +68,7 @@
 
 /*:
  *
- * @plugindesc (v1.2.2) イベントゲージプラグイン
+ * @plugindesc (v1.2.3) イベントゲージプラグイン
  * @author マンカインド
  *
  * @help = イベントゲージプラグイン =
@@ -1080,7 +1083,7 @@ Imported.MKR_EventGauge = true;
 
         while(push.length) {
             event = $gameMap.event(push.shift());
-            if(!event) {
+            if(!event || event._erased) {
                 break;
             }
             gaugeWindow = new Window_Gauge(event.eventId());
