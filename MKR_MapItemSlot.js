@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.10 2020/06/16・マップ画面以外でアイテムを0個にしたとき、
+//                    スロットからアイテムが消去されない問題を修正
+//
 // 1.2.9 2020/01/02 ・アイテムスロット画面から装備済みアイテムのスロットを
 //                    装備不可アイテムに変更しマップ画面に戻ると
 //                    エラーとなっていた問題を修正。
@@ -107,7 +110,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.9) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.10) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -1012,20 +1015,20 @@
 var Imported = Imported || {};
 Imported.MKR_MapItemSlot = true;
 
-(function () {
+(function() {
     'use strict';
 
     const PN = "MKR_MapItemSlot";
 
-    const CheckParam = function (type, name, value, def, min, max, options) {
-        if (min == undefined || min == null) {
+    const CheckParam = function(type, name, value, def, min, max, options) {
+        if(min == undefined || min == null) {
             min = -Infinity;
         }
-        if (max == undefined || max == null) {
+        if(max == undefined || max == null) {
             max = Infinity;
         }
 
-        if (value == null) {
+        if(value == null) {
             value = "";
         } else {
             value = String(value);
@@ -1035,15 +1038,15 @@ Imported.MKR_MapItemSlot = true;
         value = value.replace(/\x1b\x1b/g, '\\');
 
         // console.log("名前:%s 種類:%s 値:%s 型:%s",name, type, value, typeof(value));
-        switch (type) {
+        switch(type) {
             case "bool":
-                if (value == "") {
+                if(value == "") {
                     value = (def) ? "true" : "false";
                 }
                 value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
                 break;
             case "num":
-                if (value == "") {
+                if(value == "") {
                     value = (isFinite(def)) ? parseInt(def, 10) : 0;
                 } else {
                     value = (isFinite(value)) ? parseInt(value, 10) : (isFinite(def)) ? parseInt(def, 10) : 0;
@@ -1051,7 +1054,7 @@ Imported.MKR_MapItemSlot = true;
                 }
                 break;
             case "float":
-                if (value == "") {
+                if(value == "") {
                     value = (isFinite(def)) ? parseFloat(def) : 0.0;
                 } else {
                     value = (isFinite(value)) ? parseFloat(value) : (isFinite(def)) ? parseFloat(def) : 0.0;
@@ -1061,10 +1064,10 @@ Imported.MKR_MapItemSlot = true;
             case "string":
                 value = value.replace(/^\"/, "");
                 value = value.replace(/\"$/, "");
-                if (value != null && options && options.contains("lower")) {
+                if(value != null && options && options.contains("lower")) {
                     value = value.toLowerCase();
                 }
-                if (value != null && options && options.contains("upper")) {
+                if(value != null && options && options.contains("upper")) {
                     value = value.toUpperCase();
                 }
                 break;
@@ -1076,23 +1079,23 @@ Imported.MKR_MapItemSlot = true;
         return [value, type, def, min, max];
     };
 
-    const GetMeta = function (meta, name, sep) {
+    const GetMeta = function(meta, name, sep) {
         let value, values, i, count;
         value = "";
         values = [];
         name = name.toLowerCase().trim();
 
-        Object.keys(meta).forEach(function (key) {
-            if (key.toLowerCase().trim() == name) {
+        Object.keys(meta).forEach(function(key) {
+            if(key.toLowerCase().trim() == name) {
                 value = meta[key].trim();
                 return false;
             }
         });
 
-        if (sep !== undefined && sep != "" && value != "") {
+        if(sep !== undefined && sep != "" && value != "") {
             values = value.split(sep);
             count = values.length;
-            values = values.map(function (elem) {
+            values = values.map(function(elem) {
                 return elem.trim();
             });
 
@@ -1102,26 +1105,26 @@ Imported.MKR_MapItemSlot = true;
         return value;
     };
 
-    const paramParse = function (obj) {
+    const paramParse = function(obj) {
         return JSON.parse(JSON.stringify(obj, paramReplace));
-    }
+    };
 
-    const paramReplace = function (key, value) {
+    const paramReplace = function(key, value) {
         try {
             return JSON.parse(value || null);
-        } catch (e) {
+        } catch(e) {
             return value;
         }
     };
 
-    const makeItemSortList = function (sortList) {
+    const makeItemSortList = function(sortList) {
         let list;
         list = sortList.filter(function(elem, i, self) {
             return self.indexOf(elem) === i;
         });
 
-        return list ? list : ["item","weapon","armor","skill"];
-    }
+        return list ? list : ["item", "weapon", "armor", "skill"];
+    };
 
     const Parameters = paramParse(PluginManager.parameters(PN));
     let Params = {};
@@ -1194,7 +1197,7 @@ Imported.MKR_MapItemSlot = true;
             "UseEnable": CheckParam("bool", "EventMode.Use_Enable", Parameters["Event_Mode"]["Use_Enable"], false),
             "SelectEnable": CheckParam("bool", "EventMode.Select_Enable", Parameters["Event_Mode"]["Select_Enable"], false),
         },
-        "UseBuzzer" : CheckParam("bool", "Use_Buzzer", Parameters["Use_Buzzer"], true),
+        "UseBuzzer": CheckParam("bool", "Use_Buzzer", Parameters["Use_Buzzer"], true),
     };
 
     const ITEM = "item";
@@ -1211,30 +1214,30 @@ Imported.MKR_MapItemSlot = true;
     //
     //=========================================================================
     const _Input_onKeyDown = Input._onKeyDown;
-    Input._onKeyDown = function (event) {
+    Input._onKeyDown = function(event) {
         _Input_onKeyDown.call(this, event);
 
         let name;
         name = codeToName(event);
 
         // console.log(event);
-        if (!Input.keyMapper[event.keyCode]) {
+        if(!Input.keyMapper[event.keyCode]) {
             // console.log("name:"+name);
-            if (name) {
+            if(name) {
                 this._currentState[name] = true;
             }
         }
     };
 
     const _Input_onKeyUp = Input._onKeyUp;
-    Input._onKeyUp = function (event) {
+    Input._onKeyUp = function(event) {
         _Input_onKeyUp.call(this, event);
 
         let name;
         name = codeToName(event);
 
-        if (!Input.keyMapper[event.keyCode]) {
-            if (name) {
+        if(!Input.keyMapper[event.keyCode]) {
+            if(name) {
                 this._currentState[name] = false;
             }
         }
@@ -1247,10 +1250,9 @@ Imported.MKR_MapItemSlot = true;
     //=========================================================================
     Window_Base.prototype.contains = function(x, y) {
         if(this.x <= x && this.width + this.x >= x &&
-            this.y <= y && this.height + this.y >= y)
-            {
-                return true;
-            }
+            this.y <= y && this.height + this.y >= y) {
+            return true;
+        }
 
         return false;
     };
@@ -1260,10 +1262,9 @@ Imported.MKR_MapItemSlot = true;
         padding = this.standardPadding();
 
         if(this.x + padding <= x && this.width + this.x - padding >= x &&
-            this.y + padding <= y && this.height + this.y - padding >= y)
-            {
-                return true;
-            }
+            this.y + padding <= y && this.height + this.y - padding >= y) {
+            return true;
+        }
 
         return false;
     };
@@ -1275,7 +1276,7 @@ Imported.MKR_MapItemSlot = true;
     //
     //=========================================================================
     const _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
-    Game_Interpreter.prototype.pluginCommand = function (command, args) {
+    Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.call(this, command, args);
 
         let index, id, type, item, equip, i, cnt, itemSlot, actor, scene;
@@ -1288,8 +1289,8 @@ Imported.MKR_MapItemSlot = true;
         actor = $gameParty.leader();
         scene = SceneManager._scene;
 
-        if (command.toLowerCase() === "itemslot") {
-            switch (args[0].toLowerCase()) {
+        if(command.toLowerCase() === "itemslot") {
+            switch(args[0].toLowerCase()) {
                 case "show":
                     $gameParty.setItemSlotVisible(true);
                     break;
@@ -1300,43 +1301,43 @@ Imported.MKR_MapItemSlot = true;
                     SceneManager.push(Scene_ItemSlot);
                     break;
                 case "set":
-                    if (args[1] != null && isFinite(args[1])) {
+                    if(args[1] != null && isFinite(args[1])) {
                         index = parseInt(args[1], 10) - 1;
                     }
-                    if (args[2]) {
+                    if(args[2]) {
                         switch(true) {
-                        case (args[2].toLowerCase() == WEAPON && Params.SlotSetW[0]):
-                        case (args[2].toLowerCase() == ARMOR && Params.SlotSetA[0]):
-                        case (args[2].toLowerCase() == ITEM):
-                        case (args[2].toLowerCase() == SKILL && Params.SlotSetS[0]):
-                            type = args[2].toLowerCase();
+                            case (args[2].toLowerCase() == WEAPON && Params.SlotSetW[0]):
+                            case (args[2].toLowerCase() == ARMOR && Params.SlotSetA[0]):
+                            case (args[2].toLowerCase() == ITEM):
+                            case (args[2].toLowerCase() == SKILL && Params.SlotSetS[0]):
+                                type = args[2].toLowerCase();
                         }
                     }
-                    if (args[3] != null && isFinite(args[3])) {
+                    if(args[3] != null && isFinite(args[3])) {
                         id = parseInt(args[3], 10);
                     }
-                    if (args[4]) {
+                    if(args[4]) {
                         equip = args[4].toLowerCase() === "true" ? true : false;
-                        if (type == ITEM || type == SKILL) {
+                        if(type == ITEM || type == SKILL) {
                             equip = false;
                         }
                     }
 
-                    if (index < -1 || index >= Params.SlotNumber[0] || !type || id < 1) {
+                    if(index < -1 || index >= Params.SlotNumber[0] || !type || id < 1) {
                         break;
                     }
 
                     item = DataManager.getItemByIdType(id, type);
 
-                    if (type == WEAPON && !actor.isEquipWtypeOk(item.wtypeId)) {
+                    if(type == WEAPON && !actor.isEquipWtypeOk(item.wtypeId)) {
                         equip = false;
                     }
 
-                    if (type == ARMOR && !actor.isEquipAtypeOk(item.atypeId)) {
+                    if(type == ARMOR && !actor.isEquipAtypeOk(item.atypeId)) {
                         equip = false;
                     }
 
-                    if (item && $gameParty.hasItemType(item)) {
+                    if(item && $gameParty.hasItemType(item)) {
                         $gameParty.setItemSlot(index, item, equip);
                         // if(!equip) {
                         // スロットセット時にアイテムを増やす必要はあるか？
@@ -1345,14 +1346,14 @@ Imported.MKR_MapItemSlot = true;
                     }
                     break;
                 case "remove":
-                    if (args[1] != null && isFinite(args[1])) {
+                    if(args[1] != null && isFinite(args[1])) {
                         index = parseInt(args[1], 10) - 1;
                     }
 
-                    if (index >= 0) {
+                    if(index >= 0) {
                         // アイテムスロットのアイテム削除判定
                         $gameParty.removeItemSlot(index);
-                        if (scene && scene.constructor == Scene_Map) {
+                        if(scene && scene.constructor == Scene_Map) {
                             scene._mapItemSlotWindow.redrawItem(index);
                         }
                     }
@@ -1360,10 +1361,10 @@ Imported.MKR_MapItemSlot = true;
                 case "clear":
                     itemSlot = $gameParty.getItemSlot(-1);
                     cnt = itemSlot.length;
-                    for (i = 0; i < cnt; i++) {
+                    for(i = 0; i < cnt; i++) {
                         // アイテムスロットのアイテム削除判定
                         $gameParty.removeItemSlot(i);
-                        if (scene && scene.constructor == Scene_Map) {
+                        if(scene && scene.constructor == Scene_Map) {
                             scene._mapItemSlotWindow.redrawItem(i);
                         }
                     }
@@ -1372,19 +1373,19 @@ Imported.MKR_MapItemSlot = true;
                     $gameParty.setMenuSlotStatus(args[1]);
                     break;
                 case "use":
-                    if (args[1] != null && isFinite(args[1])) {
+                    if(args[1] != null && isFinite(args[1])) {
                         index = parseInt(args[1], 10) - 1;
                     }
-                    if (index >= 0) {
+                    if(index >= 0) {
                         itemSlot = $gameParty.getItemSlot(index);
-                        if (itemSlot && (itemSlot.type == ITEM || itemSlot.type == SKILL)) {
+                        if(itemSlot && (itemSlot.type == ITEM || itemSlot.type == SKILL)) {
                             item = DataManager.getItemByIdType(itemSlot.id, itemSlot.type);
                             $gameParty.useItemSlot(item);
 
                             // アイテムスロットのアイテム削除判定
-                            if (item && itemSlot.type == ITEM && Params.ItemRemoveMode[0] && $gameParty.numItems(item) <= 0) {
+                            if(item && itemSlot.type == ITEM && Params.ItemRemoveMode[0] && $gameParty.numItems(item) <= 0) {
                                 $gameParty.removeItemSlot(index);
-                                if (scene && scene.constructor == Scene_Map) {
+                                if(scene && scene.constructor == Scene_Map) {
                                     scene._mapItemSlotWindow.redrawItem(index);
                                 }
                             }
@@ -1392,10 +1393,10 @@ Imported.MKR_MapItemSlot = true;
                     }
                     break;
                 case "select":
-                    if (args[1] != "") {
-                        if (slotToIndex(args[1].toLowerCase()) != -1) {
-                            if (scene && scene.constructor == Scene_Map) {
-                                index  = slotToIndex(args[1].toLowerCase())
+                    if(args[1] != "") {
+                        if(slotToIndex(args[1].toLowerCase()) != -1) {
+                            if(scene && scene.constructor == Scene_Map) {
+                                index = slotToIndex(args[1].toLowerCase());
                                 console.log("plugin command: %d", index);
                                 // scene._mapItemSlotWindow.select(index);
                                 $gameParty.setItemSlotForceIndex(index);
@@ -1414,39 +1415,39 @@ Imported.MKR_MapItemSlot = true;
     //
     //=========================================================================
     const _Game_Party_initialize = Game_Party.prototype.initialize;
-    Game_Party.prototype.initialize = function () {
+    Game_Party.prototype.initialize = function() {
         _Game_Party_initialize.call(this);
 
         this.initItemSlot();
     };
 
-    Game_Party.prototype.initItemSlot = function () {
+    Game_Party.prototype.initItemSlot = function() {
         let i, j, items, cnt, actor;
         i = 0;
         j = 0;
 
-        if (this._itemSlot == undefined || this._itemSlot == null) {
+        if(this._itemSlot == undefined || this._itemSlot == null) {
             this._itemSlot = [];
             items = this.allItems();
             cnt = Params.SlotNumber[0];
             // アクターがアイテムを装備済みの場合、先にスロットに登録する。
-            if ($gameParty && Params.SlotAddMode[0]) {
+            if($gameParty && Params.SlotAddMode[0]) {
                 actor = $gameParty.leader();
-                if (actor && actor.weapons().length > 0) {
-                    actor.weapons().forEach(function (item) {
+                if(actor && actor.weapons().length > 0) {
+                    actor.weapons().forEach(function(item) {
                         this.setItemSlot(i, item);
                         i++;
                     }, this);
                 }
-                if (actor && actor.armors().length > 0) {
-                    actor.armors().forEach(function (item) {
+                if(actor && actor.armors().length > 0) {
+                    actor.armors().forEach(function(item) {
                         this.setItemSlot(i, item);
                         i++;
                     }, this);
                 }
             }
-            for (; i < cnt; i++) {
-                if (items && items[j] && Params.SlotAddMode[0]) {
+            for(; i < cnt; i++) {
+                if(items && items[j] && Params.SlotAddMode[0]) {
                     this.setItemSlot(i, items[j]);
                     j++;
                 } else {
@@ -1458,39 +1459,39 @@ Imported.MKR_MapItemSlot = true;
         this._itemSlotLastIndex = -1;
         this._itemSlotSetIndex = -1;
         this._itemSlotVisible = Params.SlotVisible[0];
-        if (this._menuSlotStatus == undefined || this._menuSlotStatus == null) {
+        if(this._menuSlotStatus == undefined || this._menuSlotStatus == null) {
             this._menuSlotStatus = Params.MenuSlotMode[0];
         }
         this._slotEquipItem = null;
     };
 
-    Game_Party.prototype.updateItemSlot = function () {
+    Game_Party.prototype.updateItemSlot = function() {
         let i, cnt;
 
-        if (this._itemSlot != undefined && this._itemSlot != null) {
+        if(this._itemSlot != undefined && this._itemSlot != null) {
             cnt = Params.SlotNumber[0];
-            for (i = this._itemSlot.length; i < cnt; i++) {
+            for(i = this._itemSlot.length; i < cnt; i++) {
                 this._itemSlot[i] = null;
             }
         }
     };
 
     const _Game_Party_gainItem = Game_Party.prototype.gainItem;
-    Game_Party.prototype.gainItem = function (item, amount, includeEquip) {
+    Game_Party.prototype.gainItem = function(item, amount, includeEquip) {
         let type, index, i, cnt, container, actor, meta, itemSlot, scene;
 
         meta = "";
-        if (item && item.meta) {
+        if(item && item.meta) {
             meta = GetMeta(item.meta, "itemslot");
         }
-        if (Params.SlotAddMode[0] && meta.toLowerCase() != "noadd") {
+        if(Params.SlotAddMode[0] && meta.toLowerCase() != "noadd") {
             container = this.itemContainer(item);
-            if (container && this.hasItemType(item) && this.getSlotEquipItem() != item) {
+            if(container && this.hasItemType(item) && this.getSlotEquipItem() != item) {
                 cnt = this._itemSlot.length;
                 type = DataManager.getItemType(item);
                 index = this.getItemSlotNumber(type, item.id);
 
-                if (index == -1 && SceneManager._scene.constructor !== Scene_ItemSlot) {
+                if(index == -1 && SceneManager._scene.constructor !== Scene_ItemSlot) {
                     this.setItemSlot(index, item);
                 }
             }
@@ -1499,59 +1500,63 @@ Imported.MKR_MapItemSlot = true;
         _Game_Party_gainItem.apply(this, arguments);
 
         // アイテムスロットのアイテム削除判定
-        scene = SceneManager._scene;
-        if (Params.ItemRemoveMode[0] && item && amount < 0 && scene && scene.constructor == Scene_Map) {
+        if(Params.ItemRemoveMode[0] && item && amount < 0) {
             type = DataManager.getItemType(item);
             index = $gameParty.getItemSlotNumber(type, item.id);
             if(index > -1) {
                 itemSlot = $gameParty.getItemSlot(index);
                 // item = win.item();
-                if (itemSlot) {
+                if(itemSlot) {
                     actor = $gameParty.leader();
                     // if ((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || ((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && !actor.isEquipped(item))) {
-                    if (itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) {
+                    // if(itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) {
+                    if($gameParty.numItems(item) <= 0) {
                         $gameParty.removeItemSlot(index);
                         // win.redrawCurrentItem();
-                        scene._mapItemSlotWindow.redrawItem(index);
+
+                        scene = SceneManager._scene;
+                        if(scene && scene.constructor == Scene_Map) {
+                            scene._mapItemSlotWindow.redrawItem(index);
+                        }
                     }
                 }
             }
         }
     };
 
-    Game_Party.prototype.setItemSlot = function (index, item, equip) {
+    Game_Party.prototype.setItemSlot = function(index, item, equip) {
         let equipFlg, actor, win, cnt, i;
 
-        if (equip == undefined || equip == null) {
+        if(equip == undefined || equip == null) {
             equip = false;
         }
 
-        if (index == -1) {
+        if(index == -1) {
             index = this.getItemSlotFreeNumber() - 1;
         }
 
         // アイテムが登録済みの場合は新たに登録させない
-        if (DataManager.isItem(item) && this.getItemSlotNumber(ITEM, item.id) >= 0) {
+        if(DataManager.isItem(item) && this.getItemSlotNumber(ITEM, item.id) >= 0) {
             index = -1;
-        } else if (DataManager.isWeapon(item) && this.getItemSlotNumber(WEAPON, item.id) >= 0) {
+        } else if(DataManager.isWeapon(item) && this.getItemSlotNumber(WEAPON, item.id) >= 0) {
             index = -1;
-        } else if (DataManager.isArmor(item) && this.getItemSlotNumber(ARMOR, item.id) >= 0) {
+        } else if(DataManager.isArmor(item) && this.getItemSlotNumber(ARMOR, item.id) >= 0) {
             index = -1;
-        } else if (DataManager.isSkill(item) && this.getItemSlotNumber(SKILL, item.id) >= 0) {
+        } else if(DataManager.isSkill(item) && this.getItemSlotNumber(SKILL, item.id) >= 0) {
             index = -1;
         }
 
         actor = $gameParty.leader();
-        if (item && index >= 0 && index < Params.SlotNumber[0]) {
-            if (DataManager.isItem(item)) {
+        if(item && index >= 0 && index < Params.SlotNumber[0]) {
+            if(DataManager.isItem(item)) {
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
                 this._itemSlot[index].type = ITEM;
-            } else if (DataManager.isSkill(item)) {
+            } else if(DataManager.isSkill(item)) {
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
                 this._itemSlot[index].type = SKILL;
-            } else if (actor) {
+            } else if(actor) {
                 if((Params.SlotSetW[0] && DataManager.isWeapon(item) && actor.isEquipWtypeOk(item.wtypeId)) || (Params.SlotSetA[0] && DataManager.isArmor(item) && actor.isEquipAtypeOk(item.atypeId))) {
                     equipFlg = actor.isEquipped(item);
                     this._itemSlot[index] = {};
@@ -1560,7 +1565,7 @@ Imported.MKR_MapItemSlot = true;
                     this._itemSlot[index].etypeId = item.etypeId;
                     this._itemSlot[index].equip = equipFlg;
 
-                    if (equip) {
+                    if(equip) {
                         $gameParty.setItemSlotLastIndex(index);
                         this._itemSlot[index].equip = true;
                         actor.changeEquipById(item.etypeId, item.id);
@@ -1570,33 +1575,33 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    Game_Party.prototype.removeItemSlot = function (index) {
+    Game_Party.prototype.removeItemSlot = function(index) {
         let cnt, item;
         cnt = this._itemSlot.length;
 
-        if (index >= 0 && index < cnt) {
-            if (this._itemSlot[index] && this._itemSlot[index].type == WEAPON) {
+        if(index >= 0 && index < cnt) {
+            if(this._itemSlot[index] && this._itemSlot[index].type == WEAPON) {
                 item = $dataWeapons[this._itemSlot[index].id];
                 this.leader().changeEquipById(item.etypeId, 0);
             }
-            if (this._itemSlot[index] && this._itemSlot[index].type == ARMOR) {
+            if(this._itemSlot[index] && this._itemSlot[index].type == ARMOR) {
                 item = $dataArmors[this._itemSlot[index].id];
                 this.leader().changeEquipById(item.etypeId, 0);
             }
-            this._itemSlot[index] = null
+            this._itemSlot[index] = null;
         }
     };
 
-    Game_Party.prototype.clearItemSlot = function () {
+    Game_Party.prototype.clearItemSlot = function() {
         let cnt;
         cnt = this._itemSlot.length;
 
-        for (i = 0; i < cnt; i++) {
+        for(i = 0; i < cnt; i++) {
             this._itemSlot[i] = null;
         }
     };
 
-    Game_Party.prototype.swapItemSlot = function (index1, index2) {
+    Game_Party.prototype.swapItemSlot = function(index1, index2) {
         let temp;
         temp = this._itemSlot[index1];
 
@@ -1604,51 +1609,51 @@ Imported.MKR_MapItemSlot = true;
         this._itemSlot[index2] = temp;
     };
 
-    Game_Party.prototype.hasItemType = function (item) {
+    Game_Party.prototype.hasItemType = function(item) {
         let type;
         type = DataManager.getItemType(item);
 
-        if (type == WEAPON && !Params.SlotSetW[0]) {
+        if(type == WEAPON && !Params.SlotSetW[0]) {
             return false;
-        } else if (type == ARMOR && !Params.SlotSetA[0]) {
+        } else if(type == ARMOR && !Params.SlotSetA[0]) {
             return false;
-        } else if (type == SKILL && !Params.SlotSetS[0]) {
+        } else if(type == SKILL && !Params.SlotSetS[0]) {
             return false;
         }
 
         return true;
     };
 
-    Game_Party.prototype.setEquipStatus = function (index, equip) {
+    Game_Party.prototype.setEquipStatus = function(index, equip) {
         let equipFlg, actor, itemSlot;
         itemSlot = this.getItemSlot(index);
 
-        if (itemSlot && (itemSlot.type == WEAPON || itemSlot.type == ARMOR)) {
+        if(itemSlot && (itemSlot.type == WEAPON || itemSlot.type == ARMOR)) {
             this._itemSlot[index].equip = equip;
         }
     };
 
-    Game_Party.prototype.getItemSlot = function (index) {
-        if (this._itemSlot && isFinite(index)) {
-            if (index == -1) {
+    Game_Party.prototype.getItemSlot = function(index) {
+        if(this._itemSlot && isFinite(index)) {
+            if(index == -1) {
                 return this._itemSlot;
-            } else if (index >= 0 && index < this._itemSlot.length) {
+            } else if(index >= 0 && index < this._itemSlot.length) {
                 return this._itemSlot[index];
             }
         }
         return null;
     };
 
-    Game_Party.prototype.getItemSlotId = function (slotId) {
+    Game_Party.prototype.getItemSlotId = function(slotId) {
         let itemSlot, index;
 
 
-        if (!isFinite(slotId)) {
+        if(!isFinite(slotId)) {
             return 0;
         }
         index = parseInt(slotId, 10) - 1;
 
-        if (index < 0) {
+        if(index < 0) {
             return 0;
         }
 
@@ -1661,16 +1666,16 @@ Imported.MKR_MapItemSlot = true;
         return 0;
     };
 
-    Game_Party.prototype.getItemSlotType = function (slotId) {
+    Game_Party.prototype.getItemSlotType = function(slotId) {
         let itemSlot, index;
 
 
-        if (!isFinite(slotId)) {
+        if(!isFinite(slotId)) {
             return null;
         }
         index = parseInt(slotId, 10) - 1;
 
-        if (index < 0) {
+        if(index < 0) {
             return null;
         }
 
@@ -1683,15 +1688,15 @@ Imported.MKR_MapItemSlot = true;
         return null;
     };
 
-    Game_Party.prototype.getItemSlotNumber = function (type, id) {
+    Game_Party.prototype.getItemSlotNumber = function(type, id) {
         let cnt, i, ret, itemSlot;
         cnt = this._itemSlot.length;
         ret = -1;
 
-        for (i = 0; i < cnt; i++) {
+        for(i = 0; i < cnt; i++) {
             itemSlot = this._itemSlot[i];
-            if (itemSlot) {
-                if (itemSlot.type == type && itemSlot.id == id) {
+            if(itemSlot) {
+                if(itemSlot.type == type && itemSlot.id == id) {
                     ret = i;
                     break;
                 }
@@ -1700,14 +1705,14 @@ Imported.MKR_MapItemSlot = true;
         return ret;
     };
 
-    Game_Party.prototype.getItemSlotFreeNumber = function () {
+    Game_Party.prototype.getItemSlotFreeNumber = function() {
         let cnt, i, ret;
         cnt = this._itemSlot.length;
         ret = -1;
 
         cnt = this._itemSlot.length;
-        for (i = 0; i < cnt; i++) {
-            if (this._itemSlot[i] == null) {
+        for(i = 0; i < cnt; i++) {
+            if(this._itemSlot[i] == null) {
                 ret = i;
                 break;
             }
@@ -1716,50 +1721,50 @@ Imported.MKR_MapItemSlot = true;
         return ++ret;
     };
 
-    Game_Party.prototype.getItemSlotLastIndex = function () {
+    Game_Party.prototype.getItemSlotLastIndex = function() {
         return this._itemSlotLastIndex;
     };
 
-    Game_Party.prototype.setItemSlotLastIndex = function (index) {
+    Game_Party.prototype.setItemSlotLastIndex = function(index) {
         this._itemSlotLastIndex = index;
     };
 
-    Game_Party.prototype.getItemSlotForceIndex = function () {
+    Game_Party.prototype.getItemSlotForceIndex = function() {
         return this._itemSlotForceIndex;
     };
 
-    Game_Party.prototype.setItemSlotForceIndex = function (index) {
+    Game_Party.prototype.setItemSlotForceIndex = function(index) {
         this._itemSlotForceIndex = index;
     };
 
-    Game_Party.prototype.isItemSlotHide = function () {
+    Game_Party.prototype.isItemSlotHide = function() {
         return !this._itemSlotVisible;
     };
 
-    Game_Party.prototype.setItemSlotVisible = function (visible) {
+    Game_Party.prototype.setItemSlotVisible = function(visible) {
         this._itemSlotVisible = visible;
     };
 
-    Game_Party.prototype.getMenuSlotStatus = function () {
+    Game_Party.prototype.getMenuSlotStatus = function() {
         return this._menuSlotStatus;
     };
 
-    Game_Party.prototype.setMenuSlotStatus = function (status) {
-        if (status != null && isFinite(status)) {
+    Game_Party.prototype.setMenuSlotStatus = function(status) {
+        if(status != null && isFinite(status)) {
             status = parseInt(status, 10);
-            if (status >= 0 && status <= 2) {
+            if(status >= 0 && status <= 2) {
                 this._menuSlotStatus = status;
             }
         }
     };
 
-    Game_Party.prototype.getSlotEquipItem = function () {
+    Game_Party.prototype.getSlotEquipItem = function() {
         return this._slotEquipItem;
     };
 
-    Game_Party.prototype.setSlotEquipItem = function (item) {
-        if (item) {
-            if (DataManager.getItemType(item) == WEAPON || DataManager.getItemType(item) == ARMOR) {
+    Game_Party.prototype.setSlotEquipItem = function(item) {
+        if(item) {
+            if(DataManager.getItemType(item) == WEAPON || DataManager.getItemType(item) == ARMOR) {
                 this._slotEquipItem = item;
             } else {
                 this._slotEquipItem = null;
@@ -1767,17 +1772,17 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    Game_Party.prototype.useItemSlot = function (item) {
+    Game_Party.prototype.useItemSlot = function(item) {
         let actor, action, i;
         actor = this.leader();
 
-        if (actor && item && actor.canUse(item) && (item.scope === 0 || this.isItemEffectsValid(item))) {
+        if(actor && item && actor.canUse(item) && (item.scope === 0 || this.isItemEffectsValid(item))) {
             $gameParty.setLastItem(item);
             actor.useItem(item);
             action = new Game_Action(actor);
             action.setItemObject(item);
-            this.itemTargetActors(item).forEach(function (target) {
-                for (i = 0; i < action.numRepeats(); i++) {
+            this.itemTargetActors(item).forEach(function(target) {
+                for(i = 0; i < action.numRepeats(); i++) {
                     action.apply(target);
                 }
             }, this);
@@ -1785,120 +1790,120 @@ Imported.MKR_MapItemSlot = true;
             action.applyGlobal();
             // this._mapItemSlotWindow.redrawCurrentItem();
             return true;
-        } else if (item && (DataManager.getItemType(item) == ITEM || DataManager.getItemType(item) == SKILL) && Params.UseBuzzer[0]) {
+        } else if(item && (DataManager.getItemType(item) == ITEM || DataManager.getItemType(item) == SKILL) && Params.UseBuzzer[0]) {
             SoundManager.playBuzzer();
         }
 
         return false;
     };
 
-    Game_Party.prototype.isItemEffectsValid = function (item) {
+    Game_Party.prototype.isItemEffectsValid = function(item) {
         let actor, action;
         actor = $gameParty.leader();
         action = new Game_Action(actor);
         action.setItemObject(item);
 
-        return this.itemTargetActors(item).some(function (target) {
+        return this.itemTargetActors(item).some(function(target) {
             return action.testApply(target);
         }, this);
     };
 
-    Game_Party.prototype.itemTargetActors = function (item) {
+    Game_Party.prototype.itemTargetActors = function(item) {
         let actor, action;
         actor = $gameParty.leader();
         action = new Game_Action(actor);
         action.setItemObject(item);
 
-        if (!action.isForFriend()) {
+        if(!action.isForFriend()) {
             return [];
-        } else if (action.isForAll()) {
+        } else if(action.isForAll()) {
             return $gameParty.members();
         } else {
             return [actor];
         }
     };
 
-    Game_Party.prototype.isItemSlotType = function (index, itemId, type) {
+    Game_Party.prototype.isItemSlotType = function(index, itemId, type) {
         let slot;
 
-        if (!this._itemSlot) {
+        if(!this._itemSlot) {
             return false;
         }
 
         slot = this._itemSlot[index];
-        if (!slot || slot.id != itemId || slot.type != type) {
+        if(!slot || slot.id != itemId || slot.type != type) {
             return false;
         }
 
         return true;
     };
 
-    Game_Party.prototype.isItemSlotItem = function (slotId, id) {
+    Game_Party.prototype.isItemSlotItem = function(slotId, id) {
         let index;
 
-        if (!isFinite(slotId) || !isFinite(id)) {
+        if(!isFinite(slotId) || !isFinite(id)) {
             return false;
         }
         index = parseInt(slotId, 10) - 1;
         id = parseInt(id, 10);
 
-        if (index < 0 || id < 1) {
+        if(index < 0 || id < 1) {
             return false;
         }
 
         return this.isItemSlotType(index, id, ITEM);
     };
 
-    Game_Party.prototype.isItemSlotWeapon = function (slotId, id) {
+    Game_Party.prototype.isItemSlotWeapon = function(slotId, id) {
         let index;
 
 
-        if (!isFinite(slotId) || !isFinite(id)) {
+        if(!isFinite(slotId) || !isFinite(id)) {
             return false;
         }
         index = parseInt(slotId, 10) - 1;
         id = parseInt(id, 10);
 
-        if (index < 0 || id < 1) {
+        if(index < 0 || id < 1) {
             return false;
         }
 
         return this.isItemSlotType(index, id, WEAPON);
     };
 
-    Game_Party.prototype.isItemSlotArmor = function (slotId, id) {
+    Game_Party.prototype.isItemSlotArmor = function(slotId, id) {
         let index;
 
-        if (!isFinite(slotId) || !isFinite(id)) {
+        if(!isFinite(slotId) || !isFinite(id)) {
             return false;
         }
         index = parseInt(slotId, 10) - 1;
         id = parseInt(id, 10);
 
-        if (index < 0 || id < 1) {
+        if(index < 0 || id < 1) {
             return false;
         }
 
         return this.isItemSlotType(index, id, ARMOR);
     };
 
-    Game_Party.prototype.isItemSlotSkill = function (slotId, id) {
+    Game_Party.prototype.isItemSlotSkill = function(slotId, id) {
         let index;
 
-        if (!isFinite(slotId) || !isFinite(id)) {
+        if(!isFinite(slotId) || !isFinite(id)) {
             return false;
         }
         index = parseInt(slotId, 10) - 1;
         id = parseInt(id, 10);
 
-        if (index < 0 || id < 1) {
+        if(index < 0 || id < 1) {
             return false;
         }
 
         return this.isItemSlotType(index, id, SKILL);
     };
 
-    Game_Party.prototype.openItemSlotMenu = function () {
+    Game_Party.prototype.openItemSlotMenu = function() {
         SceneManager.push(Scene_ItemSlot);
     };
 
@@ -1910,14 +1915,14 @@ Imported.MKR_MapItemSlot = true;
     //
     //=========================================================================
     const _Game_Actor_isEquipChangeOk = Game_Actor.prototype.isEquipChangeOk;
-    Game_Actor.prototype.isEquipChangeOk = function (slotId) {
+    Game_Actor.prototype.isEquipChangeOk = function(slotId) {
         let ret = _Game_Actor_isEquipChangeOk.call(this, slotId);
 
-        if (Params.SlotSetW[0] && this == $gameParty.leader() && slotId == 0 && ret) {
+        if(Params.SlotSetW[0] && this == $gameParty.leader() && slotId == 0 && ret) {
             ret = false;
         }
 
-        if (Params.SlotSetA[0] && this == $gameParty.leader() && slotId > 0 && ret) {
+        if(Params.SlotSetA[0] && this == $gameParty.leader() && slotId > 0 && ret) {
             ret = false;
         }
 
@@ -1925,15 +1930,15 @@ Imported.MKR_MapItemSlot = true;
     };
 
     const _Game_Actor_changeEquip = Game_Actor.prototype.changeEquip;
-    Game_Actor.prototype.changeEquip = function (slotId, item) {
+    Game_Actor.prototype.changeEquip = function(slotId, item) {
         let index, type;
 
-        if (this == $gameParty.leader() && ((Params.SlotSetW[0] && DataManager.isWeapon(item)) || (Params.SlotSetA[0] && DataManager.isArmor(item)))) {
+        if(this == $gameParty.leader() && ((Params.SlotSetW[0] && DataManager.isWeapon(item)) || (Params.SlotSetA[0] && DataManager.isArmor(item)))) {
             type = DataManager.isWeapon(item) ? WEAPON : ARMOR;
             index = $gameParty.getItemSlotNumber(type, item.id);
-            if (index == -1) {
+            if(index == -1) {
                 index = $gameParty.getItemSlotFreeNumber() - 1;
-                if (index >= 0) {
+                if(index >= 0) {
                     $gameParty.setItemSlotForceIndex(index);
                     _Game_Actor_changeEquip.apply(this, arguments);
                 }
@@ -1949,7 +1954,7 @@ Imported.MKR_MapItemSlot = true;
     Game_Actor.prototype.recoverySkills = function() {
         return this.skills().filter(function(skill) {
             return skill && skill.damage.type == 3 && SKILLRANGE.contains(skill.scope) &&
-             this.isSkillStypeOk(skill) && this.skillTpCost(skill) == 0;
+                this.isSkillStypeOk(skill) && this.skillTpCost(skill) == 0;
         }, this);
     };
 
@@ -1957,7 +1962,7 @@ Imported.MKR_MapItemSlot = true;
         let stypeId;
         stypeId = skill.stypeId;
 
-        if ($gameParty.leader().addedSkillTypes().contains(stypeId)) {
+        if($gameParty.leader().addedSkillTypes().contains(stypeId)) {
             return true;
         } else {
             return false;
@@ -1983,11 +1988,11 @@ Imported.MKR_MapItemSlot = true;
 
     Game_Temp.prototype.setLeaderMp = function(mp) {
         this._leaderMp = mp;
-    }
+    };
 
     Game_Temp.prototype.leaderMp = function() {
         return this._leaderMp;
-    }
+    };
 
 
     //=========================================================================
@@ -2003,7 +2008,7 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlotBase.prototype.constructor = Window_ItemSlotBase;
 
 
-    Window_ItemSlotBase.prototype.initialize = function (x, y, kind) {
+    Window_ItemSlotBase.prototype.initialize = function(x, y, kind) {
         x = this.stringToPoint(x, "x");
         y = this.stringToPoint(y, "y");
 
@@ -2014,7 +2019,7 @@ Imported.MKR_MapItemSlot = true;
         this._lastIndex = $gameParty.getItemSlotLastIndex();
 
         // GALV_GursorImage.jsへの対応
-        if (Imported.Galv_CursorImage) {
+        if(Imported.Galv_CursorImage) {
             this.removeChild(this._galvCursor);
         }
 
@@ -2030,50 +2035,50 @@ Imported.MKR_MapItemSlot = true;
     //     return 0;
     // };
 
-    Window_ItemSlotBase.prototype.maxCols = function () {
+    Window_ItemSlotBase.prototype.maxCols = function() {
         return Params.SlotNumber[0];
     };
 
-    Window_ItemSlotBase.prototype.maxItems = function () {
+    Window_ItemSlotBase.prototype.maxItems = function() {
         return Params.SlotNumber[0];
     };
 
-    Window_ItemSlotBase.prototype.windowWidth = function () {
+    Window_ItemSlotBase.prototype.windowWidth = function() {
         // return this.maxCols() * (this.lineHeight() + this.standardPadding() * 2);
         return this.maxCols() * this.lineHeight() + this.standardPadding() * 2;
     };
 
-    Window_ItemSlotBase.prototype.windowHeight = function () {
+    Window_ItemSlotBase.prototype.windowHeight = function() {
         return this.fittingHeight(1);
     };
 
-    Window_ItemSlotBase.prototype.itemHeight = function () {
+    Window_ItemSlotBase.prototype.itemHeight = function() {
         let val = this.contentsHeight();
         val = val > this.contentsWidth() ? this.contentsWidth() : val;
         return val;
     };
 
-    Window_ItemSlotBase.prototype.lastIndex = function () {
+    Window_ItemSlotBase.prototype.lastIndex = function() {
         return this._lastIndex;
     };
 
-    Window_ItemSlotBase.prototype.item = function (index) {
+    Window_ItemSlotBase.prototype.item = function(index) {
         let itemSlot;
 
-        if (index == undefined || index == null || index < 0) {
+        if(index == undefined || index == null || index < 0) {
             index = this.index();
         }
 
         itemSlot = $gameParty.getItemSlot(index);
 
-        if (itemSlot) {
-            if (itemSlot.type == ITEM) {
+        if(itemSlot) {
+            if(itemSlot.type == ITEM) {
                 return $dataItems[itemSlot.id];
-            } else if (itemSlot.type == WEAPON) {
+            } else if(itemSlot.type == WEAPON) {
                 return $dataWeapons[itemSlot.id];
-            } else if (itemSlot.type == ARMOR) {
+            } else if(itemSlot.type == ARMOR) {
                 return $dataArmors[itemSlot.id];
-            } else if (itemSlot.type == SKILL) {
+            } else if(itemSlot.type == SKILL) {
                 return $dataSkills[itemSlot.id];
             }
         }
@@ -2081,22 +2086,22 @@ Imported.MKR_MapItemSlot = true;
         return null;
     };
 
-    Window_ItemSlotBase.prototype.update = function () {
+    Window_ItemSlotBase.prototype.update = function() {
         Window_Selectable.prototype.update.call(this);
     };
 
-    Window_ItemSlotBase.prototype.checkRedraw = function (index) {
+    Window_ItemSlotBase.prototype.checkRedraw = function(index) {
         let itemSlot, item, equipFlg, actor;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
 
-        if (itemSlot) {
+        if(itemSlot) {
             item = this.item(index);
-            if (item) {
+            if(item) {
                 if(itemSlot.type == SKILL && this.needsSkillRedraw(item)) {
                     return true;
                 } else {
-                    if (this._type[index] != itemSlot.type || this._num[index] != $gameParty.numItems(item)) {
+                    if(this._type[index] != itemSlot.type || this._num[index] != $gameParty.numItems(item)) {
                         return true;
                     }
                 }
@@ -2113,33 +2118,33 @@ Imported.MKR_MapItemSlot = true;
         return false;
     };
 
-    Window_ItemSlotBase.prototype.drawItem = function (index) {
+    Window_ItemSlotBase.prototype.drawItem = function(index) {
         Window_Selectable.prototype.drawItem.call(this, index);
 
         this.drawItemEx(index);
     };
 
-    Window_ItemSlotBase.prototype.drawItemEx = function (index) {
+    Window_ItemSlotBase.prototype.drawItemEx = function(index) {
         let item, rect, num, type, id, itemSlot, equipFlg, actor, fontSize, x, y,
             sizeRate;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
         sizeRate = this._kind ? Params.MapSlotWindow.SizeRate[0] : Params.MenuSlotWindow.SizeRate[0];
 
-        if (itemSlot) {
+        if(itemSlot) {
             type = itemSlot.type;
             id = itemSlot.id;
             item = this.item(index);
-            if (item) {
+            if(item) {
                 rect = this.itemRect(index);
 
                 if(type == SKILL) {
-                   num = 0;
+                    num = 0;
                 } else {
                     num = $gameParty.numItems(item);
                 }
 
-                if ((type == WEAPON || type == ARMOR) && actor.isEquipped(item)) {
+                if((type == WEAPON || type == ARMOR) && actor.isEquipped(item)) {
                     this.changePaintOpacity(true);
                 } else if(type == SKILL) {
                     this.changePaintOpacity(actor.canPaySkillCost(item));
@@ -2151,31 +2156,31 @@ Imported.MKR_MapItemSlot = true;
                 y = rect.y + rect.height / 2 - Window_Base._iconHeight * sizeRate / 2;
                 this.drawIconEx(item.iconIndex, x, y, sizeRate);
 
-                if (type == ITEM && Params.ItemCountVisible[0]) {
+                if(type == ITEM && Params.ItemCountVisible[0]) {
                     fontSize = this.contents.fontSize;
                     this.contents.fontSize = Params.MapSlotWindow.FontSize[0];
                     this.contents.drawText("" + num, rect.x, rect.height - 20, rect.width - 2, 24, 'right');
                     this.contents.fontSize = fontSize;
                     this._type[index] = ITEM;
-                } else if (type == WEAPON) {
+                } else if(type == WEAPON) {
                     equipFlg = actor.isEquipped(item);
-                    if (equipFlg) {
+                    if(equipFlg) {
                         fontSize = this.contents.fontSize;
                         this.contents.fontSize = Params.MapSlotWindow.FontSize[0];
                         this.contents.drawText("E", rect.x, rect.y, rect.width - 2, 24, 'right');
                         this.contents.fontSize = fontSize;
                     }
                     this._type[index] = WEAPON;
-                } else if (type == ARMOR) {
+                } else if(type == ARMOR) {
                     equipFlg = actor.isEquipped(item);
-                    if (equipFlg) {
+                    if(equipFlg) {
                         fontSize = this.contents.fontSize;
                         this.contents.fontSize = Params.MapSlotWindow.FontSize[0];
                         this.contents.drawText("E", rect.x, rect.y, rect.width - 2, 24, 'right');
                         this.contents.fontSize = fontSize;
                     }
                     this._type[index] = ARMOR;
-                } else if (type == SKILL) {
+                } else if(type == SKILL) {
                     this._type[index] = SKILL;
                 }
                 this._num[index] = num;
@@ -2186,9 +2191,9 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    Window_ItemSlotBase.prototype.drawIconEx = function (iconIndex, x, y, sizeRate) {
+    Window_ItemSlotBase.prototype.drawIconEx = function(iconIndex, x, y, sizeRate) {
         let bitmap, pw, ph, sx, sy, dw, dh;
-        if (sizeRate == "" || sizeRate <= 1) {
+        if(sizeRate == "" || sizeRate <= 1) {
             sizeRate = 1.0;
         }
         bitmap = ImageManager.loadSystem('IconSet');
@@ -2202,37 +2207,37 @@ Imported.MKR_MapItemSlot = true;
         this.contents.blt(bitmap, sx, sy, pw, ph, x, y, dw, dh);
     };
 
-    Window_ItemSlotBase.prototype.stringToPoint = function (text, type) {
+    Window_ItemSlotBase.prototype.stringToPoint = function(text, type) {
         let val = 0;
 
-        if (isFinite(text)) {
+        if(isFinite(text)) {
             val = parseInt(text, 10);
         } else {
-            switch (text.toLowerCase()) {
+            switch(text.toLowerCase()) {
                 case "right":
-                    if (type == "x") {
+                    if(type == "x") {
                         val = Graphics.boxWidth - this.windowWidth();
                     }
                     break;
                 case "left":
-                    if (type == "x") {
+                    if(type == "x") {
                         val = 0;
                     }
                     break;
                 case "top":
-                    if (type == "y") {
+                    if(type == "y") {
                         val = 0;
                     }
                     break;
                 case "bottom":
-                    if (type == "y") {
+                    if(type == "y") {
                         val = Graphics.boxHeight - this.windowHeight();
                     }
                     break;
                 case "center":
-                    if (type == "x") {
+                    if(type == "x") {
                         val = Graphics.boxWidth / 2 - this.windowWidth() / 2;
-                    } else if (type == "y") {
+                    } else if(type == "y") {
                         val = Graphics.boxHeight / 2 - this.windowHeight() / 2;
                     }
                     break;
@@ -2240,23 +2245,23 @@ Imported.MKR_MapItemSlot = true;
         }
 
         return val;
-    }
+    };
 
-    Window_ItemSlotBase.prototype.select = function (index) {
-        if (index < Params.SlotNumber[0]) {
+    Window_ItemSlotBase.prototype.select = function(index) {
+        if(index < Params.SlotNumber[0]) {
             Window_Selectable.prototype.select.call(this, index);
         }
     };
 
-    Window_ItemSlotBase.prototype.selectLast = function () {
-        if (this._lastIndex <= -1) {
+    Window_ItemSlotBase.prototype.selectLast = function() {
+        if(this._lastIndex <= -1) {
             this.select(0);
         } else {
             this.select(this._lastIndex);
         }
     };
 
-    Window_ItemSlotBase.prototype.getTouchToIndex = function () {
+    Window_ItemSlotBase.prototype.getTouchToIndex = function() {
         let x, y, width, height, touchX, touchY, padding, spacing, i, rect, beforeRect;
         x = this.x;
         y = this.y;
@@ -2286,7 +2291,7 @@ Imported.MKR_MapItemSlot = true;
         return -1;
     };
 
-    Window_ItemSlotBase.prototype.needsSkillRedraw = function (item) {
+    Window_ItemSlotBase.prototype.needsSkillRedraw = function(item) {
         let actor;
         actor = $gameParty.leader();
 
@@ -2315,7 +2320,7 @@ Imported.MKR_MapItemSlot = true;
     Window_MapItemSlot.prototype = Object.create(Window_ItemSlotBase.prototype);
     Window_MapItemSlot.prototype.constructor = Window_MapItemSlot;
 
-    Window_MapItemSlot.prototype.initialize = function (x, y, kind) {
+    Window_MapItemSlot.prototype.initialize = function(x, y, kind) {
         Window_ItemSlotBase.prototype.initialize.call(this, x, y, kind);
 
         this._opacityOffset = 0;
@@ -2326,15 +2331,15 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    Window_MapItemSlot.prototype.standardPadding = function () {
+    Window_MapItemSlot.prototype.standardPadding = function() {
         return Params.MapSlotWindow.Padding[0];
     };
 
-    Window_MapItemSlot.prototype.spacing = function () {
+    Window_MapItemSlot.prototype.spacing = function() {
         return Params.MapSlotWindow.Spacing[0];
     };
 
-    Window_MapItemSlot.prototype.windowWidth = function () {
+    Window_MapItemSlot.prototype.windowWidth = function() {
         let val, windowWidth, sizeRate, spacing;
         windowWidth = Window_ItemSlotBase.prototype.windowWidth.call(this);
         sizeRate = Params.MapSlotWindow.SizeRate[0];
@@ -2345,7 +2350,7 @@ Imported.MKR_MapItemSlot = true;
         return val;
     };
 
-    Window_MapItemSlot.prototype.windowHeight = function () {
+    Window_MapItemSlot.prototype.windowHeight = function() {
         let val;
         val = Window_ItemSlotBase.prototype.windowHeight.call(this) * Params.MapSlotWindow.SizeRate[0];
         // val = Graphics.boxHeight < val ? Graphics.boxHeight : val;
@@ -2353,103 +2358,103 @@ Imported.MKR_MapItemSlot = true;
         return val;
     };
 
-    Window_MapItemSlot.prototype.update = function () {
+    Window_MapItemSlot.prototype.update = function() {
         Window_ItemSlotBase.prototype.update.call(this);
 
         let index;
         index = Graphics.frameCount % Params.SlotNumber[0];
 
         // 再描画判定
-        if (this.checkRedraw(index)) {
+        if(this.checkRedraw(index)) {
             this.redrawItem(index);
         }
 
         this._lastIndex = this.index();
 
-        if (this._showing) {
+        if(this._showing) {
             this.updateFadeIn();
-        } else if (this._hiding) {
+        } else if(this._hiding) {
             this.updateFadeOut();
         }
     };
 
-    Window_MapItemSlot.prototype.updateFadeIn = function () {
+    Window_MapItemSlot.prototype.updateFadeIn = function() {
         this.opacity += this._opacityOffset;
         this.contentsOpacity += this._opacityOffset;
 
-        if (this.opacity >= Params.MapSlotOpacity[0] || this.contentsOpacity >= Params.MapSlotOpacity[0]) {
+        if(this.opacity >= Params.MapSlotOpacity[0] || this.contentsOpacity >= Params.MapSlotOpacity[0]) {
             this.opacity = Params.MapSlotOpacity[0];
             this.contentsOpacity = Params.MapSlotOpacity[0];
             this._showing = false;
         }
     };
 
-    Window_MapItemSlot.prototype.updateFadeOut = function () {
+    Window_MapItemSlot.prototype.updateFadeOut = function() {
         this.opacity -= this._opacityOffset;
         this.contentsOpacity -= this._opacityOffset;
 
-        if (this.opacity <= 0 || this.contentsOpacity <= 0) {
+        if(this.opacity <= 0 || this.contentsOpacity <= 0) {
             this.opacity = 0;
             this.contentsOpacity = 0;
             this._hiding = false;
         }
     };
 
-    Window_MapItemSlot.prototype.drawItem = function (index) {
+    Window_MapItemSlot.prototype.drawItem = function(index) {
         Window_ItemSlotBase.prototype.drawItem.call(this, index);
 
         let item, type, itemSlot, equipFlg, actor;
         itemSlot = $gameParty.getItemSlot(index);
         actor = $gameParty.leader();
 
-        if (!itemSlot) {
+        if(!itemSlot) {
             return;
         }
 
         // 装備状態を変更
         type = itemSlot.type;
         item = this.item(index);
-        if (item && (type == WEAPON || type == ARMOR)) {
+        if(item && (type == WEAPON || type == ARMOR)) {
             equipFlg = actor.isEquipped(item);
-            if (itemSlot.equip != equipFlg) {
+            if(itemSlot.equip != equipFlg) {
                 $gameParty.setEquipStatus(index, equipFlg);
             }
         }
     };
 
-    Window_MapItemSlot.prototype.isCursorVisible = function () {
-        if (Params.SlotCursorVisible[0]) {
+    Window_MapItemSlot.prototype.isCursorVisible = function() {
+        if(Params.SlotCursorVisible[0]) {
             return Window_Selectable.prototype.isCursorVisible.call(this);
         } else {
             return false;
         }
     };
 
-    Window_MapItemSlot.prototype.fadeIn = function () {
+    Window_MapItemSlot.prototype.fadeIn = function() {
         this._opacityOffset = Params.SlotOpacityOffset[0];
         this._showing = true;
         this._hiding = false;
     };
 
-    Window_MapItemSlot.prototype.fadeOut = function () {
+    Window_MapItemSlot.prototype.fadeOut = function() {
         this._opacityOffset = Params.SlotOpacityOffset[0];
         this._hiding = true;
         this._showing = false;
     };
 
-    Window_MapItemSlot.prototype.isShowing = function () {
+    Window_MapItemSlot.prototype.isShowing = function() {
         return this._showing;
     };
 
-    Window_MapItemSlot.prototype.isHiding = function () {
+    Window_MapItemSlot.prototype.isHiding = function() {
         return this._hiding;
     };
 
-    Window_MapItemSlot.prototype.isHide = function () {
+    Window_MapItemSlot.prototype.isHide = function() {
         return this.opacity <= 0;
     };
 
-    Window_MapItemSlot.prototype.isShow = function () {
+    Window_MapItemSlot.prototype.isShow = function() {
         return this.opacity > 0;
     };
 
@@ -2466,12 +2471,12 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlotHelp.prototype = Object.create(Window_Help.prototype);
     Window_ItemSlotHelp.prototype.constructor = Window_ItemSlotHelp;
 
-    Window_ItemSlotHelp.prototype.initialize = function (numLines) {
+    Window_ItemSlotHelp.prototype.initialize = function(numLines) {
         Window_Help.prototype.initialize.call(this, numLines);
         // this.height += this.fittingHeight(0);
     };
 
-    Window_ItemSlotHelp.prototype.setItem = function (item) {
+    Window_ItemSlotHelp.prototype.setItem = function(item) {
         this.setText(item ? item.name + "\n" + item.description : '');
     };
 
@@ -2488,38 +2493,38 @@ Imported.MKR_MapItemSlot = true;
     Window_SlotCommand.prototype = Object.create(Window_Command.prototype);
     Window_SlotCommand.prototype.constructor = Window_SlotCommand;
 
-    Window_SlotCommand.prototype.initialize = function (x, y) {
+    Window_SlotCommand.prototype.initialize = function(x, y) {
         Window_Command.prototype.initialize.call(this, x, y);
         this.selectLast();
     };
 
     Window_SlotCommand._lastCommandSymbol = null;
 
-    Window_SlotCommand.initCommandPosition = function () {
+    Window_SlotCommand.initCommandPosition = function() {
         this._lastCommandSymbol = null;
     };
 
-    Window_SlotCommand.prototype.windowWidth = function () {
+    Window_SlotCommand.prototype.windowWidth = function() {
         return 240;
     };
 
-    Window_SlotCommand.prototype.numVisibleRows = function () {
+    Window_SlotCommand.prototype.numVisibleRows = function() {
         return this.maxItems();
     };
 
-    Window_SlotCommand.prototype.makeCommandList = function () {
+    Window_SlotCommand.prototype.makeCommandList = function() {
         this.addCommand(Params.SlotSetName[0], "slotset");
         // this.addCommand(Params.SlotChangeName[0], "slotchange");
         this.addCommand(Params.SlotRemoveName[0], "slotremove");
     };
 
-    Window_SlotCommand.prototype.processOk = function () {
+    Window_SlotCommand.prototype.processOk = function() {
         Window_SlotCommand._lastCommandSymbol = this.currentSymbol();
         Window_Command.prototype.processOk.call(this);
     };
 
-    Window_SlotCommand.prototype.updateHelp = function () {
-        switch (this.currentSymbol()) {
+    Window_SlotCommand.prototype.updateHelp = function() {
+        switch(this.currentSymbol()) {
             case "slotset":
                 this._helpWindow.setText(Params.SlotSetDesc[0]);
                 break;
@@ -2532,7 +2537,7 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    Window_SlotCommand.prototype.selectLast = function () {
+    Window_SlotCommand.prototype.selectLast = function() {
         this.selectSymbol(Window_SlotCommand._lastCommandSymbol);
     };
 
@@ -2549,7 +2554,7 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlot.prototype = Object.create(Window_ItemSlotBase.prototype);
     Window_ItemSlot.prototype.constructor = Window_ItemSlot;
 
-    Window_ItemSlot.prototype.initialize = function (x, y, w, h, kind) {
+    Window_ItemSlot.prototype.initialize = function(x, y, w, h, kind) {
         let x2, y2;
         x2 = x + w / 2 - this.windowWidth() / 2;
         y2 = y;
@@ -2560,15 +2565,15 @@ Imported.MKR_MapItemSlot = true;
         this.resetLastIndex();
     };
 
-    Window_ItemSlot.prototype.standardPadding = function () {
+    Window_ItemSlot.prototype.standardPadding = function() {
         return Params.MenuSlotWindow.Padding[0];
     };
 
-    Window_ItemSlot.prototype.spacing = function () {
+    Window_ItemSlot.prototype.spacing = function() {
         return Params.MenuSlotWindow.Spacing[0];
     };
 
-    Window_ItemSlot.prototype.windowWidth = function () {
+    Window_ItemSlot.prototype.windowWidth = function() {
         let val, windowWidth, sizeRate, spacing;
         windowWidth = Window_ItemSlotBase.prototype.windowWidth.call(this);
         sizeRate = Params.MenuSlotWindow.SizeRate[0];
@@ -2579,7 +2584,7 @@ Imported.MKR_MapItemSlot = true;
         return val;
     };
 
-    Window_ItemSlot.prototype.windowHeight = function () {
+    Window_ItemSlot.prototype.windowHeight = function() {
         let val;
         val = Window_ItemSlotBase.prototype.windowHeight.call(this) * Params.MenuSlotWindow.SizeRate[0];
         // val = Graphics.boxHeight < val ? Graphics.boxHeight : val;
@@ -2587,32 +2592,32 @@ Imported.MKR_MapItemSlot = true;
         return val;
     };
 
-    Window_ItemSlot.prototype.update = function () {
+    Window_ItemSlot.prototype.update = function() {
         Window_ItemSlotBase.prototype.update.call(this);
 
         let index;
         index = Graphics.frameCount % Params.SlotNumber[0];
 
         // 再描画判定
-        if (this.checkRedraw(index)) {
+        if(this.checkRedraw(index)) {
             this.redrawItem(index);
         }
 
         // this._lastIndex = this.index();
     };
 
-    Window_ItemSlot.prototype.isCurrentItemEnabled = function () {
+    Window_ItemSlot.prototype.isCurrentItemEnabled = function() {
         let ret, item, actor;
         item = this.item();
         actor = $gameParty.leader();
         ret = true;
 
-        if (item) {
+        if(item) {
             // if(DataManager.isWeapon(item) || DataManager.isArmor(item)) {
             //     ret = !actor.isEquipped(item);
             // }
         } else {
-            if (!this._slotType || this._slotType == "slotremove") {
+            if(!this._slotType || this._slotType == "slotremove") {
                 ret = false;
             }
         }
@@ -2620,27 +2625,27 @@ Imported.MKR_MapItemSlot = true;
         return ret;
     };
 
-    Window_ItemSlot.prototype.updateHelp = function () {
+    Window_ItemSlot.prototype.updateHelp = function() {
         this.setHelpWindowItem(this.item());
     };
 
-    Window_ItemSlot.prototype.processOk = function () {
-        if (this.isCurrentItemEnabled() && !this.hasLastIndex()) {
+    Window_ItemSlot.prototype.processOk = function() {
+        if(this.isCurrentItemEnabled() && !this.hasLastIndex()) {
             this._lastIndex = this.index();
         }
 
         Window_ItemSlotBase.prototype.processOk.call(this);
     };
 
-    Window_ItemSlot.prototype.setSlotType = function (type) {
+    Window_ItemSlot.prototype.setSlotType = function(type) {
         this._slotType = type;
     };
 
-    Window_ItemSlot.prototype.hasLastIndex = function () {
+    Window_ItemSlot.prototype.hasLastIndex = function() {
         return this._lastIndex != -1;
     };
 
-    Window_ItemSlot.prototype.resetLastIndex = function () {
+    Window_ItemSlot.prototype.resetLastIndex = function() {
         this._lastIndex = -1;
     };
 
@@ -2656,18 +2661,18 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlotCategory.prototype = Object.create(Window_ItemCategory.prototype);
     Window_ItemSlotCategory.prototype.constructor = Window_ItemSlotCategory;
 
-    Window_ItemSlotCategory.prototype.initialize = function (width) {
+    Window_ItemSlotCategory.prototype.initialize = function(width) {
         this._windowWidth = width;
         Window_ItemCategory.prototype.initialize.call(this);
         this.deselect();
         this.deactivate();
     };
 
-    Window_ItemSlotCategory.prototype.windowWidth = function () {
+    Window_ItemSlotCategory.prototype.windowWidth = function() {
         return this._windowWidth;
     };
 
-    Window_ItemSlotCategory.prototype.maxCols = function () {
+    Window_ItemSlotCategory.prototype.maxCols = function() {
         let count;
         count = 1;
 
@@ -2691,15 +2696,15 @@ Imported.MKR_MapItemSlot = true;
         // return 1;
     };
 
-    Window_ItemSlotCategory.prototype.makeCommandList = function () {
+    Window_ItemSlotCategory.prototype.makeCommandList = function() {
         this.addCommand(TextManager.item, 'item');
-        if (Params.SlotSetW[0]) {
+        if(Params.SlotSetW[0]) {
             this.addCommand(TextManager.weapon, 'weapon');
         }
-        if (Params.SlotSetA[0]) {
+        if(Params.SlotSetA[0]) {
             this.addCommand(TextManager.armor, 'armor');
         }
-        if (Params.SlotSetS[0]) {
+        if(Params.SlotSetS[0]) {
             this.addCommand(TextManager.skill, 'skill');
         }
     };
@@ -2717,34 +2722,34 @@ Imported.MKR_MapItemSlot = true;
     Window_ItemSlotList.prototype = Object.create(Window_ItemList.prototype);
     Window_ItemSlotList.prototype.constructor = Window_ItemSlotList;
 
-    Window_ItemSlotList.prototype.initialize = function (x, y, width, height) {
+    Window_ItemSlotList.prototype.initialize = function(x, y, width, height) {
         Window_ItemList.prototype.initialize.call(this, x, y, width, height);
 
         this._actor = $gameParty.leader();
     };
 
-    Window_ItemSlotList.prototype.includes = function (item) {
+    Window_ItemSlotList.prototype.includes = function(item) {
         let ret, meta;
         ret = true;
         meta = "";
 
-        if (!item) {
+        if(!item) {
             return false;
         }
 
-        if (item && item.meta) {
+        if(item && item.meta) {
             meta = GetMeta(item.meta, "itemslot");
         }
 
-        if (meta.toLowerCase() == "noadd") {
+        if(meta.toLowerCase() == "noadd") {
             return false;
         }
 
-        if (!Params.CategoryEnable[0]) {
+        if(!Params.CategoryEnable[0]) {
             return true;
         }
 
-        switch (this._category) {
+        switch(this._category) {
             case 'item':
                 ret = DataManager.isItem(item) && item.itypeId === 1;
                 break;
@@ -2765,20 +2770,20 @@ Imported.MKR_MapItemSlot = true;
         return ret;
     };
 
-    Window_ItemSlotList.prototype.isEnabled = function (item) {
+    Window_ItemSlotList.prototype.isEnabled = function(item) {
         let ret, type, actor;
         actor = $gameParty.leader();
         ret = false;
 
-        if (item && $gameParty.hasItemType(item)) {
+        if(item && $gameParty.hasItemType(item)) {
             type = DataManager.getItemType(item);
             // ret = $gameParty.getItemSlotNumber(type, item.id) == -1 ? true : false;
             ret = $gameParty.getItemSlotNumber(type, item.id) == -1;
 
-            if (type == WEAPON && !actor.isEquipWtypeOk(item.wtypeId)) {
+            if(type == WEAPON && !actor.isEquipWtypeOk(item.wtypeId)) {
                 ret = false;
             }
-            if (type == ARMOR && !actor.isEquipAtypeOk(item.atypeId)) {
+            if(type == ARMOR && !actor.isEquipAtypeOk(item.atypeId)) {
                 ret = false;
             }
         }
@@ -2787,7 +2792,7 @@ Imported.MKR_MapItemSlot = true;
         // return $gameParty.canUse(item);
     };
 
-    Window_ItemSlotList.prototype.isCurrentItemEnabled = function () {
+    Window_ItemSlotList.prototype.isCurrentItemEnabled = function() {
         return this.isEnabled(this.item());
         // let ret, item, type;
         // item = this.item();
@@ -2801,7 +2806,7 @@ Imported.MKR_MapItemSlot = true;
         // return ret;
     };
 
-    Window_ItemSlotList.prototype.makeItemList = function () {
+    Window_ItemSlotList.prototype.makeItemList = function() {
         let itemData, weaponData, armorData, skillData, actor;
 
 
@@ -2811,7 +2816,7 @@ Imported.MKR_MapItemSlot = true;
             skillData = actor.recoverySkills();
         }
 
-        if ((!Params.SlotSetW[0] && !Params.SlotSetA[0] && !Params.SlotSetS[0]) || Params.CategoryEnable[0]) {
+        if((!Params.SlotSetW[0] && !Params.SlotSetA[0] && !Params.SlotSetS[0]) || Params.CategoryEnable[0]) {
             Window_ItemList.prototype.makeItemList.call(this);
             if(this._category == SKILL) {
                 this._data = this._data.concat(skillData);
@@ -2821,36 +2826,36 @@ Imported.MKR_MapItemSlot = true;
 
         this._data = [];
 
-        itemData = $gameParty.items().filter(function (item) {
+        itemData = $gameParty.items().filter(function(item) {
             return this.includes(item);
         }, this);
 
-        weaponData = $gameParty.weapons().filter(function (item) {
+        weaponData = $gameParty.weapons().filter(function(item) {
             return this.includes(item);
         }, this);
 
-        armorData = $gameParty.armors().filter(function (item) {
+        armorData = $gameParty.armors().filter(function(item) {
             return this.includes(item);
         }, this);
 
         Params.ItemSortList.forEach(function(category) {
             switch(category) {
-            case ITEM:
-                this._data = this._data.concat(itemData);
-                break;
-            case WEAPON:
-                this._data = this._data.concat(weaponData);
-                break;
-            case ARMOR:
-                this._data = this._data.concat(armorData);
-                break;
-            case SKILL:
-                this._data = this._data.concat(skillData);
-                break;
+                case ITEM:
+                    this._data = this._data.concat(itemData);
+                    break;
+                case WEAPON:
+                    this._data = this._data.concat(weaponData);
+                    break;
+                case ARMOR:
+                    this._data = this._data.concat(armorData);
+                    break;
+                case SKILL:
+                    this._data = this._data.concat(skillData);
+                    break;
             }
         }, this);
 
-        if (this.includes(null)) {
+        if(this.includes(null)) {
             this._data.push(null);
         }
     };
@@ -2859,7 +2864,7 @@ Imported.MKR_MapItemSlot = true;
         let item;
         item = this._data[index];
 
-        if (item) {
+        if(item) {
             if(DataManager.isSkill(item)) {
                 var numberWidth = this.numberWidth();
                 var rect = this.itemRect(index);
@@ -2882,15 +2887,15 @@ Imported.MKR_MapItemSlot = true;
     //
     //=========================================================================
     const _Window_MenuCommand_addOriginalCommands = Window_MenuCommand.prototype.addOriginalCommands;
-    Window_MenuCommand.prototype.addOriginalCommands = function () {
+    Window_MenuCommand.prototype.addOriginalCommands = function() {
         _Window_MenuCommand_addOriginalCommands.call(this);
 
         let status;
         status = $gameParty.getMenuSlotStatus();
 
-        if (status == 1) {
+        if(status == 1) {
             this.addCommand(Params.MenuSlotName[0], 'itemslot', $gameParty.exists());
-        } else if (status == 2) {
+        } else if(status == 2) {
             this.addCommand(Params.MenuSlotName[0], 'itemslot', false);
         }
     };
@@ -2902,12 +2907,12 @@ Imported.MKR_MapItemSlot = true;
     //
     //=========================================================================
     const _Scene_Map_createDisplayObjects = Scene_Map.prototype.createDisplayObjects;
-    Scene_Map.prototype.createDisplayObjects = function () {
+    Scene_Map.prototype.createDisplayObjects = function() {
         _Scene_Map_createDisplayObjects.call(this);
         this.createMapItemSlotWindow();
     };
 
-    Scene_Map.prototype.createMapItemSlotWindow = function () {
+    Scene_Map.prototype.createMapItemSlotWindow = function() {
         let kind;
         kind = 1; // マップ用は1
 
@@ -2915,7 +2920,7 @@ Imported.MKR_MapItemSlot = true;
         this._mapItemSlotWindow.setHandler("ok", this.onItemSlotOk.bind(this));
         this._mapItemSlotWindow.opacity = Params.MapSlotOpacity[0];
         this._mapItemSlotWindow.contentsOpacity = Params.MapSlotOpacity[0];
-        if (Params.SlotBackground[0] != "") {
+        if(Params.SlotBackground[0] != "") {
             this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowBackSprite);
             this._mapItemSlotWindow._windowSpriteContainer.removeChild(this._mapItemSlotWindow._windowFrameSprite);
             this._mapItemSlotWindow._windowBackSprite = new Sprite();
@@ -2934,13 +2939,13 @@ Imported.MKR_MapItemSlot = true;
     };
 
     const _Scene_Map_update = Scene_Map.prototype.update;
-    Scene_Map.prototype.update = function () {
+    Scene_Map.prototype.update = function() {
         _Scene_Map_update.call(this);
 
         this.updateItemSlot();
     };
 
-    Scene_Map.prototype.updateItemSlot = function () {
+    Scene_Map.prototype.updateItemSlot = function() {
         let index, itemSlot, actor, lastIndex, item, action, win;
         actor = $gameParty.leader();
         win = this._mapItemSlotWindow;
@@ -2949,21 +2954,21 @@ Imported.MKR_MapItemSlot = true;
 
         // 表示判定
         // console.log("eventRun:"+$gameMap.isEventRunning());
-        if (isEnableEventToSlot() && !$gameParty.isItemSlotHide()) {
-            if ((win.isHide() || win.isHiding()) && !win.isShowing()) {
+        if(isEnableEventToSlot() && !$gameParty.isItemSlotHide()) {
+            if((win.isHide() || win.isHiding()) && !win.isShowing()) {
                 win.fadeIn();
             }
         } else {
-            if (win.isShow() && !win.isHiding() && !SceneManager._scene.isBusy()) {
+            if(win.isShow() && !win.isHiding() && !SceneManager._scene.isBusy()) {
                 win.fadeOut();
             }
         }
 
-        if ($gameParty.isItemSlotHide() || win.isHide()) {
+        if($gameParty.isItemSlotHide() || win.isHide()) {
             return;
         }
 
-        if (index < 0) {
+        if(index < 0) {
             win.selectLast();
         }
 
@@ -2977,7 +2982,7 @@ Imported.MKR_MapItemSlot = true;
         //     console.log("ok");
         //     win.callHandler("ok");
         // }
-        if (isEnableEventToUse()) {
+        if(isEnableEventToUse()) {
             if(isEnableMouseToUse(win) && win.contentsContains(TouchInput.x, TouchInput.y)) {
                 // console.log("mouse ok");
                 win.callHandler("ok");
@@ -2987,32 +2992,32 @@ Imported.MKR_MapItemSlot = true;
             }
         }
 
-        if (!actor) {
+        if(!actor) {
             return;
         }
 
         // 装備アイテム
         itemSlot = $gameParty.getItemSlot(lastIndex);
-        if (itemSlot && ((Params.SlotSetW[0] && itemSlot.type == WEAPON) || (Params.SlotSetA[0] && itemSlot.type == ARMOR))) {
+        if(itemSlot && ((Params.SlotSetW[0] && itemSlot.type == WEAPON) || (Params.SlotSetA[0] && itemSlot.type == ARMOR))) {
             // lastIndex の装備を先に外すこと
-            if (lastIndex != index) {
+            if(lastIndex != index) {
                 item = win.item(lastIndex);
-                if (actor.isEquipped(item)) {
+                if(actor.isEquipped(item)) {
                     actor.changeEquipById(item.etypeId, 0);
                     win.redrawItem(lastIndex);
                 }
             }
         }
         itemSlot = $gameParty.getItemSlot(index);
-        if (itemSlot && ((Params.SlotSetW[0] && itemSlot.type == WEAPON) || (Params.SlotSetA[0] && itemSlot.type == ARMOR))) {
+        if(itemSlot && ((Params.SlotSetW[0] && itemSlot.type == WEAPON) || (Params.SlotSetA[0] && itemSlot.type == ARMOR))) {
             item = win.item();
-            if (!actor.isEquipped(item)) {
+            if(!actor.isEquipped(item)) {
                 actor.changeEquipById(item.etypeId, item.id);
                 $gameParty.setSlotEquipItem(item);
                 win.redrawCurrentItem();
             }
         }
-        if ((itemSlot == null || itemSlot.type == ITEM) && ((Params.SlotSetW[0] && actor.weapons().length > 0) || (Params.SlotSetA[0] && actor.armors().length > 0))) {
+        if((itemSlot == null || itemSlot.type == ITEM) && ((Params.SlotSetW[0] && actor.weapons().length > 0) || (Params.SlotSetA[0] && actor.armors().length > 0))) {
             // 装備アイテム以外のスロット選択時に装備を確実に外す
             console.log("index:%d, lastIndex:%d", index, lastIndex);
             item = win.item(lastIndex);
@@ -3020,11 +3025,11 @@ Imported.MKR_MapItemSlot = true;
         }
 
         // アイテムスロットのアイテム削除判定
-        if (Params.ItemRemoveMode[0]) {
+        if(Params.ItemRemoveMode[0]) {
             itemSlot = $gameParty.getItemSlot(index);
             item = win.item();
-            if (itemSlot) {
-                if ((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || ((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && !actor.isEquipped(item))) {
+            if(itemSlot) {
+                if((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || ((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && !actor.isEquipped(item))) {
                     $gameParty.removeItemSlot(index);
                     win.redrawCurrentItem();
                 }
@@ -3035,29 +3040,29 @@ Imported.MKR_MapItemSlot = true;
         $gameParty.setItemSlotLastIndex(index);
     };
 
-    Scene_Map.prototype.onItemSlotOk = function () {
+    Scene_Map.prototype.onItemSlotOk = function() {
         let item;
         item = this._mapItemSlotWindow.item();
 
-        if ($gameParty.useItemSlot(item)) {
+        if($gameParty.useItemSlot(item)) {
             this._mapItemSlotWindow.redrawCurrentItem();
         }
     };
 
     const _Scene_Map_isMapTouchOk = Scene_Map.prototype.isMapTouchOk;
-    Scene_Map.prototype.isMapTouchOk = function () {
+    Scene_Map.prototype.isMapTouchOk = function() {
         let win;
         win = this._mapItemSlotWindow;
 
-        if (isEnableMouseToUse(win)) {
+        if(isEnableMouseToUse(win)) {
             return false;
         }
         return _Scene_Map_isMapTouchOk.call(this);
     };
 
     const _Scene_Map_terminate = Scene_Map.prototype.terminate;
-    Scene_Map.prototype.terminate = function () {
-        if (!SceneManager.isNextScene(Scene_Battle)) {
+    Scene_Map.prototype.terminate = function() {
+        if(!SceneManager.isNextScene(Scene_Battle)) {
             this._mapItemSlotWindow.hide();
             // $gameParty.setItemSlotVisible(false);
         }
@@ -3077,11 +3082,11 @@ Imported.MKR_MapItemSlot = true;
     Scene_ItemSlot.prototype = Object.create(Scene_ItemBase.prototype);
     Scene_ItemSlot.prototype.constructor = Scene_ItemSlot;
 
-    Scene_ItemSlot.prototype.initialize = function () {
+    Scene_ItemSlot.prototype.initialize = function() {
         Scene_ItemBase.prototype.initialize.call(this);
     };
 
-    Scene_ItemSlot.prototype.create = function () {
+    Scene_ItemSlot.prototype.create = function() {
         Scene_ItemBase.prototype.create.call(this);
         this.createHelpWindow();
         this.createCommandWindow();
@@ -3090,11 +3095,11 @@ Imported.MKR_MapItemSlot = true;
         this.createItemWindow();
     };
 
-    Scene_ItemSlot.prototype.createBackground = function () {
+    Scene_ItemSlot.prototype.createBackground = function() {
         let background;
         background = Params.MenuBackground[0];
 
-        if (background) {
+        if(background) {
             this._backgroundSprite = new Sprite();
             this._backgroundSprite.bitmap = ImageManager.loadPicture(background);
             this.addChild(this._backgroundSprite);
@@ -3104,13 +3109,13 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    Scene_ItemSlot.prototype.createHelpWindow = function () {
+    Scene_ItemSlot.prototype.createHelpWindow = function() {
         this._helpWindow = new Window_ItemSlotHelp();
         this._helpWindow.opacity = Params.MenuSlotOpacity[0];
         this.addWindow(this._helpWindow);
     };
 
-    Scene_ItemSlot.prototype.createCommandWindow = function () {
+    Scene_ItemSlot.prototype.createCommandWindow = function() {
         this._commandWindow = new Window_SlotCommand(0, this._helpWindow.height);
         this._commandWindow.setHandler("slotset", this.commandItemSlot.bind(this));
         // this._commandWindow.setHandler("slotchange", this.commandItemSlot.bind(this));
@@ -3121,7 +3126,7 @@ Imported.MKR_MapItemSlot = true;
         this.addWindow(this._commandWindow);
     };
 
-    Scene_ItemSlot.prototype.createItemSlotWindow = function () {
+    Scene_ItemSlot.prototype.createItemSlotWindow = function() {
         let x, y, w, h, kind;
         x = this._commandWindow.width;
         y = this._commandWindow.y;
@@ -3134,7 +3139,7 @@ Imported.MKR_MapItemSlot = true;
         this._itemSlotWindow.setHandler('ok', this.onItemSlotOk.bind(this));
         this._itemSlotWindow.setHandler('cancel', this.onItemSlotCancel.bind(this));
         this._itemSlotWindow.opacity = Params.MenuSlotOpacity[0];
-        if (Params.MapBackgroundEnable[0] && Params.SlotBackground[0] != "") {
+        if(Params.MapBackgroundEnable[0] && Params.SlotBackground[0] != "") {
             this._itemSlotWindow._windowSpriteContainer.removeChild(this._itemSlotWindow._windowBackSprite);
             this._itemSlotWindow._windowSpriteContainer.removeChild(this._itemSlotWindow._windowFrameSprite);
             this._itemSlotWindow._windowBackSprite = new Sprite();
@@ -3144,7 +3149,7 @@ Imported.MKR_MapItemSlot = true;
         this.addWindow(this._itemSlotWindow);
     };
 
-    Scene_ItemSlot.prototype.createCategoryWindow = function () {
+    Scene_ItemSlot.prototype.createCategoryWindow = function() {
         let width;
         width = Graphics.boxWidth - this._commandWindow.width;
 
@@ -3159,7 +3164,7 @@ Imported.MKR_MapItemSlot = true;
         this.addWindow(this._categoryWindow);
     };
 
-    Scene_ItemSlot.prototype.createItemWindow = function () {
+    Scene_ItemSlot.prototype.createItemWindow = function() {
         let wy, wh;
         wy = this._categoryWindow.y + this._categoryWindow.height;
         wh = Graphics.boxHeight - wy;
@@ -3174,7 +3179,7 @@ Imported.MKR_MapItemSlot = true;
         this._categoryWindow.setItemWindow(this._itemWindow);
     };
 
-    Scene_ItemSlot.prototype.commandItemSlot = function () {
+    Scene_ItemSlot.prototype.commandItemSlot = function() {
         let symbol;
         symbol = this._commandWindow.currentSymbol();
 
@@ -3183,15 +3188,15 @@ Imported.MKR_MapItemSlot = true;
         this._itemSlotWindow.selectLast();
     };
 
-    Scene_ItemSlot.prototype.onItemSlotOk = function () {
+    Scene_ItemSlot.prototype.onItemSlotOk = function() {
         let index, lastIndex;
         lastIndex = this._itemSlotWindow.lastIndex();
         index = this._itemSlotWindow.index();
 
-        switch (this._commandWindow.currentSymbol()) {
+        switch(this._commandWindow.currentSymbol()) {
             case "slotset":
-                if (Params.SlotSetW[0] || Params.SlotSetA[0] || Params.SlotSetS[0]) {
-                    if (!Params.CategoryEnable[0]) {
+                if(Params.SlotSetW[0] || Params.SlotSetA[0] || Params.SlotSetS[0]) {
+                    if(!Params.CategoryEnable[0]) {
                         this._categoryWindow.select(0);
                         this._itemWindow.activate();
                         this._itemWindow.select(0);
@@ -3214,7 +3219,7 @@ Imported.MKR_MapItemSlot = true;
                 this._itemSlotWindow.deactivate();
                 break;
             case "slotchange":
-                if (this._itemSlotWindow.hasLastIndex() && index != lastIndex) {
+                if(this._itemSlotWindow.hasLastIndex() && index != lastIndex) {
                     $gameParty.swapItemSlot(lastIndex, index);
                     this._itemSlotWindow.resetLastIndex();
                     this._itemSlotWindow.refresh();
@@ -3229,7 +3234,7 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    Scene_ItemSlot.prototype.onItemSlotCancel = function () {
+    Scene_ItemSlot.prototype.onItemSlotCancel = function() {
         this._itemSlotWindow.resetLastIndex();
         this._itemSlotWindow.deselect();
         this._commandWindow.activate();
@@ -3237,12 +3242,12 @@ Imported.MKR_MapItemSlot = true;
         this._itemSlotWindow.setSlotType(null);
     };
 
-    Scene_ItemSlot.prototype.onCategoryOk = function () {
+    Scene_ItemSlot.prototype.onCategoryOk = function() {
         this._itemWindow.activate();
         this._itemWindow.selectLast();
     };
 
-    Scene_ItemSlot.prototype.onCategoryCancel = function () {
+    Scene_ItemSlot.prototype.onCategoryCancel = function() {
         this._categoryWindow.deselect();
         this._categoryWindow.hide();
         this._itemWindow.hide();
@@ -3250,7 +3255,7 @@ Imported.MKR_MapItemSlot = true;
         // this._itemSlotWindow.selectLast();
     };
 
-    Scene_ItemSlot.prototype.onItemOk = function () {
+    Scene_ItemSlot.prototype.onItemOk = function() {
         let item, equipItem, actor;
         item = this.item();
         actor = $gameParty.leader();
@@ -3270,10 +3275,10 @@ Imported.MKR_MapItemSlot = true;
         // this.determineItem();
     };
 
-    Scene_ItemSlot.prototype.onItemCancel = function () {
+    Scene_ItemSlot.prototype.onItemCancel = function() {
         this._itemWindow.deselect();
         this._itemWindow.deactivate();
-        if ((Params.SlotSetW[0] || Params.SlotSetA[0] || Params.SlotSetS[0]) && Params.CategoryEnable[0]) {
+        if((Params.SlotSetW[0] || Params.SlotSetA[0] || Params.SlotSetS[0]) && Params.CategoryEnable[0]) {
             this._categoryWindow.activate();
         } else {
             this._itemSlotWindow.activate();
@@ -3281,12 +3286,12 @@ Imported.MKR_MapItemSlot = true;
         this._helpWindow.setItem(this._itemSlotWindow.item());
     };
 
-    Scene_ItemSlot.prototype.update = function () {
+    Scene_ItemSlot.prototype.update = function() {
         Scene_ItemBase.prototype.update.call(this);
         this.updateItemSlot();
     };
 
-    Scene_ItemSlot.prototype.updateItemSlot = function () {
+    Scene_ItemSlot.prototype.updateItemSlot = function() {
         let pressKey, index, win, itemSlot, item, actor, lastIndex;
         win = this._itemSlotWindow;
         index = win.index();
@@ -3300,23 +3305,23 @@ Imported.MKR_MapItemSlot = true;
         lastIndex = $gameParty.getItemSlotLastIndex();
         itemSlot = $gameParty.getItemSlot(lastIndex);
         item = win.item(lastIndex);
-        if (itemSlot) {
-            if (itemSlot.type == WEAPON) {
-                if (!actor.isEquipped(item)) {
+        if(itemSlot) {
+            if(itemSlot.type == WEAPON) {
+                if(!actor.isEquipped(item)) {
                     actor.changeEquipById(item.etypeId, item.id);
                     win.redrawItem($gameParty.getItemSlotLastIndex());
                 }
-            } else if (actor.weapons().length > 0) {
+            } else if(actor.weapons().length > 0) {
                 // console.log("updateItemSlot WEAPON:%o", item);
                 // actor.changeEquipById(1, 0);
                 // win.redrawItem($gameParty.getItemSlotLastIndex());
             }
-            if (itemSlot.type == ARMOR) {
-                if (!actor.isEquipped(item)) {
+            if(itemSlot.type == ARMOR) {
+                if(!actor.isEquipped(item)) {
                     actor.changeEquipById(item.etypeId, item.id);
                     win.redrawItem($gameParty.getItemSlotLastIndex());
                 }
-            } else if (actor.armors().length > 0) {
+            } else if(actor.armors().length > 0) {
                 // console.log("updateItemSlot ARMOR:%o", item);
                 // actor.changeEquipById(1, 0);
                 // win.redrawItem($gameParty.getItemSlotLastIndex());
@@ -3331,12 +3336,12 @@ Imported.MKR_MapItemSlot = true;
     //
     //=========================================================================
     const _Scene_Menu_createCommandWindow = Scene_Menu.prototype.createCommandWindow;
-    Scene_Menu.prototype.createCommandWindow = function () {
+    Scene_Menu.prototype.createCommandWindow = function() {
         _Scene_Menu_createCommandWindow.call(this);
         this._commandWindow.setHandler('itemslot', this.commandItemSlot.bind(this));
     };
 
-    Scene_Menu.prototype.commandItemSlot = function () {
+    Scene_Menu.prototype.commandItemSlot = function() {
         SceneManager.push(Scene_ItemSlot);
     };
 
@@ -3348,53 +3353,53 @@ Imported.MKR_MapItemSlot = true;
     //
     //=========================================================================
     const _DataManager_extractSaveContents = DataManager.extractSaveContents;
-    DataManager.extractSaveContents = function (contents) {
+    DataManager.extractSaveContents = function(contents) {
         _DataManager_extractSaveContents.call(this, contents);
         // 処理を追記
 
-        if ($gameParty.getItemSlot(-1) == undefined || $gameParty.getItemSlot(-1) == null) {
+        if($gameParty.getItemSlot(-1) == undefined || $gameParty.getItemSlot(-1) == null) {
             $gameParty.initItemSlot();
-        } else if ($gameParty.getItemSlot(-1).length != Params.SlotNumber[0]) {
+        } else if($gameParty.getItemSlot(-1).length != Params.SlotNumber[0]) {
             $gameParty.updateItemSlot();
         }
     };
 
-    DataManager.getItemType = function (item) {
-        if (this.isItem(item)) {
+    DataManager.getItemType = function(item) {
+        if(this.isItem(item)) {
             return ITEM;
-        } else if (this.isWeapon(item)) {
+        } else if(this.isWeapon(item)) {
             return WEAPON;
-        } else if (this.isArmor(item)) {
+        } else if(this.isArmor(item)) {
             return ARMOR;
-        } else if (this.isSkill(item)) {
+        } else if(this.isSkill(item)) {
             return SKILL;
         }
 
         return null;
     };
 
-    DataManager.getItemByIdType = function (id, type) {
-        if (!type) {
+    DataManager.getItemByIdType = function(id, type) {
+        if(!type) {
             return null;
         }
-        if (!id || !isFinite(id)) {
+        if(!id || !isFinite(id)) {
             return null;
         }
 
         id = parseInt(id, 10);
         type = type.toLowerCase();
 
-        if (id < 1) {
+        if(id < 1) {
             return null;
         }
 
-        if (type == ITEM && $dataItems.length > id) {
+        if(type == ITEM && $dataItems.length > id) {
             return $dataItems[id];
-        } else if (type == WEAPON && $dataWeapons.length > id) {
+        } else if(type == WEAPON && $dataWeapons.length > id) {
             return $dataWeapons[id];
-        } else if (type == ARMOR && $dataArmors.length > id) {
+        } else if(type == ARMOR && $dataArmors.length > id) {
             return $dataArmors[id];
-        } else if (type == SKILL && $dataSkills.length > id) {
+        } else if(type == SKILL && $dataSkills.length > id) {
             return $dataSkills[id];
         }
 
@@ -3412,26 +3417,26 @@ Imported.MKR_MapItemSlot = true;
         let name, key;
         name = null;
 
-        if (event.key != undefined && event.key != null) {
+        if(event.key != undefined && event.key != null) {
             name = event.key;
             // console.log("key name:"+name);
-        } else if (event.keyIdentifier != undefined && event.keyIdentifier != null) {
+        } else if(event.keyIdentifier != undefined && event.keyIdentifier != null) {
             key = event.keyIdentifier;
-            if (/^U\+/.test(key)) {
+            if(/^U\+/.test(key)) {
                 key = parseInt(key.substr(2), 16);
                 // console.log("key:"+key);
             }
-            if (isFinite(key)) {
-                if (key >= 112 && key <= 123) {
+            if(isFinite(key)) {
+                if(key >= 112 && key <= 123) {
                     name = 'f' + (key - 111);// ファンクションキー
-                } else if (key >= 96 && key <= 105) {
+                } else if(key >= 96 && key <= 105) {
                     name = 'num' + (key - 96); // 0 ～ 9 (テンキー)
-                } else if (key >= 65 && key <= 90) {
+                } else if(key >= 65 && key <= 90) {
                     name = String.fromCharCode(key); // A ～ Z キー
-                } else if (key >= 48 && key <= 57) {
+                } else if(key >= 48 && key <= 57) {
                     name = (key - 48).toString(); // 0 ～ 9 キー
                 } else {
-                    switch (key) {
+                    switch(key) {
                         case 32:
                             name = "space";
                             break;
@@ -3444,7 +3449,7 @@ Imported.MKR_MapItemSlot = true;
             // console.log("keyIdentifier name:"+name);
         }
 
-        if (name) {
+        if(name) {
             name = name.toLowerCase();
         }
 
@@ -3456,15 +3461,15 @@ Imported.MKR_MapItemSlot = true;
         let ret;
         ret = -1;
 
-        if (slot == "left") {
+        if(slot == "left") {
             ret = $gameParty.getItemSlotLastIndex() - 1;
             ret = ret < 0 ? Params.SlotNumber[0] - 1 : ret;
-        } else if (slot == "right") {
+        } else if(slot == "right") {
             ret = $gameParty.getItemSlotLastIndex() + 1;
             ret = ret >= Params.SlotNumber[0] ? 0 : ret;
-        } else if (slot != null && isFinite(slot)) {
+        } else if(slot != null && isFinite(slot)) {
             ret = parseInt(slot, 10);
-            if (ret > Params.SlotNumber[0] || ret < 1) {
+            if(ret > Params.SlotNumber[0] || ret < 1) {
                 ret = -1;
             } else {
                 ret--;
@@ -3493,58 +3498,58 @@ Imported.MKR_MapItemSlot = true;
         // アイテムスロット選択
 
         // 強制選択
-        if ($gameParty.getItemSlotForceIndex() >= 0) {
+        if($gameParty.getItemSlotForceIndex() >= 0) {
             win.select($gameParty.getItemSlotForceIndex());
             $gameParty.setItemSlotForceIndex(-1);
             pushFlg = true;
         }
 
         // キーボード
-        if (isEnableEventToSelect() && isEnableKeyboardToSelect()) {
-            if (Input.isTriggered(keys.Slot1Key[0]) && slotToIndex(1) != -1) {
+        if(isEnableEventToSelect() && isEnableKeyboardToSelect()) {
+            if(Input.isTriggered(keys.Slot1Key[0]) && slotToIndex(1) != -1) {
                 win.select(slotToIndex(1));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot2Key[0]) && slotToIndex(2) != -1) {
+            if(Input.isTriggered(keys.Slot2Key[0]) && slotToIndex(2) != -1) {
                 win.select(slotToIndex(2));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot3Key[0]) && slotToIndex(3) != -1) {
+            if(Input.isTriggered(keys.Slot3Key[0]) && slotToIndex(3) != -1) {
                 win.select(slotToIndex(3));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot4Key[0]) && slotToIndex(4) != -1) {
+            if(Input.isTriggered(keys.Slot4Key[0]) && slotToIndex(4) != -1) {
                 win.select(slotToIndex(4));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot5Key[0]) && slotToIndex(5) != -1) {
+            if(Input.isTriggered(keys.Slot5Key[0]) && slotToIndex(5) != -1) {
                 win.select(slotToIndex(5));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot6Key[0]) && slotToIndex(6) != -1) {
+            if(Input.isTriggered(keys.Slot6Key[0]) && slotToIndex(6) != -1) {
                 win.select(slotToIndex(6));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot7Key[0]) && slotToIndex(7) != -1) {
+            if(Input.isTriggered(keys.Slot7Key[0]) && slotToIndex(7) != -1) {
                 win.select(slotToIndex(7));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot8Key[0]) && slotToIndex(8) != -1) {
+            if(Input.isTriggered(keys.Slot8Key[0]) && slotToIndex(8) != -1) {
                 win.select(slotToIndex(8));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot9Key[0]) && slotToIndex(9) != -1) {
+            if(Input.isTriggered(keys.Slot9Key[0]) && slotToIndex(9) != -1) {
                 win.select(slotToIndex(9));
                 pushFlg = true;
             }
-            if (Input.isTriggered(keys.Slot10Key[0]) && slotToIndex(10) != -1) {
+            if(Input.isTriggered(keys.Slot10Key[0]) && slotToIndex(10) != -1) {
                 win.select(slotToIndex(10));
                 pushFlg = true;
             }
         }
 
         // マウスクリック/画面タッチ
-        if (isEnableMouseToUse(win)) {
+        if(isEnableMouseToUse(win)) {
             touchIndex = win.getTouchToIndex();
             if(touchIndex >= 0 && touchIndex < Params.SlotNumber[0]) {
                 win.select(touchIndex);
@@ -3553,22 +3558,22 @@ Imported.MKR_MapItemSlot = true;
         }
 
         // アイテム自動使用
-        if (isEnableEventToUse() && useFlg && pushFlg && Params.ItemUseMode[0]) {
+        if(isEnableEventToUse() && useFlg && pushFlg && Params.ItemUseMode[0]) {
             pushFlg = false;
             item = win.item();
             $gameParty.useItemSlot(item);
         }
 
         // マウスホイール
-        if (isEnableEventToSelect() && isEnableMouseToSelect()) {
-            if (TouchInput.wheelY > 0) {
-                if (index <= 0) {
+        if(isEnableEventToSelect() && isEnableMouseToSelect()) {
+            if(TouchInput.wheelY > 0) {
+                if(index <= 0) {
                     win.select(Params.SlotNumber[0] - 1);
                 } else {
                     win.select(index - 1);
                 }
-            } else if (TouchInput.wheelY < 0) {
-                if (index >= Params.SlotNumber[0] - 1) {
+            } else if(TouchInput.wheelY < 0) {
+                if(index >= Params.SlotNumber[0] - 1) {
                     win.select(0);
                 } else {
                     win.select(index + 1);
@@ -3601,7 +3606,7 @@ Imported.MKR_MapItemSlot = true;
             return (mouseMode.UseEnable[0] && TouchInput.isTriggered()) ? true : false;
         }
 
-        if(TouchInput.isTriggered() && win.contains(touchX, touchY)){
+        if(TouchInput.isTriggered() && win.contains(touchX, touchY)) {
             return true;
         }
 
