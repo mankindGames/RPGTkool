@@ -1,17 +1,21 @@
 //=============================================================================
 // MKR_LevelUpMessageEx.js
 //=============================================================================
-// Copyright (c) 2016 mankind
+// Copyright (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
-// 1.0.2 2016/10/15 ステータスを非表示にした場合にステータスアップテキストが
-//                  途切れてしまう不具合を修正。
+// 2.0.0 2020/09/05 ・プラグインパラメータに@type他を追加。
+//                  ・レベルアップメッセージに対象アクターの顔グラを表示可能に。
+//                  ・レベルアップメッセージを一瞬で表示する設定を追加。
 //
-// 1.0.1 2016/10/15 レベルアップ時にどのステータスを表示するか選択可能に。
+// 1.0.2 2016/10/15 ・ステータスを非表示にした場合にステータスアップテキストが
+//                    途切れてしまう不具合を修正。
 //
-// 1.0.0 2016/10/15 初版公開
+// 1.0.1 2016/10/15 ・レベルアップ時にどのステータスを表示するか選択可能に。
+//
+// 1.0.0 2016/10/15 ・初版公開
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -20,12 +24,13 @@
 
 /*:
  *
- * @plugindesc (v1.0.2) レベルアップ時にステータスの変化を
- * ウィンドウに表示します。
+ * @plugindesc (v2.0.0) レベルアップメッセージ拡張
  *
- * @author mankind
+ * @author マンカインド
  *
- * @help
+ * @help = レベルアップメッセージ拡張 =
+ * MKR_LevelUpMessageEx.js
+ *
  * アクターがレベルアップし、レベルアップのメッセージが表示された後に
  * アクターのステータスがどのように変化したのかを表示するメッセージウィンドウを
  * 表示します。
@@ -37,21 +42,6 @@
  *
  * スクリプトコマンド:
  *   ありません。
- *
- *
- * 補足：
- *   ・このプラグインに関するメモ欄の設定、プラグインコマンド/パラメーター、
- *     制御文字は大文字/小文字を区別していません。
- *
- *   ・プラグインパラメーターの説明に、[変数可]と書かれているものは
- *     設定値に変数を表す制御文字である\v[n]を使用可能です。
- *     変数を設定した場合、そのパラメーターの利用時に変数の値を
- *     参照するため、パラメーターの設定をゲーム中に変更できます。
- *
- *   ・プラグインパラメーターの説明に、[スイッチ可]と書かれているものは
- *     設定値にスイッチを表す制御文字である\s[n]を使用可能です。
- *     スイッチを設定した場合、そのパラメーターの利用時にスイッチの値を
- *     参照するため、パラメーターの設定をゲーム中に変更できます。
  *
  *
  * 利用規約:
@@ -69,108 +59,171 @@
  *     バージョンアップにより本プラグインの仕様が変更される可能性があります。
  *     ご了承ください。
  *
+ * @param Default_Visible_Face
+ * @text 顔グラフィック表示
+ * @type switch
+ * @desc レベルアップメッセージを表示する際、対象アクターの顔グラフィックを表示するか決めるスイッチ番号を設定します。
+ * @default 1
+ *
+ * @param Default_Message_Speed
+ * @text メッセージ倍速
+ * @type switch
+ * @desc レベルアップメッセージを一瞬で表示(メッセージ制御文字:\>と同じ速度)するか決めるスイッチ番号を設定します。
+ * @default 2
  *
  * @param Default_Status_Message
- * @desc レベルアップ時にアップステータス一覧のウィンドウを表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text ステータス一覧表示
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時にアップしたステータス一覧を表示するかどうか設定します。
+ * @default true
+ *
+ * @param Visible_Status
+ * @text 表示するステータス
  *
  * @param Default_Visible_Hp
- * @desc レベルアップ時に[最大HP]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text 最大HP
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時に[最大HP]のステータスを表示するかどうか設定します。
+ * @default true
+ * @parent Visible_Status
  *
  * @param Default_Visible_Mp
- * @desc レベルアップ時に[最大MP]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text 最大MP
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時に[最大MP]のステータスを表示するかどうか設定します。
+ * @default true
+ * @parent Visible_Status
  *
  * @param Default_Visible_Atk
- * @desc レベルアップ時に[攻撃力]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text 攻撃力
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時に[攻撃力]のステータスを表示するかどうか設定します。
+ * @default true
+ * @parent Visible_Status
  *
  * @param Default_Visible_Grd
- * @desc レベルアップ時に[防御力]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text 防御力
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時に[防御力]のステータスを表示するかどうか設定します。
+ * @default true
+ * @parent Visible_Status
  *
  * @param Default_Visible_mAtk
- * @desc レベルアップ時に[魔法力]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text 魔法力
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時に[魔法力]のステータスを表示するかどうか設定します。
+ * @default true
+ * @parent Visible_Status
  *
  * @param Default_Visible_mGrd
- * @desc レベルアップ時に[魔法防御力]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text 魔法防御力
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時に[魔法防御力]のステータスを表示するかどうか設定します。
+ * @default true
+ * @parent Visible_Status
  *
  * @param Default_Visible_Spd
- * @desc レベルアップ時に[敏捷性]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text 敏捷性
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時に[敏捷性]のステータスを表示するかどうか設定します。
+ * @default true
+ * @parent Visible_Status
  *
  * @param Default_Visible_Luk
- * @desc レベルアップ時に[運]のステータスアップ値を表示する場合はON、表示しない場合はOFFを指定してください。
- * @default ON
+ * @text 運
+ * @type boolean
+ * @on 表示する
+ * @off 表示しない
+ * @desc レベルアップ時に[運]のステータスを表示するかどうか設定します。
+ * @default true
+ * @parent Visible_Status
  *
- * *
 */
-(function () {
+(function() {
     'use strict';
 
-    var CheckParam = function(type, param, def, min, max) {
-        var Parameters, regExp, value;
-        Parameters = PluginManager.parameters("MKR_LevelUpMessageEx");
+    const PN = "MKR_LevelUpMessageEx";
 
-        if(arguments.length < 4) {
+    const CheckParam = function(type, name, value, def, min, max, options) {
+        if(min == undefined || min == null) {
             min = -Infinity;
+        }
+        if(max == undefined || max == null) {
             max = Infinity;
         }
-        if(arguments.length < 5) {
-            max = Infinity;
-        }
-        if(param in Parameters) {
-            value = String(Parameters[param]);
+
+        if(value == null) {
+            value = "";
         } else {
-            throw new Error('Plugin parameter not found: '+param);
+            value = String(value);
         }
 
-        regExp = /^\x1bV\[\d+\]$/i;
-        value = value.replace(/\\/g, '\x1b');
-        value = value.replace(/\x1b\x1b/g, '\\');
-
-        if(!regExp.test(value)) {
-            switch(type) {
-                case "bool":
-                    if(value == "") {
-                        value = (def)? true : false;
-                    }
-                    value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
-                    break;
-                case "num":
-                    if(value == "") {
-                        value = (isFinite(def))? parseInt(def, 10) : 0;
-                    } else {
-                        value = (isFinite(value))? parseInt(value, 10) : (isFinite(def))? parseInt(def, 10) : 0;
-                        value = value.clamp(min, max);
-                    }
-                    break;
-                case "string":
-                    value = value;
-                    break;
-                default:
-                    throw new Error('Plugin parameter type is illegal: '+type);
-                    break;
-            }
+        switch(type) {
+            case "bool":
+                if(value == "") {
+                    value = (def) ? "true" : "false";
+                }
+                value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
+                break;
+            case "switch":
+                if(value == "") {
+                    value = (def != "") ? def : value;
+                }
+                if(!value.match(/^([A-D]|\d+)$/i)) {
+                    throw new Error("[CheckParam] " + param + "の値がスイッチではありません: " + param + " : " + value);
+                }
+                break;
+            default:
+                throw new Error("[CheckParam] " + name + "のタイプが不正です: " + type);
         }
 
-        return [value, type, def, min, max];
-    }
+        return value;
+    };
 
-    var DefStatusMess, VisibleParams;
-    VisibleParams = [];
-    DefStatusMess = CheckParam("bool", "Default_Status_Message", true);
-    VisibleParams.push(CheckParam("bool", "Default_Visible_Hp", true));
-    VisibleParams.push(CheckParam("bool", "Default_Visible_Mp", true));
-    VisibleParams.push(CheckParam("bool", "Default_Visible_Atk", true));
-    VisibleParams.push(CheckParam("bool", "Default_Visible_Grd", true));
-    VisibleParams.push(CheckParam("bool", "Default_Visible_mAtk", true));
-    VisibleParams.push(CheckParam("bool", "Default_Visible_mGrd", true));
-    VisibleParams.push(CheckParam("bool", "Default_Visible_Spd", true));
-    VisibleParams.push(CheckParam("bool", "Default_Visible_Luk", true));
+    const paramParse = function(obj) {
+        return JSON.parse(JSON.stringify(obj, paramReplace));
+    };
+
+    const paramReplace = function(key, value) {
+        try {
+            return JSON.parse(value || null);
+        } catch(e) {
+            return value;
+        }
+    };
+
+    const Parameters = paramParse(PluginManager.parameters(PN));
+
+
+    let DefVisibleFace = CheckParam("switch", "Default_Visible_Face", Parameters["Default_Visible_Face"], 1);
+    let DefMessageSpeed = CheckParam("switch", "Default_Message_Speed", Parameters["Default_Message_Speed"], 2);
+    let DefStatusMess = CheckParam("bool", "Default_Status_Message", Parameters["Default_Status_Message"], true);
+    let VisibleParams = [];
+
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Hp", Parameters["Default_Visible_Hp"], true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Mp", Parameters["Default_Visible_Mp"], true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Atk", Parameters["Default_Visible_Atk"], true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Grd", Parameters["Default_Visible_Grd"], true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_mAtk", Parameters["Default_Visible_mAtk"], true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_mGrd", Parameters["Default_Visible_mGrd"], true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Spd", Parameters["Default_Visible_Spd"], true));
+    VisibleParams.push(CheckParam("bool", "Default_Visible_Luk", Parameters["Default_Visible_Luk"], true));
 
 
     //=========================================================================
@@ -180,23 +233,24 @@
     //=========================================================================
     var _Game_Actor_displayLevelUp = Game_Actor.prototype.displayLevelUp;
     Game_Actor.prototype.displayLevelUp = function(newSkills) {
-        var statusMess, text, cnt, i, j, paramName, prevParam, currentParam,
-            viewParams;
-        statusMess = DefStatusMess[0];
-        viewParams = VisibleParams;
+        let visibleFace = DefVisibleFace;
+        let messageSpeed = DefMessageSpeed;
+        let statusMess = DefStatusMess;
+        let viewParams = VisibleParams;
 
         _Game_Actor_displayLevelUp.call(this, newSkills);
 
+        // ステータスアップメッセージの構築
         if(statusMess) {
-            text = "";
-            cnt = this.currentClass().params.length;
+            let text = "";
+            let cnt = this.currentClass().params.length;
 
-            j = 0;
-            for(i = 0; i < cnt; i++){
-                if(viewParams[i][0]){
-                    paramName = TextManager.param(i);
-                    prevParam = this.currentClass().params[i][this._level - 1];
-                    currentParam = this.currentClass().params[i][this._level];
+            let j = 0;
+            for(let i = 0; i < cnt; i++) {
+                if(viewParams[i]) {
+                    let paramName = TextManager.param(i);
+                    let prevParam = this.currentClass().params[i][this._level - 1];
+                    let currentParam = this.currentClass().params[i][this._level];
 
                     text += "%1 %2 ⇒ %3".format(paramName, prevParam, currentParam);
 
@@ -213,6 +267,22 @@
 
             $gameMessage.newPage();
             $gameMessage.add(text);
+        }
+
+        // メッセージ速度設定(デフォルト or 一瞬)
+        if($gameSwitches.value(messageSpeed)) {
+            let mesArr = $gameMessage.allText().split("\n");
+            $gameMessage.clear();
+            $gameMessage.newPage();
+            let cnt = mesArr.length;
+            for(let i = 0; i < cnt; i++) {
+                $gameMessage.add("\\>" + mesArr[i]);
+            }
+        }
+
+        // メッセージ顔グラフィック設定
+        if($gameSwitches.value(visibleFace)) {
+            $gameMessage.setFaceImage(this.faceName(), this.faceIndex());
         }
     };
 
