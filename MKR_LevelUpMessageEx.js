@@ -6,6 +6,8 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.1 2020/09/07 ・戦闘後にレベルアップしたときの考慮が抜けていたので対応。
+//
 // 2.0.0 2020/09/05 ・プラグインパラメータに@type他を追加。
 //                  ・レベルアップメッセージに対象アクターの顔グラを表示可能に。
 //                  ・レベルアップメッセージを一瞬で表示する設定を追加。
@@ -24,7 +26,7 @@
 
 /*:
  *
- * @plugindesc (v2.0.0) レベルアップメッセージ拡張
+ * @plugindesc (v2.0.1) レベルアップメッセージ拡張
  *
  * @author マンカインド
  *
@@ -59,18 +61,6 @@
  *     バージョンアップにより本プラグインの仕様が変更される可能性があります。
  *     ご了承ください。
  *
- * @param Default_Visible_Face
- * @text 顔グラフィック表示
- * @type switch
- * @desc レベルアップメッセージを表示する際、対象アクターの顔グラフィックを表示するか決めるスイッチ番号を設定します。
- * @default 1
- *
- * @param Default_Message_Speed
- * @text メッセージ倍速
- * @type switch
- * @desc レベルアップメッセージを一瞬で表示(メッセージ制御文字:\>と同じ速度)するか決めるスイッチ番号を設定します。
- * @default 2
- *
  * @param Default_Status_Message
  * @text ステータス一覧表示
  * @type boolean
@@ -81,6 +71,7 @@
  *
  * @param Visible_Status
  * @text 表示するステータス
+ * @desc レベルアップ時に表示するステータスの設定
  *
  * @param Default_Visible_Hp
  * @text 最大HP
@@ -154,6 +145,18 @@
  * @default true
  * @parent Visible_Status
  *
+ * @param Default_Visible_Face
+ * @text 顔グラフィック表示
+ * @type switch
+ * @desc レベルアップメッセージを表示する際、対象アクターの顔グラフィックを表示するか決めるスイッチ番号を設定します。
+ * @default 1
+ *
+ * @param Default_Message_Speed
+ * @text メッセージ瞬間表示
+ * @type switch
+ * @desc レベルアップメッセージを瞬間表示(制御文字:\>と同じ効果)するか決めるスイッチ番号を設定します。
+ * @default 2
+ *
 */
 (function() {
     'use strict';
@@ -209,13 +212,10 @@
     };
 
     const Parameters = paramParse(PluginManager.parameters(PN));
-
-
     let DefVisibleFace = CheckParam("switch", "Default_Visible_Face", Parameters["Default_Visible_Face"], 1);
     let DefMessageSpeed = CheckParam("switch", "Default_Message_Speed", Parameters["Default_Message_Speed"], 2);
     let DefStatusMess = CheckParam("bool", "Default_Status_Message", Parameters["Default_Status_Message"], true);
     let VisibleParams = [];
-
     VisibleParams.push(CheckParam("bool", "Default_Visible_Hp", Parameters["Default_Visible_Hp"], true));
     VisibleParams.push(CheckParam("bool", "Default_Visible_Mp", Parameters["Default_Visible_Mp"], true));
     VisibleParams.push(CheckParam("bool", "Default_Visible_Atk", Parameters["Default_Visible_Atk"], true));
@@ -227,47 +227,69 @@
 
 
     //=========================================================================
+    // SceneManager
+    //  ・現在シーンがScene_Battleであることを判定する処理を定義します。
+    //
+    //=========================================================================
+    SceneManager.isSceneBattle = function() {
+        return this._scene.constructor === Scene_Battle;
+    };
+
+
+    //=========================================================================
     // Game_Actor
     //  ・レベルアップ時に表示するメッセージを再定義します。
     //
     //=========================================================================
-    var _Game_Actor_displayLevelUp = Game_Actor.prototype.displayLevelUp;
+    const _Game_Actor_displayLevelUp = Game_Actor.prototype.displayLevelUp;
     Game_Actor.prototype.displayLevelUp = function(newSkills) {
         let visibleFace = DefVisibleFace;
         let messageSpeed = DefMessageSpeed;
         let statusMess = DefStatusMess;
         let viewParams = VisibleParams;
+        let faceName = this.faceName();
+        let faceIndex = this.faceIndex();
 
-        _Game_Actor_displayLevelUp.call(this, newSkills);
+        // 機能無効時は元の処理を呼び出す
+        if(!statusMess) {
+            _Game_Actor_displayLevelUp.apply(this, arguments);
+            return;
+        }
+
+        // メッセージ顔グラフィック設定(バトル)
+        // バトル終了後のレベルアップはテキスト末尾に制御文字を追加する。
+        if($gameSwitches.value(visibleFace) && SceneManager.isSceneBattle()) {
+            $gameMessage.add("\\af[%1,%2]".format(faceName, faceIndex));
+        }
+
+        _Game_Actor_displayLevelUp.apply(this, arguments);
 
         // ステータスアップメッセージの構築
-        if(statusMess) {
-            let text = "";
-            let cnt = this.currentClass().params.length;
+        let text = "";
+        let cnt = this.currentClass().params.length;
 
-            let j = 0;
-            for(let i = 0; i < cnt; i++) {
-                if(viewParams[i]) {
-                    let paramName = TextManager.param(i);
-                    let prevParam = this.currentClass().params[i][this._level - 1];
-                    let currentParam = this.currentClass().params[i][this._level];
+        let j = 0;
+        for(let i = 0; i < cnt; i++) {
+            if(viewParams[i]) {
+                let paramName = TextManager.param(i);
+                let prevParam = this.currentClass().params[i][this._level - 1];
+                let currentParam = this.currentClass().params[i][this._level];
 
-                    text += "%1 %2 ⇒ %3".format(paramName, prevParam, currentParam);
+                text += "%1 %2 ⇒ %3".format(paramName, prevParam, currentParam);
 
-                    if(j < cnt - 1) {
-                        if(j % 2) {
-                            text += "\n";
-                        } else {
-                            text += "　";
-                        }
+                if(j < cnt - 1) {
+                    if(j % 2) {
+                        text += "\n";
+                    } else {
+                        text += "　";
                     }
-                    j++;
                 }
+                j++;
             }
-
-            $gameMessage.newPage();
-            $gameMessage.add(text);
         }
+
+        $gameMessage.newPage();
+        $gameMessage.add(text);
 
         // メッセージ速度設定(デフォルト or 一瞬)
         if($gameSwitches.value(messageSpeed)) {
@@ -276,13 +298,96 @@
             $gameMessage.newPage();
             let cnt = mesArr.length;
             for(let i = 0; i < cnt; i++) {
-                $gameMessage.add("\\>" + mesArr[i]);
+                let text = mesArr[i];
+                if(mesArr[i].indexOf("\\>") === -1) {
+                    text = "\\>" + mesArr[i];
+                }
+                $gameMessage.add(text);
             }
         }
 
-        // メッセージ顔グラフィック設定
-        if($gameSwitches.value(visibleFace)) {
-            $gameMessage.setFaceImage(this.faceName(), this.faceIndex());
+        // メッセージ顔グラフィック設定(バトル以外)
+        // マップ上でのレベルアップを想定、顔グラフィックをスクリプトでセットする。
+        if($gameSwitches.value(visibleFace) && !SceneManager.isSceneBattle()) {
+            $gameMessage.setFaceImage(faceName, faceIndex);
+        }
+    };
+
+
+    //=========================================================================
+    // Game_Message
+    //  ・テキストを末尾に追加する処理を定義します。
+    //
+    //=========================================================================
+    Game_Message.prototype.pushText = function(addText) {
+        let index = this._texts.length - 1;
+        // テキスト配列が空の場合は通常のテキスト追加処理
+        if(index < 0) {
+            this.add(addText);
+            return;
+        }
+        let text = this._texts[index];
+        this._texts[index] = text + addText;
+    };
+
+
+    //=========================================================================
+    // Window_Message
+    //  ・メッセージ制御文字を追加します。
+    //    [追加制御文字]
+    //      \AF[アクター顔グラフィックファイル,アクター顔グラフィックインデックス]
+    //
+    //=========================================================================
+    const _Window_Message_obtainEscapeCode = Window_Message.prototype.obtainEscapeCode;
+    Window_Message.prototype.obtainEscapeCode = function(textState) {
+        // 機能無効時は元の処理を呼び出す
+        let statusMess = DefStatusMess;
+        let visibleFace = DefVisibleFace;
+        if(!$gameSwitches.value(visibleFace) || !statusMess) {
+            return _Window_Message_obtainEscapeCode.apply(this, arguments);
+        }
+
+        textState.index++;
+        let regExp = /^(AF)\[.*?\]/i;
+        let text = textState.text.slice(textState.index);
+        let arr = regExp.exec(text);
+
+        if(arr) {
+            textState.index += arr[0].length;
+            return arr[0];
+        } else {
+            textState.index--;
+            return _Window_Message_obtainEscapeCode.apply(this, arguments);
+        }
+    };
+
+    const _Window_Message_processEscapeCharacter = Window_Message.prototype.processEscapeCharacter;
+    Window_Message.prototype.processEscapeCharacter = function(code, textState) {
+        // 機能無効時は元の処理を呼び出す
+        let statusMess = DefStatusMess;
+        let visibleFace = DefVisibleFace;
+        if(!$gameSwitches.value(visibleFace) || !statusMess) {
+            return _Window_Message_processEscapeCharacter.apply(this, arguments);
+        }
+
+        let regExp = /^(AF)(\[.*?\])?$/i;
+        let arr = regExp.exec(code);
+
+        if(arr) {
+            if(arr[2]) {
+                arr[2] = arr[2].replace(/[\[\]]/g, "");
+            }
+            switch(arr[1].toUpperCase()) {
+                case "AF":
+                    let faceName = arr[2].split(",")[0];
+                    let faceIndex = arr[2].split(",")[1];
+                    $gameMessage.setFaceImage(faceName, faceIndex);
+                    break;
+                default:
+                    _Window_Message_processEscapeCharacter.apply(this, arguments);
+            }
+        } else {
+            _Window_Message_processEscapeCharacter.apply(this, arguments);
         }
     };
 
