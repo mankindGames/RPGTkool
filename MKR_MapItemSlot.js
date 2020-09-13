@@ -6,6 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.2.11 2020/09/13・特定状況でスロット選択を行うとエラーになっていた問題を修正
+//                  ・スロットのアイテムを装備時、
+//                    スロットからアイテムが消えてしまう問題を修正
+//
 // 1.2.10 2020/06/16・マップ画面以外でアイテムを0個にしたとき、
 //                    スロットからアイテムが消去されない問題を修正
 //
@@ -110,7 +114,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.10) マップアイテムスロットプラグイン
+ * @plugindesc (v1.2.11) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -1037,7 +1041,6 @@ Imported.MKR_MapItemSlot = true;
         value = value.replace(/\\/g, '\x1b');
         value = value.replace(/\x1b\x1b/g, '\\');
 
-        // console.log("名前:%s 種類:%s 値:%s 型:%s",name, type, value, typeof(value));
         switch(type) {
             case "bool":
                 if(value == "") {
@@ -1220,9 +1223,7 @@ Imported.MKR_MapItemSlot = true;
         let name;
         name = codeToName(event);
 
-        // console.log(event);
         if(!Input.keyMapper[event.keyCode]) {
-            // console.log("name:"+name);
             if(name) {
                 this._currentState[name] = true;
             }
@@ -1397,7 +1398,6 @@ Imported.MKR_MapItemSlot = true;
                         if(slotToIndex(args[1].toLowerCase()) != -1) {
                             if(scene && scene.constructor == Scene_Map) {
                                 index = slotToIndex(args[1].toLowerCase());
-                                console.log("plugin command: %d", index);
                                 // scene._mapItemSlotWindow.select(index);
                                 $gameParty.setItemSlotForceIndex(index);
                             }
@@ -1583,12 +1583,12 @@ Imported.MKR_MapItemSlot = true;
             if(this._itemSlot[index] && this._itemSlot[index].type == WEAPON) {
                 item = $dataWeapons[this._itemSlot[index].id];
                 this.leader().changeEquipById(item.etypeId, 0);
-            }
-            if(this._itemSlot[index] && this._itemSlot[index].type == ARMOR) {
+            } else if(this._itemSlot[index] && this._itemSlot[index].type == ARMOR) {
                 item = $dataArmors[this._itemSlot[index].id];
                 this.leader().changeEquipById(item.etypeId, 0);
+            } else {
+                this._itemSlot[index] = null;
             }
-            this._itemSlot[index] = null;
         }
     };
 
@@ -2107,8 +2107,6 @@ Imported.MKR_MapItemSlot = true;
                 }
                 // if(itemSlot.type == WEAPON || itemSlot.type == ARMOR) {
                 //     if(itemSlot.equip != actor.isEquipped(item)) {
-                //         console.log("itemSlot equip:"+itemSlot.equip);
-                //         console.log("actor equip:"+actor.isEquipped(item));
                 //         return true;
                 //     }
                 // }
@@ -2274,7 +2272,6 @@ Imported.MKR_MapItemSlot = true;
 
         // クリック位置がウィンドウ余白部分か判定
         if(touchX <= x + padding || touchX >= x + width - padding || touchY <= y + padding || touchY >= y + height - padding) {
-            // console.log("余白位置_x:%d_y:%d", touchX, touchY);
             return -1;
         }
 
@@ -2282,7 +2279,6 @@ Imported.MKR_MapItemSlot = true;
         for(i = 0; i < Params.SlotNumber[0]; i++) {
             rect = this.itemRect(i);
             if(touchX >= x + rect.x + padding && touchX <= x + rect.x + rect.width + padding) {
-                // console.log("カーソル位置:%d", i);
                 return i;
             }
             continue;
@@ -2953,7 +2949,6 @@ Imported.MKR_MapItemSlot = true;
         lastIndex = win.lastIndex();
 
         // 表示判定
-        // console.log("eventRun:"+$gameMap.isEventRunning());
         if(isEnableEventToSlot() && !$gameParty.isItemSlotHide()) {
             if((win.isHide() || win.isHiding()) && !win.isShowing()) {
                 win.fadeIn();
@@ -2979,15 +2974,12 @@ Imported.MKR_MapItemSlot = true;
         // アイテム使用
         // if (isEnableEventToUse() &&
         //     (isEnableMouseToUse(win) || isEnableKeyboardToUse())) {
-        //     console.log("ok");
         //     win.callHandler("ok");
         // }
         if(isEnableEventToUse()) {
             if(isEnableMouseToUse(win) && win.contentsContains(TouchInput.x, TouchInput.y)) {
-                // console.log("mouse ok");
                 win.callHandler("ok");
             } else if(isEnableKeyboardToUse()) {
-                // console.log("keyboard ok");
                 win.callHandler("ok");
             }
         }
@@ -3019,9 +3011,10 @@ Imported.MKR_MapItemSlot = true;
         }
         if((itemSlot == null || itemSlot.type == ITEM) && ((Params.SlotSetW[0] && actor.weapons().length > 0) || (Params.SlotSetA[0] && actor.armors().length > 0))) {
             // 装備アイテム以外のスロット選択時に装備を確実に外す
-            console.log("index:%d, lastIndex:%d", index, lastIndex);
             item = win.item(lastIndex);
-            actor.changeEquipById(item.etypeId, 0);
+            if(item) {
+                actor.changeEquipById(item.etypeId, 0);
+            }
         }
 
         // アイテムスロットのアイテム削除判定
@@ -3036,7 +3029,6 @@ Imported.MKR_MapItemSlot = true;
             }
         }
 
-        // console.log("visible2:"+win.visible);
         $gameParty.setItemSlotLastIndex(index);
     };
 
@@ -3312,7 +3304,6 @@ Imported.MKR_MapItemSlot = true;
                     win.redrawItem($gameParty.getItemSlotLastIndex());
                 }
             } else if(actor.weapons().length > 0) {
-                // console.log("updateItemSlot WEAPON:%o", item);
                 // actor.changeEquipById(1, 0);
                 // win.redrawItem($gameParty.getItemSlotLastIndex());
             }
@@ -3322,7 +3313,6 @@ Imported.MKR_MapItemSlot = true;
                     win.redrawItem($gameParty.getItemSlotLastIndex());
                 }
             } else if(actor.armors().length > 0) {
-                // console.log("updateItemSlot ARMOR:%o", item);
                 // actor.changeEquipById(1, 0);
                 // win.redrawItem($gameParty.getItemSlotLastIndex());
             }
@@ -3419,12 +3409,10 @@ Imported.MKR_MapItemSlot = true;
 
         if(event.key != undefined && event.key != null) {
             name = event.key;
-            // console.log("key name:"+name);
         } else if(event.keyIdentifier != undefined && event.keyIdentifier != null) {
             key = event.keyIdentifier;
             if(/^U\+/.test(key)) {
                 key = parseInt(key.substr(2), 16);
-                // console.log("key:"+key);
             }
             if(isFinite(key)) {
                 if(key >= 112 && key <= 123) {
@@ -3445,8 +3433,6 @@ Imported.MKR_MapItemSlot = true;
             } else {
                 name = key;
             }
-            // console.log(event);
-            // console.log("keyIdentifier name:"+name);
         }
 
         if(name) {
@@ -3484,7 +3470,6 @@ Imported.MKR_MapItemSlot = true;
         let keys;
         keys = Params.KeyConfig;
 
-        // console.log(keys);
         // return keys.ItemUseKey[0].toLowerCase();
         return keys.ItemUseKey[0];
     }
