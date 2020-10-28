@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.0.1 2020/10/28 機能制御スイッチの状態判定が逆転していた不具合を修正
 // 1.0.0 2018/09/03 初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
@@ -15,7 +16,7 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.0) タイルイベントプラグイン
+ * @plugindesc (v1.0.1) タイルイベントプラグイン
  * @author マンカインド
  *
  * @help MKR_TileEvent.js
@@ -137,7 +138,7 @@ Imported.MKR_TileEvent = true;
     const _Game_Player_updateNonmoving = Game_Player.prototype.updateNonmoving;
     Game_Player.prototype.updateNonmoving = function(wasMoving) {
         let isEnable;
-        isEnable = (Params.EnableSwitch < 1) ? true : $gameSwitches.value(Params.EnableSwitch) ? true : false;
+        isEnable = (Params.EnableSwitch < 1) ? true : $gameSwitches.value(Params.EnableSwitch) ? false : true;
 
         if (!$gameMap.isEventRunning() && isEnable) {
             if (wasMoving) {
