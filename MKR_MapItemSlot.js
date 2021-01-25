@@ -6,6 +6,12 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.3.0  2021/01/25・装備アイテムがスロットから
+//                    登録解除できなくなっていた問題を修正
+//                  ・スロットに手動でアイテム登録時、
+//                    登録個数を選択できる機能を追加
+//                  ・アイテムスロット画面に「戻る」コマンドを追加できるようにした
+//
 // 1.2.11 2020/09/13・特定状況でスロット選択を行うとエラーになっていた問題を修正
 //                  ・スロットのアイテムを装備時、
 //                    スロットからアイテムが消えてしまう問題を修正
@@ -114,7 +120,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.2.11) マップアイテムスロットプラグイン
+ * @plugindesc (v1.3.0) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -164,6 +170,7 @@
  * 同じアイテムを複数個所持している場合、
  * その個数がスロット右下に数字として表示されます。
  * (プラグインパラメータで非表示に設定可能)
+ * (プラグインパラメータ「アイテム個数の制限」が有効な場合は登録個数)
  *
  * アイテム個数が0になったとき、
  * アイテムスロットからそのアイテムを削除するか、
@@ -202,9 +209,16 @@
  * マップ画面で選択されているスロットに
  * 装備アイテムを登録した場合は自動的に装備されます。
  *
+ * プラグインパラメータ「アイテム個数の制限」が有効なとき、
+ * アイテムスロットに登録するアイテムの個数を設定できます。
+ * (武器/防具/スキルは対象外)
+ *
  * [削除]は選択したスロットを空にします。
  * 装備していたアイテムをアイテムスロットから削除した場合、
  * アクターからその装備が外れます。
+ *
+ * [戻る]はメニュー画面に戻ります。
+ * (プラグインパラメータ「画面戻るコマンド名」設定時のみ表示)
  *
  *
  * アイテムスロット画面のカテゴリ表示について:
@@ -299,6 +313,14 @@
  *         不透明度を減らしながらフェードアウト
  *         不透明度を増やしながらフェードイン
  *       するようになります。
+ *
+ *     ・アイテム個数の制限(Item_Count_Save)
+ *       アイテムスロットにアイテムを手動登録するとき
+ *       登録するアイテムの個数を設定することができます。
+ *       マップ画面のアイテムスロットには設定した個数が表示され、
+ *       設定個数より多くのアイテムを使うことができなくなります。
+ *       再び使いたい場合は手動登録をもう1度行ってください。
+ *       (アイテム登録モードがOFFの場合のみ機能します。)
  *
  *
  * スロットサイズ倍率について:
@@ -548,6 +570,14 @@
  * @on 表示する
  * @off 表示しない
  * @default true
+ *
+ * @param Item_Count_Save
+ * @text アイテム個数の制限
+ * @desc 手動登録時、アイテムスロットに登録するアイテムの個数を指定できるようにします。(デフォルト:指定しない)
+ * @type boolean
+ * @on 指定する
+ * @off 指定しない
+ * @default false
  *
  * @param Mouse_Mode
  * @text マウスモード
@@ -825,6 +855,12 @@
  * @default 解除
  * @parent menu_setting
  *
+ * @param Back_Scene_Name
+ * @text 画面戻るコマンド名
+ * @desc アイテムスロット画面で、メニュー画面に戻るためのコマンド名を指定してください。空欄でコマンドを表示しません。
+ * @type text
+ * @parent menu_setting
+ *
  * @param Slot_Set_Desc
  * @text スロット登録説明文
  * @desc [制御文字可]アイテムスロット画面で、スロットにアイテムを登録する際の説明文を指定してください。
@@ -834,9 +870,16 @@
  *
  * @param Slot_Remove_Desc
  * @text スロット削除説明文
- * @desc [制御文字可]アイテムスロット画面で、スロットに登録されたアイテムを解除するスロットを選択する際の説明文を指定してください。
+ * @desc [制御文字可]アイテムスロット画面で、登録されたアイテムを解除する際の説明文を指定してください。
  * @type note
  * @default "アイテムの登録を解除するスロットを選択してください。"
+ * @parent menu_setting
+ *
+ * @param Back_Scene_Desc
+ * @text 画面戻り説明文
+ * @desc [制御文字可]アイテムスロット画面で、メニュー画面に戻る際の説明文を指定してください。
+ * @type note
+ * @default "メニュー画面に戻ります。"
  * @parent menu_setting
  *
  * @param Menu_Slot_Opacity
@@ -1148,6 +1191,7 @@ Imported.MKR_MapItemSlot = true;
         "ItemRemoveMode": CheckParam("bool", "Item_Remove_Mode", Parameters["Item_Remove_Mode"], true),
         "ItemUseMode": CheckParam("bool", "Item_Use_Mode", Parameters["Item_Use_Mode"], false),
         "ItemCountVisible": CheckParam("bool", "Item_Count_Visible", Parameters["Item_Count_Visible"], true),
+        "ItemCountSave": CheckParam("bool", "Item_Count_Save", Parameters["Item_Count_Save"], false),
         "MenuSlotMode": CheckParam("num", "Menu_Slot_Mode", Parameters["Menu_Slot_Mode"], "コマンド有効状態で追加"),
         "MenuBackground": CheckParam("string", "Menu_Background", Parameters["Menu_Background"], ""),
         "MapBackgroundEnable": CheckParam("bool", "Map_Background_Enable", Parameters["Map_Background_Enable"], false),
@@ -1155,9 +1199,11 @@ Imported.MKR_MapItemSlot = true;
         "SlotSetName": CheckParam("string", "Slot_Set_Name", Parameters["Slot_Set_Name"], "登録"),
         // "SlotChangeName" : CheckParam("string", "Slot_Change_Name", Parameters["Slot_Change_Name"], "入れ替え"),
         "SlotRemoveName": CheckParam("string", "Slot_Remove_Name", Parameters["Slot_Remove_Name"], "削除"),
+        "BackSceneName": CheckParam("string", "Back_Scene_Name", Parameters["Back_Scene_Name"], ""),
         "SlotSetDesc": CheckParam("string", "Slot_Set_Desc", Parameters["Slot_Set_Desc"], "アイテムを登録したいスロットを選択し、\n登録するアイテムを選択してください。"),
         "SlotChangeDesc": CheckParam("string", "Slot_Change_Desc", Parameters["Slot_Change_Desc"], "移動元のスロットを選択し、\n交換先のスロットを選択してください。"),
         "SlotRemoveDesc": CheckParam("string", "Slot_Remove_Desc", Parameters["Slot_Remove_Desc"], "アイテムの登録を解除するスロットを選択してください。"),
+        "BackSceneDesc": CheckParam("string", "Back_Scene_Desc", Parameters["Back_Scene_Desc"], "メニュー画面に戻ります。"),
         "MenuSlotOpacity": CheckParam("num", "Menu_Slot_Opacity", Parameters["Menu_Slot_Opacity"], 255, 0, 255),
         "CategoryEnable": CheckParam("bool", "Category_Enable", Parameters["Category_Enable"], true),
         "ItemSortList": makeItemSortList(Parameters["Item_Sort"]),
@@ -1209,6 +1255,7 @@ Imported.MKR_MapItemSlot = true;
     const SKILL = "skill";
 
     const SKILLRANGE = [7, 8, 11];
+    const RECOVERSKILL = [3, 4];
 
 
     //=========================================================================
@@ -1381,13 +1428,21 @@ Imported.MKR_MapItemSlot = true;
                         itemSlot = $gameParty.getItemSlot(index);
                         if(itemSlot && (itemSlot.type == ITEM || itemSlot.type == SKILL)) {
                             item = DataManager.getItemByIdType(itemSlot.id, itemSlot.type);
-                            $gameParty.useItemSlot(item);
+                            if($gameParty.useItemSlot(item)) {
+                                $gameParty.decrementItemSlotCount(index);
+                            }
+
 
                             // アイテムスロットのアイテム削除判定
-                            if(item && itemSlot.type == ITEM && Params.ItemRemoveMode[0] && $gameParty.numItems(item) <= 0) {
-                                $gameParty.removeItemSlot(index);
-                                if(scene && scene.constructor == Scene_Map) {
-                                    scene._mapItemSlotWindow.redrawItem(index);
+                            if(item && itemSlot.type == ITEM && Params.ItemRemoveMode[0]) {
+                                const num = (isItemAddManualMode()) ?
+                                    itemSlot.num : $gameParty.numItems(item);
+
+                                if(num <= 0) {
+                                    $gameParty.removeItemSlot(index);
+                                    if(scene && scene.constructor == Scene_Map) {
+                                        scene._mapItemSlotWindow.redrawItem(index);
+                                    }
                                 }
                             }
                         }
@@ -1508,9 +1563,9 @@ Imported.MKR_MapItemSlot = true;
                 // item = win.item();
                 if(itemSlot) {
                     actor = $gameParty.leader();
-                    // if ((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || ((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && !actor.isEquipped(item))) {
-                    // if(itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) {
-                    if($gameParty.numItems(item) <= 0) {
+                    const num = (isItemAddManualMode()) ?
+                        itemSlot.num : $gameParty.numItems(item);
+                    if(num <= 0) {
                         $gameParty.removeItemSlot(index);
                         // win.redrawCurrentItem();
 
@@ -1524,20 +1579,32 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
-    Game_Party.prototype.setItemSlot = function(index, item, equip) {
+    Game_Party.prototype.setItemSlot = function(index, item, equip, num) {
         let equipFlg, actor, win, cnt, i;
 
-        if(equip == undefined || equip == null) {
+        if(!item) {
+            return;
+        }
+
+        if(index === -1) {
+            index = this.getItemSlotFreeNumber() - 1;
+        }
+
+        if(equip === undefined || equip === null) {
             equip = false;
         }
 
-        if(index == -1) {
-            index = this.getItemSlotFreeNumber() - 1;
+        if(num === undefined || num === null) {
+            num = $gameParty.numItems(item);
         }
 
         // アイテムが登録済みの場合は新たに登録させない
         if(DataManager.isItem(item) && this.getItemSlotNumber(ITEM, item.id) >= 0) {
-            index = -1;
+            // ただし、手動登録モードの場合は登録アイテム個数の変更を考慮し登録を許可する
+            if(isItemAddManualMode()) {
+            } else {
+                index = -1;
+            }
         } else if(DataManager.isWeapon(item) && this.getItemSlotNumber(WEAPON, item.id) >= 0) {
             index = -1;
         } else if(DataManager.isArmor(item) && this.getItemSlotNumber(ARMOR, item.id) >= 0) {
@@ -1547,15 +1614,17 @@ Imported.MKR_MapItemSlot = true;
         }
 
         actor = $gameParty.leader();
-        if(item && index >= 0 && index < Params.SlotNumber[0]) {
+        if(index >= 0 && index < Params.SlotNumber[0]) {
             if(DataManager.isItem(item)) {
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
                 this._itemSlot[index].type = ITEM;
+                this._itemSlot[index].num = num;
             } else if(DataManager.isSkill(item)) {
                 this._itemSlot[index] = {};
                 this._itemSlot[index].id = item.id;
                 this._itemSlot[index].type = SKILL;
+                this._itemSlot[index].num = 0;
             } else if(actor) {
                 if((Params.SlotSetW[0] && DataManager.isWeapon(item) && actor.isEquipWtypeOk(item.wtypeId)) || (Params.SlotSetA[0] && DataManager.isArmor(item) && actor.isEquipAtypeOk(item.atypeId))) {
                     equipFlg = actor.isEquipped(item);
@@ -1564,6 +1633,7 @@ Imported.MKR_MapItemSlot = true;
                     this._itemSlot[index].type = DataManager.isWeapon(item) ? WEAPON : ARMOR;
                     this._itemSlot[index].etypeId = item.etypeId;
                     this._itemSlot[index].equip = equipFlg;
+                    this._itemSlot[index].num = 1;
 
                     if(equip) {
                         $gameParty.setItemSlotLastIndex(index);
@@ -1907,6 +1977,17 @@ Imported.MKR_MapItemSlot = true;
         SceneManager.push(Scene_ItemSlot);
     };
 
+    Game_Party.prototype.decrementItemSlotCount = function(index) {
+        if(index < 0) {
+            return;
+        }
+        const itemSlot = this.getItemSlot(index);
+        if(!itemSlot || itemSlot.num <= 0) {
+            return;
+        }
+        itemSlot.num--;
+    };
+
 
     //=========================================================================
     // Game_Actor
@@ -1953,7 +2034,7 @@ Imported.MKR_MapItemSlot = true;
 
     Game_Actor.prototype.recoverySkills = function() {
         return this.skills().filter(function(skill) {
-            return skill && skill.damage.type == 3 && SKILLRANGE.contains(skill.scope) &&
+            return skill && RECOVERSKILL.contains(skill.damage.type) && SKILLRANGE.contains(skill.scope) &&
                 this.isSkillStypeOk(skill) && this.skillTpCost(skill) == 0;
         }, this);
     };
@@ -2013,10 +2094,12 @@ Imported.MKR_MapItemSlot = true;
         y = this.stringToPoint(y, "y");
 
         Window_Selectable.prototype.initialize.call(this, x, y, this.windowWidth(), this.windowHeight());
-        this._type = [];
-        this._num = [];
+        this._type = Array(this.maxItems() - 1).fill(null);
+        this._num = Array(this.maxItems() - 1).fill(null);
+        this._enable = Array(this.maxItems() - 1).fill(null);
         this._kind = kind;
         this._lastIndex = $gameParty.getItemSlotLastIndex();
+        this._forceNumberUpdate = false;
 
         // GALV_GursorImage.jsへの対応
         if(Imported.Galv_CursorImage) {
@@ -2101,8 +2184,11 @@ Imported.MKR_MapItemSlot = true;
                 if(itemSlot.type == SKILL && this.needsSkillRedraw(item)) {
                     return true;
                 } else {
-                    if(this._type[index] != itemSlot.type || this._num[index] != $gameParty.numItems(item)) {
-                        return true;
+                    if(isItemAddManualMode()) {
+                        // アイテム手動登録モードの場合、実アイテムの個数と比較しない
+                        return this._num[index] !== itemSlot.num;
+                    } else {
+                        return this._num[index] !== $gameParty.numItems(item)
                     }
                 }
                 // if(itemSlot.type == WEAPON || itemSlot.type == ARMOR) {
@@ -2140,15 +2226,25 @@ Imported.MKR_MapItemSlot = true;
                     num = 0;
                 } else {
                     num = $gameParty.numItems(item);
+                    // アイテム手動登録モードの場合、アイテム登録個数からの減少分のみ画面に反映する。
+                    if(isItemAddManualMode()) {
+                        num = itemSlot.num;
+                        if(this._num[index] === null) {
+                            this._num[index] = num;
+                        }
+                        this._num[index] = this._num[index] > num ? num : this._num[index];
+
+                        // 強制個数更新フラグがONの場合は強制的に画面に反映させる
+                        if(this._forceNumberUpdate) {
+                            this._num[index] = num;
+                            this._forceNumberUpdate = false;
+                        }
+                    } else {
+                        this._num[index] = num;
+                    }
                 }
 
-                if((type == WEAPON || type == ARMOR) && actor.isEquipped(item)) {
-                    this.changePaintOpacity(true);
-                } else if(type == SKILL) {
-                    this.changePaintOpacity(actor.canPaySkillCost(item));
-                } else {
-                    this.changePaintOpacity(num > 0);
-                }
+                this.changePaintOpacity(this.isSlotEnabled(index));
 
                 x = rect.x + rect.width / 2 - Window_Base._iconWidth * sizeRate / 2;
                 y = rect.y + rect.height / 2 - Window_Base._iconHeight * sizeRate / 2;
@@ -2157,7 +2253,7 @@ Imported.MKR_MapItemSlot = true;
                 if(type == ITEM && Params.ItemCountVisible[0]) {
                     fontSize = this.contents.fontSize;
                     this.contents.fontSize = Params.MapSlotWindow.FontSize[0];
-                    this.contents.drawText("" + num, rect.x, rect.height - 20, rect.width - 2, 24, 'right');
+                    this.contents.drawText("" + this._num[index], rect.x, rect.height - 20, rect.width - 2, 24, 'right');
                     this.contents.fontSize = fontSize;
                     this._type[index] = ITEM;
                 } else if(type == WEAPON) {
@@ -2181,7 +2277,6 @@ Imported.MKR_MapItemSlot = true;
                 } else if(type == SKILL) {
                     this._type[index] = SKILL;
                 }
-                this._num[index] = num;
             } else {
                 this._type[index] = "";
                 this._num[index] = 0;
@@ -2204,6 +2299,32 @@ Imported.MKR_MapItemSlot = true;
 
         this.contents.blt(bitmap, sx, sy, pw, ph, x, y, dw, dh);
     };
+
+    Window_ItemSlotBase.prototype.isSlotEnabled = function(index) {
+        const itemSlot = $gameParty.getItemSlot(index);
+        if(!itemSlot) {
+            return false;
+        }
+        const item = this.item(index);
+        if(!item) {
+            return false;
+        }
+
+        const actor = $gameParty.leader();
+        const num = (isItemAddManualMode()) ?
+            itemSlot.num : $gameParty.numItems(item);
+        if((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && actor.isEquipped(item)) {
+            return true;
+        } else if(itemSlot.type == SKILL) {
+            const action = new Game_Action(actor, false);
+            action.setSkill(item.id);
+            return actor.canUse(item) && action.testApply(actor);
+        } else if(itemSlot.type == ITEM) {
+            return actor.canUse(item) && num > 0;
+        }
+
+        return num > 0;
+    }
 
     Window_ItemSlotBase.prototype.stringToPoint = function(text, type) {
         let val = 0;
@@ -2302,6 +2423,10 @@ Imported.MKR_MapItemSlot = true;
 
         return false;
     };
+
+    Window_ItemSlotBase.prototype.setForceNumberUpdate = function(forceNumberUpdate) {
+        this._forceNumberUpdate = forceNumberUpdate;
+    }
 
 
     //=========================================================================
@@ -2512,6 +2637,9 @@ Imported.MKR_MapItemSlot = true;
         this.addCommand(Params.SlotSetName[0], "slotset");
         // this.addCommand(Params.SlotChangeName[0], "slotchange");
         this.addCommand(Params.SlotRemoveName[0], "slotremove");
+        if(Params.BackSceneName[0]) {
+            this.addCommand(Params.BackSceneName[0], "cancel");
+        }
     };
 
     Window_SlotCommand.prototype.processOk = function() {
@@ -2524,11 +2652,14 @@ Imported.MKR_MapItemSlot = true;
             case "slotset":
                 this._helpWindow.setText(Params.SlotSetDesc[0]);
                 break;
-            case "slotchange":
-                this._helpWindow.setText(Params.SlotChangeDesc[0]);
-                break;
+            // case "slotchange":
+            //     this._helpWindow.setText(Params.SlotChangeDesc[0]);
+            //     break;
             case "slotremove":
                 this._helpWindow.setText(Params.SlotRemoveDesc[0]);
+                break;
+            case "cancel":
+                this._helpWindow.setText(Params.BackSceneDesc[0]);
                 break;
         }
     };
@@ -2558,6 +2689,7 @@ Imported.MKR_MapItemSlot = true;
         Window_ItemSlotBase.prototype.initialize.call(this, x2, y2, kind);
         this._slotType = null;
         this._swapTemp = -1;
+        this._forceNumberUpdate = true;
         this.resetLastIndex();
     };
 
@@ -2596,6 +2728,7 @@ Imported.MKR_MapItemSlot = true;
 
         // 再描画判定
         if(this.checkRedraw(index)) {
+            this.setForceNumberUpdate(true);
             this.redrawItem(index);
         }
 
@@ -2683,13 +2816,6 @@ Imported.MKR_MapItemSlot = true;
         }
 
         return count;
-        // if (Params.SlotSetW[0] && Params.SlotSetA[0]) {
-        //     return 3;
-        // } else if (Params.SlotSetW[0] || Params.SlotSetA[0]) {
-        //     return 2;
-        // }
-
-        // return 1;
     };
 
     Window_ItemSlotCategory.prototype.makeCommandList = function() {
@@ -2722,6 +2848,8 @@ Imported.MKR_MapItemSlot = true;
         Window_ItemList.prototype.initialize.call(this, x, y, width, height);
 
         this._actor = $gameParty.leader();
+        this._itemSlotWindow = null;
+        this._itemSlotIndex = 0;
     };
 
     Window_ItemSlotList.prototype.includes = function(item) {
@@ -2773,7 +2901,6 @@ Imported.MKR_MapItemSlot = true;
 
         if(item && $gameParty.hasItemType(item)) {
             type = DataManager.getItemType(item);
-            // ret = $gameParty.getItemSlotNumber(type, item.id) == -1 ? true : false;
             ret = $gameParty.getItemSlotNumber(type, item.id) == -1;
 
             if(type == WEAPON && !actor.isEquipWtypeOk(item.wtypeId)) {
@@ -2781,6 +2908,14 @@ Imported.MKR_MapItemSlot = true;
             }
             if(type == ARMOR && !actor.isEquipAtypeOk(item.atypeId)) {
                 ret = false;
+            }
+
+            // 手動登録モードの場合、選択中スロットと同じアイテムであれば選択有効
+            if(isItemAddManualMode() && this._itemSlotWindow && type == ITEM) {
+                const slotItem = this._itemSlotWindow.item();
+                if(slotItem) {
+                    ret = item === slotItem;
+                }
             }
         }
 
@@ -2875,7 +3010,75 @@ Imported.MKR_MapItemSlot = true;
         }
     };
 
+    Window_ItemSlotList.prototype.update = function() {
+        Window_ItemSlotBase.prototype.update.call(this);
+        const window = this._itemSlotWindow;
+        if(window && this._itemSlotIndex !== window.index()) {
+            this._itemSlotIndex = window.index();
+            this.refresh();
+        }
+    };
+
+    Window_ItemSlotList.prototype.setItemSlotWindow = function(itemSlotWindow) {
+        this._itemSlotWindow = itemSlotWindow;
+        this.refresh();
+    };
+
     Window_ItemSlotList.prototype.drawSkillCost = Window_SkillList.prototype.drawSkillCost;
+
+
+    //=========================================================================
+    // Window_ItemSlotNumber
+    //  ・アイテムスロット画面のアイテム個数ウィンドウを定義します。
+    //
+    //=========================================================================
+    function Window_ItemSlotNumber() {
+        this.initialize.apply(this, arguments);
+    }
+
+    Window_ItemSlotNumber.prototype = Object.create(Window_ShopNumber.prototype);
+    Window_ItemSlotNumber.prototype.constructor = Window_ItemSlotNumber;
+
+    Window_ItemSlotNumber.prototype.initialize = function(x, y, width, height) {
+        Window_Selectable.prototype.initialize.call(this, x, y, width, height);
+        this._item = null;
+        this._max = 1;
+        this._number = 1;
+        this.createButtons();
+    };
+
+    Window_ItemSlotNumber.prototype.setup = function(item, max) {
+        this._item = item;
+        this._max = Math.floor(max);
+        this._number = 1;
+        this.placeButtons();
+        this.updateButtonsVisiblity();
+        this.refresh();
+    };
+
+    Window_ItemSlotNumber.prototype.refresh = function() {
+        this.contents.clear();
+        this.drawItemName(this._item, 0, this.itemY());
+        this.drawMultiplicationSign();
+        this.drawNumber();
+    };
+
+    Window_ItemSlotNumber.prototype.buttonY = function() {
+        return Math.round(this.itemY() + this.lineHeight() * 2.5);
+    };
+
+    Window_ItemSlotNumber.prototype.cursorWidth = function() {
+        return this.numberWidth() + this.textPadding() * 2;
+    };
+
+    Window_ItemSlotNumber.prototype.numberWidth = function() {
+        return this.textWidth('000');
+    };
+
+    Window_ItemSlotNumber.prototype.playOkSound = function() {
+        Window_Selectable.prototype.playOkSound();
+    };
+
 
     //=========================================================================
     // Window_MenuCommand
@@ -3012,7 +3215,7 @@ Imported.MKR_MapItemSlot = true;
         if((itemSlot == null || itemSlot.type == ITEM) && ((Params.SlotSetW[0] && actor.weapons().length > 0) || (Params.SlotSetA[0] && actor.armors().length > 0))) {
             // 装備アイテム以外のスロット選択時に装備を確実に外す
             item = win.item(lastIndex);
-            if(item) {
+            if(item && (DataManager.isWeapon(item) || DataManager.isArmor(item))) {
                 actor.changeEquipById(item.etypeId, 0);
             }
         }
@@ -3022,7 +3225,9 @@ Imported.MKR_MapItemSlot = true;
             itemSlot = $gameParty.getItemSlot(index);
             item = win.item();
             if(itemSlot) {
-                if((itemSlot.type == ITEM && $gameParty.numItems(item) <= 0) || ((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && !actor.isEquipped(item))) {
+                const num = (isItemAddManualMode()) ?
+                    itemSlot.num : $gameParty.numItems(item);
+                if((itemSlot.type == ITEM && num <= 0) || ((itemSlot.type == WEAPON || itemSlot.type == ARMOR) && !actor.isEquipped(item))) {
                     $gameParty.removeItemSlot(index);
                     win.redrawCurrentItem();
                 }
@@ -3033,10 +3238,11 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Scene_Map.prototype.onItemSlotOk = function() {
-        let item;
-        item = this._mapItemSlotWindow.item();
+        const item = this._mapItemSlotWindow.item();
 
         if($gameParty.useItemSlot(item)) {
+            const index = this._mapItemSlotWindow.index();
+            $gameParty.decrementItemSlotCount(index);
             this._mapItemSlotWindow.redrawCurrentItem();
         }
     };
@@ -3085,6 +3291,7 @@ Imported.MKR_MapItemSlot = true;
         this.createItemSlotWindow();
         this.createCategoryWindow();
         this.createItemWindow();
+        this.createItemNumberWindow();
     };
 
     Scene_ItemSlot.prototype.createBackground = function() {
@@ -3167,8 +3374,19 @@ Imported.MKR_MapItemSlot = true;
         this._itemWindow.setHandler('ok', this.onItemOk.bind(this));
         this._itemWindow.setHandler('cancel', this.onItemCancel.bind(this));
         this._itemWindow.opacity = Params.MenuSlotOpacity[0];
+        this._itemWindow.setItemSlotWindow(this._itemSlotWindow);
         this.addWindow(this._itemWindow);
         this._categoryWindow.setItemWindow(this._itemWindow);
+    };
+
+    Scene_ItemSlot.prototype.createItemNumberWindow = function() {
+        const window = this._itemWindow;
+        this._itemNumberWindow = new Window_ItemSlotNumber(window.x, window.y, window.width, window.height);
+        this._itemNumberWindow.hide();
+        this._itemNumberWindow.setHandler('ok', this.onItemNumberOk.bind(this));
+        this._itemNumberWindow.setHandler('cancel', this.onItemNumberCancel.bind(this));
+        this._itemNumberWindow.opacity = Params.MenuSlotOpacity[0];
+        this.addWindow(this._itemNumberWindow);
     };
 
     Scene_ItemSlot.prototype.commandItemSlot = function() {
@@ -3244,27 +3462,22 @@ Imported.MKR_MapItemSlot = true;
         this._categoryWindow.hide();
         this._itemWindow.hide();
         this._itemSlotWindow.activate();
-        // this._itemSlotWindow.selectLast();
     };
 
     Scene_ItemSlot.prototype.onItemOk = function() {
-        let item, equipItem, actor;
-        item = this.item();
-        actor = $gameParty.leader();
+        this._item = this._itemWindow.item();
 
-        // setslot専用
-        // $gameParty.setLastItem(this.item());
-        $gameParty.setSlotEquipItem(this._itemSlotWindow.item());
-        equipItem = $gameParty.getSlotEquipItem();
-        if(equipItem) {
-            actor.changeEquipById(equipItem.etypeId, 0);
+        if(isItemAddManualMode() && DataManager.isItem(this._item)) {
+            this._itemWindow.hide();
+            this._itemNumberWindow.setup(this._item, $gameParty.numItems(this._item));
+            this._itemNumberWindow.show();
+            this._itemNumberWindow.activate();
+        } else {
+            this.itemSet(this._itemSlotWindow.index(), this._item);
+
+            this._itemWindow.activate();
+            this._itemWindow.refresh();
         }
-        $gameParty.setItemSlot(this._itemSlotWindow.index(), this.item());
-        $gameParty.setSlotEquipItem(this.item());
-        this._itemSlotWindow.refresh();
-        this._itemWindow.activate();
-        this._itemWindow.refresh();
-        // this.determineItem();
     };
 
     Scene_ItemSlot.prototype.onItemCancel = function() {
@@ -3276,6 +3489,44 @@ Imported.MKR_MapItemSlot = true;
             this._itemSlotWindow.activate();
         }
         this._helpWindow.setItem(this._itemSlotWindow.item());
+    };
+
+    Scene_ItemSlot.prototype.onItemNumberOk = function() {
+        const actor = $gameParty.leader();
+
+        this.itemSet(this._itemSlotWindow.index(), this._item);
+
+        this._itemNumberWindow.hide();
+        this._itemWindow.show();
+        this._itemWindow.activate();
+        this._itemWindow.refresh();
+    };
+
+    Scene_ItemSlot.prototype.onItemNumberCancel = function() {
+        this._itemNumberWindow.hide();
+        this._itemWindow.show();
+        this._itemWindow.activate();
+    }
+
+    Scene_ItemSlot.prototype.itemSet = function(index, item) {
+        // アイテムスロットに装備済みアイテムがセットされている場合は外す。
+        const oldItem = this._itemSlotWindow.item();
+        $gameParty.setSlotEquipItem(oldItem);
+        const equipItem = $gameParty.getSlotEquipItem();
+        if(equipItem) {
+            const actor = $gameParty.leader();
+            actor.changeEquipById(equipItem.etypeId, 0);
+        }
+
+        let num = (isItemAddManualMode()) ?
+            this._itemNumberWindow.number() : $gameParty.numItems(item);
+
+        // アイテムスロットにアイテムセット
+        this._itemSlotWindow.setForceNumberUpdate(true);
+        $gameParty.setItemSlot(index, item, false, num);
+        $gameParty.setSlotEquipItem(item);
+        this._itemSlotWindow.refresh();
+        this._itemWindow.refresh();
     };
 
     Scene_ItemSlot.prototype.update = function() {
@@ -3546,7 +3797,9 @@ Imported.MKR_MapItemSlot = true;
         if(isEnableEventToUse() && useFlg && pushFlg && Params.ItemUseMode[0]) {
             pushFlg = false;
             item = win.item();
-            $gameParty.useItemSlot(item);
+            if($gameParty.useItemSlot(item)) {
+                $gameParty.decrementItemSlotCount(win.index());
+            }
         }
 
         // マウスホイール
@@ -3647,6 +3900,10 @@ Imported.MKR_MapItemSlot = true;
         eventMode = Params.EventMode;
 
         return $gameMap.isEventRunning() ? eventMode.SelectEnable[0] ? true : false : true;
+    }
+
+    function isItemAddManualMode() {
+        return Params.ItemCountSave[0] && !Params.SlotAddMode[0];
     }
 
 })();
