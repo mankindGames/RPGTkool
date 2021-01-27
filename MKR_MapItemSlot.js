@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.3.1  2021/01/27・スロットに登録されたアイテムのスロット表示上の個数を
+//                    取得できるスクリプトコマンドを追加
+//
 // 1.3.0  2021/01/25・装備アイテムがスロットから
 //                    登録解除できなくなっていた問題を修正
 //                  ・スロットに手動でアイテム登録時、
@@ -120,7 +123,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.3.0) マップアイテムスロットプラグイン
+ * @plugindesc (v1.3.1) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -492,6 +495,10 @@
  *         "armor"    セットされているのは防具です
  *         "skill"    セットされているのはスキルです
  *   null (空文字)    何もセットされていない。またはスロット番号が不正です
+ *
+ *   $gameParty.getItemSlotCount([スロット番号]);
+ *     ・指定したスロット番号(1～)に登録された
+ *       アイテムのスロット上の個数を取得します。
  *
  *   $gameParty.openItemSlotMenu();
  *     ・アイテムスロットメニューを開きます。
@@ -1753,6 +1760,23 @@ Imported.MKR_MapItemSlot = true;
 
         if(itemSlot) {
             return itemSlot.type;
+        }
+
+        return null;
+    };
+
+    Game_Party.prototype.getItemSlotCount = function(slotId) {
+        if(!isFinite(slotId)) {
+            return null;
+        }
+        const index = parseInt(slotId, 10) - 1;
+        if(index < 0) {
+            return null;
+        }
+
+        const itemSlot = this.getItemSlot(index);
+        if(itemSlot) {
+            return itemSlot.num;
         }
 
         return null;
