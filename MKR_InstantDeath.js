@@ -1,11 +1,16 @@
 //=============================================================================
 // MKR_InstantDeath.js
 //=============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// Copyright (c) 2016 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 2.0.0 2021/02/06 ・RPGツクールMZに対応
+//                  ・即死ステートを複数作成できるよう機能改善
+//                  ・プラグインパラメータの形式を変更
+//                  ・コードをリファクタリング
+//
 // 1.1.2 2017/12/10 プラグインパラメータの指定方法を変更
 //
 // 1.1.1 2016/08/15 行動状況により即死ステート付与後の動作がおかしい問題を解決
@@ -16,21 +21,26 @@
 // ----------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
+//    [Blog] http://mankind-games.blogspot.jp/
 //=============================================================================
 
 /*:
+ * @target MZ MV
  *
- * @plugindesc (v1.1.2) 即死ステートを実装します。
+ * @plugindesc (v2.0.0) 即死ステートを実装します。
  * @author マンカインド
+ *
+ * @url https://github.com/mankindGames/RPGTkoolMZ
  *
  * @help
  * 即死ステートを定義し、
  * バトル中にそのステートが付与されたバトラーを即死させます。
  *
+ * (v1.1.2以前のプラグインパラメータと互換性がありません。
+ *  v1.1.2以前からプラグインを更新された場合は再設定をお願いします)
  *
  * 簡単な使い方説明:
- *   初期準備として、まずは即死扱いとするステートを
- *   RPGツクールMV側で作成してください。
+ *   まずは即死扱いとするステートをツクール側で作成してください。
  *   設定:
  *     ・[SV]モーション を 戦闘不能 に設定してください。
  *     ・メッセージ [アクターがこの状態になったとき]
@@ -39,15 +49,11 @@
  *
  *   作成したステートのIDを、
  *   プラグインパラメーター[即死ステートID]に設定します。
+ *   (リスト部分をダブルクリックするとステート選択ウィンドウが表示されます。
+ *    リストなので即死ステートは複数指定できます)
  *
- *   即死攻撃を作るには、スキルの使用効果:ステート付与に
+ *   即死スキルを作るには、スキルの使用効果:ステート付与に
  *   即死ステート:100%を指定し、スキル発動の成功率を調整します。
- *
- *   ※重要※
- *     プラグイン:YEP_BattleEngineCoreを本プラグインとともに
- *     導入している場合は、
- *     プラグインパラメーター[YEPengine導入状況]で
- *     [導入している] に設定してください。
  *
  *
  * プラグインコマンド:
@@ -56,21 +62,6 @@
  *
  * スクリプトコマンド:
  *   ありません。
- *
- *
- * 補足：
- *   ・このプラグインに関するメモ欄の設定、プラグインコマンド、
- *     制御文字は大文字/小文字を区別していません。
- *
- *   ・プラグインパラメーターの説明に、[初期値]と書かれているものは
- *     メモ欄で個別に設定が可能です。
- *     設定した場合、[初期値]よりメモ欄の設定が
- *     優先されますのでご注意ください。
- *
- *   ・プラグインパラメーターの説明に、[変数可]と書かれているものは
- *     設定値に変数の制御文字である\v[n]を使用可能です。
- *     変数を設定した場合、そのパラメーターの利用時に変数の値を
- *     参照するため、パラメーターの設定をゲーム中に変更できます。
  *
  *
  * 利用規約:
@@ -89,96 +80,35 @@
  *     ご了承ください。
  *
  *
- * @param Default_InstantDeath_State_Id
- * @text 即死ステートID
- * @desc 即死ステートのIDを指定します。
- * @type state
- * @default 15
+ * @param stateIdList
+ * @text ステートリスト
+ * @desc 即死ステートとして扱うステートを指定します。
+ * @type state[]
  *
- * @param Default_YEP_BattleEngine
- * @text YEPengine導入状況
- * @desc [競合対策] YEP_BattleEngineCore がONの場合は[導入している]、OFFの場合は[導入していない]を選択してください。
- * @type boolean
- * @on 導入している
- * @off 導入していない
- * @default false
- *
- *
- * *
 */
-(function () {
+(() => {
     'use strict';
 
-    var CheckParam = function(type, param, def) {
-        var Parameters, regExp, value;
-        Parameters = PluginManager.parameters("MKR_InstantDeath");
+    const isYepBattleCoreMV = !!BattleManager.isBattleSystem && Utils.RPGMAKER_NAME === "MV";
 
-        if(param in Parameters) {
-            value = String(Parameters[param]);
-        } else {
-            throw new Error('Plugin parameter not found: '+param);
+    //=========================================================================
+    // Parameter
+    //  ・プラグインパラメータの取得と加工
+    //
+    //=========================================================================
+    const numberListParse = s => {
+        if(!s) {
+            return [];
         }
-
-        regExp = /^\x1bV\[\d+\]$/i;
-        value = value.replace(/\\/g, '\x1b');
-
-        if(!regExp.test(value)) {
-            switch(type) {
-                case "bool":
-                    if(value == "") {
-                        value = (def)? true : false;
-                    }
-                    value = value.toUpperCase() === "ON" || value.toUpperCase() === "TRUE" || value.toUpperCase() === "1";
-                    break;
-                case "num":
-                    if(value == "") {
-                        value = (def)? def : 0;
-                    } else {
-                        value = (isFinite(value))? parseInt(value, 10) : (def)? def : 0;
-                    }
-                    break;
-                default:
-                    throw new Error('Plugin parameter type is illegal: '+type);
-                    break;
-            }
-        }
-
-        return [value, type];
+        return JSON.parse(s).map(number => Number.parseInt(number, 10));
     }
 
-    var CEC = function(params) {
-        var text, value, type;
-        type = params[1];
-        text = String(params[0]);
-        text = text.replace(/\\/g, '\x1b');
-        text = text.replace(/\x1b\x1b/g, '\\');
+    const PLUGIN_NAME = document.currentScript.src.split("/").pop().replace(/\.js$/, "");
+    const PLUGIN_PARAMETER = PluginManager.parameters(PLUGIN_NAME);
 
-        text = text.replace(/\x1bV\[(\d+)\]/gi, function() {
-            return $gameVariables.value(parseInt(arguments[1]));
-        }.bind(this));
-
-        text = text.replace(/\x1bV\[(\d+)\]/gi, function() {
-            return $gameVariables.value(parseInt(arguments[1]));
-        }.bind(this));
-
-        switch(type) {
-            case "bool":
-                value = text.toUpperCase() === "ON" || text.toUpperCase() === "TRUE" || text.toUpperCase() === "1";
-                break;
-            case "num":
-                value = (isFinite(text))? parseInt(text, 10) : 0;
-                break;
-            default:
-                throw new Error('[CEC] Plugin parameter type is illegal: '+type);
-                break;
-        }
-
-        return value;
+    const PARAMS = {
+        stateIdList: numberListParse(PLUGIN_PARAMETER["stateIdList"])
     };
-
-    var DefInstantDeathStateId, DefYepBattleEngineUse;
-    DefInstantDeathStateId = CheckParam("num", "Default_InstantDeath_State_Id", 99);
-    DefYepBattleEngineUse = CheckParam("bool", "Default_YEP_BattleEngine", false);
 
 
     //=========================================================================
@@ -186,12 +116,9 @@
     //  即死ステートを定義します。
     //
     //=========================================================================
-    var _Game_BattlerBase_addNewState = Game_BattlerBase.prototype.addNewState;
+    const _Game_BattlerBase_addNewState = Game_BattlerBase.prototype.addNewState;
     Game_BattlerBase.prototype.addNewState = function(stateId) {
-        var instantDeathStateId;
-        instantDeathStateId = DefInstantDeathStateId[0];
-
-        if (stateId === instantDeathStateId) {
+        if(PARAMS.stateIdList.contains(stateId)) {
             this.die();
         }
 
@@ -204,12 +131,11 @@
     //  即死ステート付与時のアクターモーションを再定義します。
     //
     //=========================================================================
-    var _Sprite_Actor_refreshMotion = Sprite_Actor.prototype.refreshMotion;
+    const _Sprite_Actor_refreshMotion = Sprite_Actor.prototype.refreshMotion;
     Sprite_Actor.prototype.refreshMotion = function() {
-        var actor;
-        actor = this._actor;
+        const actor = this._actor;
 
-        if (actor && actor.isDead()) {
+        if(actor && actor.isDead()) {
             this._motion = null;
         }
 
@@ -219,34 +145,32 @@
 
     //=========================================================================
     // Window_BattleLog
-    //  即死ステートを定義します。
+    //  即死ステート付与時のステート表示処理を再定義します。
     //
     //=========================================================================
-    var _Window_BattleLog_displayAddedStates = Window_BattleLog.prototype.displayAddedStates;
+    const _Window_BattleLog_displayAddedStates = Window_BattleLog.prototype.displayAddedStates;
     Window_BattleLog.prototype.displayAddedStates = function(target) {
-        var instantDeathStateId, yepBattleEngineUse, stateMsg, state, cnt, i;
-        instantDeathStateId = DefInstantDeathStateId[0];
-        yepBattleEngineUse = DefYepBattleEngineUse[0];
+        const isInstantDeath = PARAMS.stateIdList.some(
+            stateId => target.result().isStateAdded(stateId)
+        );
 
-        if(!yepBattleEngineUse && target.result().isStateAdded(instantDeathStateId)) {
-            state = $dataStates[instantDeathStateId];
-            stateMsg = target.isActor() ? state.message1 : state.message2;
-
-            cnt = target.result().addedStateObjects().length;
-            for(i = 0; i < cnt; i++) {
-                state = target.result().addedStateObjects()[i];
-                if(state.id === target.deathStateId()) {
-                    target.result().addedStates.splice(i, 1);
-                    break;
-                }
-            }
-
+        // MV版YEP_BattleEngineCoreを導入している、
+        // または即死ステートが付与されていない場合は
+        // 元の処理を呼び出す。
+        if(isYepBattleCoreMV || !isInstantDeath) {
             _Window_BattleLog_displayAddedStates.call(this, target);
-            this.push('performCollapse', target);
-        } else {
-            _Window_BattleLog_displayAddedStates.call(this, target);
+            return;
         }
-    };
 
+        target.result().addedStateObjects().some((state, index) => {
+            if(state.id === target.deathStateId()) {
+                target.result().addedStates.splice(index, 1);
+                return true;
+            }
+        });
+
+        _Window_BattleLog_displayAddedStates.call(this, target);
+        this.push('performCollapse', target);
+    };
 
 })();
