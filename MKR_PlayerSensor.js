@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 3.0.0 2021/02/13 ・lost系コマンドの挙動を変更し、
+//                    実行時にプレイヤーを即ロストするようにした。
+//
 // 2.5.1 2020/02/27 ・パラメータ[視界範囲描画]がOFFのとき、
 //                    視界描画用spriteの更新を行わないように修正
 //
@@ -137,7 +140,7 @@
 
 /*:
  *
- * @plugindesc (v2.5.1) プレイヤー探索プラグイン
+ * @plugindesc (v3.0.0) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -440,7 +443,6 @@
  *   PSS lost
  *     ・コマンドを実行したマップ上に存在するプレイヤー発見状態の探索者を
  *       ロスト状態へ強制移行させます。
- *       (ロストするまでの時間は[プレイヤーロスト時設定]に従います)
  *
  *   PSS t_start
  *     ・このコマンドを実行した探索者を
@@ -467,7 +469,6 @@
  *   PSS t_lost
  *     ・このコマンドを実行したプレイヤー発見状態の探索者を
  *       ロスト状態へ強制移行させます。
- *       (ロストするまでの時間は[プレイヤーロスト時設定]に従います)
  *
  *   PSS t_move X
  *     ・このコマンドを実行した時点のプレイヤー位置に隣接する位置まで、
@@ -518,12 +519,10 @@
  *   $gameSystem.allForceLost()
  *     ・現在のマップに存在する、プレイヤー発見状態の探索者を
  *       ロスト状態へ強制移行させます。
- *       (ロストするまでの時間は[プレイヤーロスト時設定]に従います)
  *
  *   $gameSystem.forceLost(eventId)
  *     ・指定したイベントIDを持つ探索者がプレイヤー発見状態である場合、
  *       ロスト状態へ強制移行させます。
- *       (ロストするまでの時間は[プレイヤーロスト時設定]に従います)
  *
  *
  * 補足：
@@ -1958,8 +1957,11 @@
                     this.foundPlayer();
                 }
                 if(this.getLostDelay() < this.getLostMaxDelay()) this.resetLostDelay();
-            // プレイヤー発見状態または、強制ロストが有効
-            } else if(this.getFoundStatus() == 1 || this.getForceLost() > 0) {
+            // 強制ロストが有効
+            } else if(this.getForceLost() > 0) {
+                this.lostPlayer(true);
+            // プレイヤー発見状態
+            } else if(this.getFoundStatus() == 1) {
                 this.lostPlayer();
                 if(this.getFoundDelay() < this.getFoundMaxDelay()) {
                     this.resetFoundDelay();
@@ -2052,11 +2054,11 @@
         }
     };
 
-    Game_Event.prototype.lostPlayer = function() {
+    Game_Event.prototype.lostPlayer = function(forceLost = false) {
         let mapId, eventId, sw, key, sensorSwitch, delay, lostSensorSwitch;
         delay = this.getLostDelay();
 
-        if(delay <= 0) {
+        if(delay <= 0 || forceLost) {
             sensorSwitch = DefSensorSwitch[0];
             lostSensorSwitch = DefLostSensorSwitch[0];
             mapId = $gameMap.mapId();
