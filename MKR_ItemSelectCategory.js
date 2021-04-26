@@ -1,14 +1,17 @@
 //===============================================================================
 // MKR_ItemSelectCategory.js
 //===============================================================================
-// Copyright (c) 2016-2017 マンカインド
+// Copyright (c) 2021 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
-// 1.0.1 2017/12/10 アイテムメニューのカテゴリ設定を追加。
+// 2.0.0 2021/04/26 ・RPGツクールMZに対応。
+//                  ・コードをリファクタリング
 //
-// 1.0.0 2017/10/25 初版公開。
+// 1.0.1 2017/12/10 ・アイテムメニューのカテゴリ設定を追加。
+//
+// 1.0.0 2017/10/25 ・初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -17,10 +20,16 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.1) アイテム選択カテゴリ設定プラグイン
+ * @plugindesc (v2.0.0) アイテム選択カテゴリ設定プラグイン
  * @author マンカインド
  *
- * @help [アイテム選択の処理]イベントコマンドで"武器"や"防具"を選択可能にします。
+ * @target MZ
+ *
+ * @help = アイテム選択カテゴリ設定プラグイン =
+ * MKR_ItemSelectCategory.js
+ *
+ *
+ * [アイテム選択の処理]イベントコマンドで"武器"や"防具"を選択可能にします。
  * 選択後、選択したカテゴリに属するアイテムのIDが指定した変数へと格納されます。
  *
  * 以下のプラグインコマンドを[アイテム選択の処理]前に使うことで、
@@ -98,68 +107,48 @@
  *
 */
 
-var Imported = Imported || {};
-Imported.MKR_ItemSelectCategory = true;
-
-(function () {
+(() => {
     'use strict';
 
-    const PN = "MKR_ItemSelectCategory";
 
-    const CheckParam = function(type, name, value, def, min, max, options) {
-        if(min == undefined || min == null) {
-            min = -Infinity;
+    //=========================================================================
+    // Function
+    //  ・ローカル関数
+    //
+    //=========================================================================
+    /**
+     * Window関数の初期化処理をMV/MZ両対応させるためのwrapper
+     *
+     * @param {Window_Base} window_
+     * @param {Rectangle} rect
+     * @param {(window:Window_Base,rect:Rectangle)=>void} initFunction
+     */
+    function window_initializeMVMZ(window_, rect, initFuncton) {
+        if(Utils.RPGMAKER_NAME === "MZ") {
+            initFuncton.call(window_, rect);
+            return;
         }
-        if(max == undefined || max == null) {
-            max = Infinity;
+        if(Utils.RPGMAKER_NAME === "MV") {
+            initFuncton.call(window_, rect.x, rect.y, rect.width, rect.height);
+            return;
         }
-
-        if(value == null) {
-            value = "";
-        } else {
-            value = String(value);
-        }
-
-        value = value.replace(/\\/g, '\x1b');
-        value = value.replace(/\x1b\x1b/g, '\\');
-
-        switch(type) {
-            case "string":
-                value = value.replace(/^\"/, "");
-                value = value.replace(/\"$/, "");
-                if(value != null && options && options.contains("lower")) {
-                    value = value.toLowerCase();
-                }
-                if(value != null && options && options.contains("upper")) {
-                    value = value.toUpperCase();
-                }
-                break;
-            default:
-                throw new Error("[CheckParam] " + name + "のタイプが不正です: " + type);
-                break;
-        }
-
-        return value;
-    };
-
-    const paramParse = function(obj) {
-        return JSON.parse(JSON.stringify(obj, paramReplace));
+        throw (new Error("Unknow RPG MAKER:" + Utils.RPGMAKER_NAME));
     }
 
-    const paramReplace = function(key, value) {
-        try {
-            return JSON.parse(value || null);
-        } catch (e) {
-            return value;
-        }
+
+    //=========================================================================
+    // Parameter
+    //  ・プラグインパラメータの取得と加工
+    //
+    //=========================================================================
+    const pluginName = document.currentScript.src.split("/").pop().replace(/\.js$/, "");
+    const pluginParameter = PluginManager.parameters(pluginName);
+
+    const settings = {
+        initItemCategory: String(pluginParameter["init_item_category"]).trim(),
+        itemMenuCategory: String(pluginParameter["item_menu_category"]).trim(),
     };
 
-    const Parameters = paramParse(PluginManager.parameters(PN));
-
-    const Params = {
-        "InitItemCategory" : CheckParam("string", "init_item_category", Parameters["init_item_category"], "item"),
-        "ItemMenuCategory" : CheckParam("string", "item_menu_category", Parameters["item_menu_category"], "item"),
-    };
 
     //=========================================================================
     // Game_Interpreter
@@ -170,10 +159,9 @@ Imported.MKR_ItemSelectCategory = true;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.call(this, command, args);
 
-        let category;
-        if (command.toLowerCase() === "itemcategory") {
-            category = args[0].toLowerCase();
-            switch (category) {
+        if(command.toLowerCase() === "itemcategory") {
+            const category = args[0].toLowerCase();
+            switch(category) {
                 case "weapon":
                 case "armor":
                 case "item":
@@ -192,7 +180,7 @@ Imported.MKR_ItemSelectCategory = true;
     const _Game_Message_clear = Game_Message.prototype.clear;
     Game_Message.prototype.clear = function() {
         _Game_Message_clear.call(this);
-        this._itemChoiceCategory = Params.InitItemCategory;
+        this._itemChoiceCategory = settings.initItemCategory;
     };
 
     Game_Message.prototype.itemChoiceCategory = function() {
@@ -202,6 +190,7 @@ Imported.MKR_ItemSelectCategory = true;
     Game_Message.prototype.setItemChoiceCategory = function(category) {
         this._itemChoiceCategory = category;
     };
+
 
     //=========================================================================
     // Window_EventItem
@@ -220,15 +209,19 @@ Imported.MKR_ItemSelectCategory = true;
         }
     };
 
+
     //=========================================================================
     // Window_ItemCategory
     //  ・アイテムメニューのカテゴリウィンドウの項目を再定義します。
     //
     //=========================================================================
     const _Window_ItemCategory_initialize = Window_ItemCategory.prototype.initialize;
-    Window_ItemCategory.prototype.initialize = function() {
-        _Window_ItemCategory_initialize.call(this);
-        this.selectSymbol(Params.ItemMenuCategory);
+    Window_ItemCategory.prototype.initialize = function(rect) {
+        if(rect === undefined) {
+            rect = { x: 0, y: 0 };
+        }
+        window_initializeMVMZ(this, rect, _Window_ItemCategory_initialize);
+        this.selectSymbol(settings.itemMenuCategory);
     };
 
 })();
