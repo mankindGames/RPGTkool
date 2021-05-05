@@ -1,11 +1,13 @@
 //===============================================================================
 // MKR_MapItemSlot.js
 //===============================================================================
-// (c) 2016 マンカインド
+// (c) 2021 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.3.2  2021/05/05・1.3.0での修正が不十分だったため修正
+//
 // 1.3.1  2021/01/27・スロットに登録されたアイテムのスロット表示上の個数を
 //                    取得できるスクリプトコマンドを追加
 //
@@ -123,7 +125,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.3.1) マップアイテムスロットプラグイン
+ * @plugindesc (v1.3.2) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -1660,9 +1662,11 @@ Imported.MKR_MapItemSlot = true;
             if(this._itemSlot[index] && this._itemSlot[index].type == WEAPON) {
                 item = $dataWeapons[this._itemSlot[index].id];
                 this.leader().changeEquipById(item.etypeId, 0);
+                this._itemSlot[index] = null;
             } else if(this._itemSlot[index] && this._itemSlot[index].type == ARMOR) {
                 item = $dataArmors[this._itemSlot[index].id];
                 this.leader().changeEquipById(item.etypeId, 0);
+                this._itemSlot[index] = null;
             } else {
                 this._itemSlot[index] = null;
             }
