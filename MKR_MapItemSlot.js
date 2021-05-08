@@ -6,6 +6,12 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.3.3  2021/05/08・装備アイテムのスロット登録の解除が
+//                    正しく行えなかった問題を修正
+//                  ・複数の装備アイテムをスロットへ登録していて
+//                    別の装備アイテムへスロットを切替えたとき、
+//                    スロット登録が解除されてしまう問題を修正
+//
 // 1.3.2  2021/05/05・1.3.0での修正が不十分だったため修正
 //
 // 1.3.1  2021/01/27・スロットに登録されたアイテムのスロット表示上の個数を
@@ -125,7 +131,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.3.2) マップアイテムスロットプラグイン
+ * @plugindesc (v1.3.3) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -1542,7 +1548,7 @@ Imported.MKR_MapItemSlot = true;
 
     const _Game_Party_gainItem = Game_Party.prototype.gainItem;
     Game_Party.prototype.gainItem = function(item, amount, includeEquip) {
-        let type, index, i, cnt, container, actor, meta, itemSlot, scene;
+        let type, index, cnt, container, meta, itemSlot, scene;
 
         meta = "";
         if(item && item.meta) {
@@ -1563,6 +1569,7 @@ Imported.MKR_MapItemSlot = true;
 
         _Game_Party_gainItem.apply(this, arguments);
 
+        const actor = $gameParty.leader();
         // アイテムスロットのアイテム削除判定
         if(Params.ItemRemoveMode[0] && item && amount < 0) {
             type = DataManager.getItemType(item);
@@ -1571,10 +1578,11 @@ Imported.MKR_MapItemSlot = true;
                 itemSlot = $gameParty.getItemSlot(index);
                 // item = win.item();
                 if(itemSlot) {
-                    actor = $gameParty.leader();
                     const num = (isItemAddManualMode()) ?
                         itemSlot.num : $gameParty.numItems(item);
-                    if(num <= 0) {
+                    const isEquiped = ((type == WEAPON || type == ARMOR) && (actor.isEquipped(item) || $gameParty.getSlotEquipItem() === item)) ?
+                        true : false;
+                    if(num <= 0 && !isEquiped) {
                         $gameParty.removeItemSlot(index);
                         // win.redrawCurrentItem();
 
@@ -1655,21 +1663,24 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.removeItemSlot = function(index) {
-        let cnt, item;
+        let cnt;
         cnt = this._itemSlot.length;
 
         if(index >= 0 && index < cnt) {
-            if(this._itemSlot[index] && this._itemSlot[index].type == WEAPON) {
-                item = $dataWeapons[this._itemSlot[index].id];
-                this.leader().changeEquipById(item.etypeId, 0);
-                this._itemSlot[index] = null;
-            } else if(this._itemSlot[index] && this._itemSlot[index].type == ARMOR) {
-                item = $dataArmors[this._itemSlot[index].id];
-                this.leader().changeEquipById(item.etypeId, 0);
-                this._itemSlot[index] = null;
-            } else {
-                this._itemSlot[index] = null;
+            const itemSlot = this.getItemSlot(index);
+            const actor = this.leader();
+            if(itemSlot && itemSlot.type == WEAPON) {
+                const item = $dataWeapons[itemSlot.id];
+                if(actor.isEquipped(item)) {
+                    actor.changeEquipById(item.etypeId, 0);
+                }
+            } else if(itemSlot && itemSlot.type == ARMOR) {
+                const item = $dataArmors[itemSlot.id];
+                if(actor.isEquipped(item)) {
+                    actor.changeEquipById(item.etypeId, 0);
+                }
             }
+            this._itemSlot[index] = null;
         }
     };
 
@@ -2053,6 +2064,7 @@ Imported.MKR_MapItemSlot = true;
                 }
             } else {
                 $gameParty.setItemSlotForceIndex(index);
+                $gameParty.setSlotEquipItem(item);
                 _Game_Actor_changeEquip.apply(this, arguments);
             }
         } else {
@@ -3541,8 +3553,8 @@ Imported.MKR_MapItemSlot = true;
         const oldItem = this._itemSlotWindow.item();
         $gameParty.setSlotEquipItem(oldItem);
         const equipItem = $gameParty.getSlotEquipItem();
-        if(equipItem) {
-            const actor = $gameParty.leader();
+        const actor = $gameParty.leader();
+        if(equipItem && actor.isEquipped(equipItem)) {
             actor.changeEquipById(equipItem.etypeId, 0);
         }
 
@@ -3576,7 +3588,7 @@ Imported.MKR_MapItemSlot = true;
         lastIndex = $gameParty.getItemSlotLastIndex();
         itemSlot = $gameParty.getItemSlot(lastIndex);
         item = win.item(lastIndex);
-        if(itemSlot) {
+        if(itemSlot && lastIndex === index) {
             if(itemSlot.type == WEAPON) {
                 if(!actor.isEquipped(item)) {
                     actor.changeEquipById(item.etypeId, item.id);
