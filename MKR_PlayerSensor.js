@@ -1,11 +1,14 @@
 //=============================================================================
 // MKR_PlayerSensor.js
 //=============================================================================
-// Copyright (c) 2016 マンカインド
+// Copyright (c) 2021 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 3.0.1 2021/06/05 ・視界描画中のイベントを一時消去したとき
+//                    戦闘アニメーションの再生が途中停止してしまう問題を修正
+//
 // 3.0.0 2021/02/13 ・lost系コマンドの挙動を変更し、
 //                    実行時にプレイヤーを即ロストするようにした。
 //
@@ -140,7 +143,7 @@
 
 /*:
  *
- * @plugindesc (v3.0.0) プレイヤー探索プラグイン
+ * @plugindesc (v3.0.1) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -2832,10 +2835,6 @@
                 event.enableCreateRange();
             }
         }, this);
-
-        for (; cnt < this._viewRangeSprites.length; cnt++) {
-            this._tilemap.addChild(this._viewRangeSprites[cnt]);
-        }
     };
 
 
