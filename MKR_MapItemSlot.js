@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.4.0  2021/06/12・キーボードモードとマウスモードの操作をスイッチで
+//                    無効にできる機能を追加
+//
 // 1.3.4  2021/06/10・アイテム使用モードがONのときにマウスでスロットを選択すると
 //                    アイテムが2個消費されてしまう問題を修正
 //
@@ -134,7 +137,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.3.4) マップアイテムスロットプラグイン
+ * @plugindesc (v1.4.0) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -269,11 +272,17 @@
  *         アイテムスロット部分に限定するかを設定できます。
  *         (タッチ操作でのゲームプレイを想定)
  *
+ *     ・マウス使用モード.機能無効スイッチ(Mouse_Mode.Function_Disable)
+ *         スイッチがONの間、マウスによるスロット操作を無効にします。
+ *
  *     ・キーボード使用モード.アイテム使用(Keyboard_Mode.Use_Enable)
  *         キーボードでアイテムの使用が可能になります。
  *
  *     ・キーボード使用モード.スロット選択(Keyboard_Mode.Select_Enable)
  *         キーボードでスロットの選択が可能になります。
+ *
+ *     ・キーボード使用モード.機能無効スイッチ(Keyboard_Mode.Function_Disable)
+ *         スイッチがONの間、キーボードによるスロット操作を無効にします。
  *
  *     ・イベント実行中の動作.スロットの表示(Event_Mode.Slot_Enable)
  *         イベント実行中、スロットの表示/非表示を設定できます。
@@ -996,6 +1005,12 @@
  * @on 選択可能
  * @off 選択不可
  *
+ * @param Function_Disable
+ * @text 機能無効スイッチ
+ * @desc スイッチがONのとき、このモードにおけるスロット操作を無効化します。
+ * @type switch
+ * @default 0
+ *
  */
 /*~struct~MouseMode:
  *
@@ -1007,8 +1022,8 @@
  * @off 使用不可
  *
  * @param Select_Enable
- * @text スロット選択
- * @desc このモードでスロットの選択が可能か選択します。(デフォルト:選択可能)
+ * @text スロット選択(ホイール)
+ * @desc このモードでスロットの(ホイール)選択が可能か選択します。(デフォルト:選択可能)
  * @type boolean
  * @on 選択可能
  * @off 選択不可
@@ -1021,6 +1036,12 @@
  * @value 1
  * @option アイテムスロット部分
  * @value 0
+ *
+ * @param Function_Disable
+ * @text 機能無効スイッチ
+ * @desc スイッチがONのとき、このモードにおけるスロット操作を無効化します。
+ * @type switch
+ * @default 0
  *
  */
 /*~struct~EventMode:
@@ -1253,11 +1274,13 @@ Imported.MKR_MapItemSlot = true;
         "KeyboardMode": {
             "UseEnable": CheckParam("bool", "KeyboardMode.Use_Enable", Parameters["Keyboard_Mode"]["Use_Enable"], true),
             "SelectEnable": CheckParam("bool", "KeyboardMode.Select_Enable", Parameters["Keyboard_Mode"]["Select_Enable"], true),
+            "FunctionDisable": CheckParam("num", "KeyboardMode.Function_Disable", Parameters["Keyboard_Mode"]["Function_Disable"], 0),
         },
         "MouseMode": {
             "UseEnable": CheckParam("bool", "MouseMode.Use_Enable", Parameters["Mouse_Mode"]["Use_Enable"], true),
             "SelectEnable": CheckParam("bool", "MouseMode.Select_Enable", Parameters["Mouse_Mode"]["Select_Enable"], true),
             "DisplayClick": CheckParam("num", "MouseMode.Display_Click", Parameters["Mouse_Mode"]["Display_Click"], 1),
+            "FunctionDisable": CheckParam("num", "MouseMode.Function_Disable", Parameters["Mouse_Mode"]["Function_Disable"], 0),
         },
         "EventMode": {
             "SlotEnable": CheckParam("bool", "EventMode.Slot_Enable", Parameters["Event_Mode"]["Slot_Enable"], false),
@@ -3881,21 +3904,21 @@ Imported.MKR_MapItemSlot = true;
         touchX = TouchInput.x;
         touchY = TouchInput.y;
 
-
-        if(!isEnableTouchToSelect()) {
-            return (mouseMode.UseEnable[0] && TouchInput.isTriggered()) ? true : false;
+        if(!mouseMode.UseEnable[0] || !TouchInput.isTriggered()) {
+            return false;
         }
 
-        if(TouchInput.isTriggered() && win.contains(touchX, touchY)) {
-            return true;
-        }
+        return (!isEnableTouchToSelect() || win.contains(touchX, touchY)) ? true : false;
 
-        return false;
     }
 
     function isEnableMouseToSelect() {
         let mouseMode;
         mouseMode = Params.MouseMode;
+
+        if(mouseMode.FunctionDisable[0] > 0 && $gameSwitches.value(mouseMode.FunctionDisable[0])) {
+            return false;
+        }
 
         return mouseMode.SelectEnable[0] ? true : false;
     }
@@ -3912,12 +3935,20 @@ Imported.MKR_MapItemSlot = true;
         keyboardMode = Params.KeyboardMode;
         paramKey = getUseKey();
 
+        if(keyboardMode.FunctionDisable[0] > 0 && $gameSwitches.value(keyboardMode.FunctionDisable[0])) {
+            return false;
+        }
+
         return (keyboardMode.UseEnable[0] && paramKey && Input.isTriggered(paramKey)) ? true : false;
     }
 
     function isEnableKeyboardToSelect() {
         let keyboardMode;
         keyboardMode = Params.KeyboardMode;
+
+        if(keyboardMode.FunctionDisable[0] > 0 && $gameSwitches.value(keyboardMode.FunctionDisable[0])) {
+            return false;
+        }
 
         return keyboardMode.SelectEnable[0] ? true : false;
     }
