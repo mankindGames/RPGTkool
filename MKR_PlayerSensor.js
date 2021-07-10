@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 3.0.2 2021/07/10 ・プラグインコマンド"PSS t_move"実行時にエラーとなっていた
+//                    問題を修正。
+//
 // 3.0.1 2021/06/05 ・視界描画中のイベントを一時消去したとき
 //                    戦闘アニメーションの再生が途中停止してしまう問題を修正
 //
@@ -143,7 +146,7 @@
 
 /*:
  *
- * @plugindesc (v3.0.1) プレイヤー探索プラグイン
+ * @plugindesc (v3.0.2) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -1159,7 +1162,6 @@
             list.push({"code":25}, {"code":29,"parameters":[oldSpeed]}, {"code":0});
 
             // 移動開始
-            this.setWaitMode('route');
             event.forceMoveRoute({
                 "list":list,
                 "repeat":false,
