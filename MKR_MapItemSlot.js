@@ -6,6 +6,11 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.5.0  2021/10/24・キャラクターのマップ移動を必要としないゲーム用に
+//                    プラグインパラメータ(方向キー選択モード)を追加
+//                  ・プラグインパラメータのキーコンフィグリストに
+//                    okキー(Enter/Z/Space)を追加
+//
 // 1.4.0  2021/06/12・キーボードモードとマウスモードの操作をスイッチで
 //                    無効にできる機能を追加
 //
@@ -137,7 +142,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.4.0) マップアイテムスロットプラグイン
+ * @plugindesc (v1.5.0) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -150,6 +155,7 @@
  *   ・キーボードの1～9,0キー(デフォルト設定)
  *   ・ゲーム画面上でマウスホイール操作
  *   ・画面上のアイテムアイコン部分をクリック(デフォルト無効)
+ *   ・キーボードの左右キー(デフォルト無効)
  * で可能です。
  *
  * スロット数を10としたとき、スロット番号は以下のようになります。
@@ -157,6 +163,13 @@
  *  0キーはスロット番号10として扱います)
  * アイテムスロット:[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]
  * キーボードキー  : 1   2   3   4   5   6   7   8   9   0
+ *
+ * プラグインパラメータ[方向キー選択モード]を有効にすることにより、
+ * キーボードの左右キーでアイテムスロットの選択が行なえます。
+ * (左矢印キーで左スロット選択、右矢印キーで右スロット選択)
+ *
+ * このモードを有効にする場合は、プラグインパラメータ[スロット○選択キー]は
+ * "なし"(null)に設定変更することをオススメします。
  *
  *
  * 選択したスロットにアイテム(道具/スキル)が登録されていた場合、
@@ -476,7 +489,7 @@
  *     ・指定したスロット番号(1～)に登録された防具が、
  *       指定した防具ID(1～)である場合にtrueを返します。
  *       [例]
- *         ◆条件分岐：スクリプト：$gameParty.isItemSlotItem(3, 23);
+ *         ◆条件分岐：スクリプト：$gameParty.isItemSlotArmor(3, 23);
  *             ～スロット3番にID23の防具が
  *               登録されているときの処理～
  *         ：分岐終了
@@ -485,8 +498,8 @@
  *     ・指定したスロット番号(1～)に登録されたスキルが、
  *       指定したスキルID(1～)である場合にtrueを返します。
  *       [例]
- *         ◆条件分岐：スクリプト：$gameParty.isItemSlotItem(4, 7);
- *             ～スロット1番にID7のスキルが
+ *         ◆条件分岐：スクリプト：$gameParty.isItemSlotSkill(4, 7);
+ *             ～スロット4番にID7のスキルが
  *               登録されているときの処理～
  *         ：分岐終了
  *
@@ -737,6 +750,14 @@
  * @default true
  * @parent map_setting
  *
+ * @param Use_ArrowKey
+ * @text 方向キー選択モード
+ * @desc アイテムスロットの移動を方向キーの左右で行えるようにします。(デフォルト:無効)
+ * @type boolean
+ * @on 有効
+ * @off 無効
+ * @default false
+ * @parent map_setting
  *
  * @param key_config
  * @text キーコンフィグ
@@ -955,6 +976,8 @@
  * @value shift
  * @option Control(Ctrl/Alt/Command/Option)
  * @value control
+ * @option Ok(Enter/Z/Space)
+ * @value ok
  * @option A
  * @option B
  * @option C
@@ -1288,6 +1311,7 @@ Imported.MKR_MapItemSlot = true;
             "SelectEnable": CheckParam("bool", "EventMode.Select_Enable", Parameters["Event_Mode"]["Select_Enable"], false),
         },
         "UseBuzzer": CheckParam("bool", "Use_Buzzer", Parameters["Use_Buzzer"], true),
+        "UseArrowKey": CheckParam("bool", "Use_ArrowKey", Parameters["Use_ArrowKey"], false),
     };
 
     const ITEM = "item";
@@ -1298,6 +1322,8 @@ Imported.MKR_MapItemSlot = true;
     const SKILLRANGE = [7, 8, 11];
     const RECOVERSKILL = [3, 4];
 
+    console.log(Parameters);
+    console.log(Params);
 
     //=========================================================================
     // Input
@@ -3808,6 +3834,16 @@ Imported.MKR_MapItemSlot = true;
 
         // キーボード
         if(isEnableEventToSelect() && isEnableKeyboardToSelect()) {
+            if(isEnableArrowKeySelect()) {
+                if(Input.isTriggered("right")) {
+                    win.select(slotToIndex("right"));
+                    pushFlg = true;
+                }
+                if(Input.isTriggered("left")) {
+                    win.select(slotToIndex("left"));
+                    pushFlg = true;
+                }
+            }
             if(Input.isTriggered(keys.Slot1Key[0]) && slotToIndex(1) != -1) {
                 win.select(slotToIndex(1));
                 pushFlg = true;
@@ -3977,6 +4013,10 @@ Imported.MKR_MapItemSlot = true;
 
     function isItemAddManualMode() {
         return Params.ItemCountSave[0] && !Params.SlotAddMode[0];
+    }
+
+    function isEnableArrowKeySelect() {
+        return Params.UseArrowKey[0];
     }
 
 })();
