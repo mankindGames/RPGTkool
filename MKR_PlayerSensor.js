@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 3.0.3 2022/01/29 ・EventReSpawn.jsによるイベント動的生成時に
+//                    探索者の視界が描画されない問題に対応
+//
 // 3.0.2 2021/07/10 ・プラグインコマンド"PSS t_move"実行時にエラーとなっていた
 //                    問題を修正。
 //
@@ -36,7 +39,7 @@
 //
 // 2.3.6 2019/04/06 ・プレイヤー追跡時、プレイヤーが通行可能なイベントを
 //                    探索者も通行可能にするプラグインパラメータを追加。
-//                  ・マップ移動時、追跡症スイッチを自動的にOFFにしてくれる
+//                  ・マップ移動時、追跡者スイッチを自動的にOFFにしてくれる
 //                    プラグインパラメ―タを追加。
 //
 // 2.3.5 2018/10/27 ・視界をイベントの下に描画するプラグインパラメータを追加。
@@ -146,7 +149,7 @@
 
 /*:
  *
- * @plugindesc (v3.0.2) プレイヤー探索プラグイン
+ * @plugindesc (v3.0.3) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -2833,8 +2836,10 @@
             return !event.isCreateRange();
         }).forEach(function(event) {
             if(event._sensorType) {
-                this._viewRangeSprites.push(new Sprite_ViewRange(event));
+                const sprite = new Sprite_ViewRange(event);
+                this._viewRangeSprites.push(sprite);
                 event.enableCreateRange();
+                this._tilemap.addChild(sprite);
             }
         }, this);
     };
