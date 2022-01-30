@@ -6,6 +6,10 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 3.1.0 2022/01/29 ・プレイヤー未発見状態の探索者を
+//                    強制的に発見状態に移行させる機能を追加
+//                  ・プレイヤーロスト状態へと移行させない機能を追加
+//
 // 3.0.3 2022/01/29 ・EventReSpawn.jsによるイベント動的生成時に
 //                    探索者の視界が描画されない問題に対応
 //
@@ -149,7 +153,7 @@
 
 /*:
  *
- * @plugindesc (v3.0.3) プレイヤー探索プラグイン
+ * @plugindesc (v3.1.0) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -333,6 +337,15 @@
  *     ・指定した場合、探索者がプレイヤーをロストするまでの時間が
  *       フレーム数分遅れます。
  *
+ *   Li
+ *     ・指定した場合、プレイヤーが探索者の視界の外に出たとしても
+ *       探索者をプレイヤーロスト状態へと移行しません。
+ *
+ *     ・1度見つかったら同じマップにいる限り
+ *       プレイヤーを追いかけ続けるイベント等にお使いください。
+ *
+ *     ・スクリプト等を使い、プレイヤーロスト状態へ移行させることは可能です。
+ *
  *   Am[0または1、または\S[n]]
  *     ・自動実行によるイベントが動作中、このオプションを設定された探索者の
  *       探索処理を続行する(1)/続行しない(0)
@@ -453,6 +466,10 @@
  *     ・コマンドを実行したマップ上に存在するプレイヤー発見状態の探索者を
  *       ロスト状態へ強制移行させます。
  *
+ *   PSS found
+ *     ・コマンドを実行したマップ上に存在するプレイヤー未発見状態の探索者を
+ *       発見状態へ強制移行させます。
+ *
  *   PSS t_start
  *     ・このコマンドを実行した探索者を
  *       探索開始状態にします。
@@ -478,6 +495,10 @@
  *   PSS t_lost
  *     ・このコマンドを実行したプレイヤー発見状態の探索者を
  *       ロスト状態へ強制移行させます。
+ *
+ *   PSS t_find
+ *     ・このコマンドを実行したプレイヤー未発見状態の探索者を
+ *       発見状態へ強制移行させます。
  *
  *   PSS t_move X
  *     ・このコマンドを実行した時点のプレイヤー位置に隣接する位置まで、
@@ -532,6 +553,14 @@
  *   $gameSystem.forceLost(eventId)
  *     ・指定したイベントIDを持つ探索者がプレイヤー発見状態である場合、
  *       ロスト状態へ強制移行させます。
+ *
+ *   $gameSystem.allForceFound()
+ *     ・現在のマップに存在する、プレイヤー未発見状態の探索者を
+ *       発見状態へ強制移行させます。
+ *
+ *   $gameSystem.forceFound(eventId)
+ *     ・指定したイベントIDを持つ探索者がプレイヤー未発見状態である場合、
+ *       発見状態へ強制移行させます。
  *
  *
  * 補足：
@@ -709,14 +738,14 @@
  * @param Player_Found
  * @text プレイヤー発見時設定
  * @desc 探索者がプレイヤーを発見した時の設定です。
- * @type struct<Alert>
+ * @type struct<AlertFound>
  * @default {"Ballon":"0","Se":"{\"Name\":\"\",\"Volume\":\"90\",\"Pitch\":\"100\",\"Pan\":\"0\"}","Common_Event":"0","Delay":"0"}
  *
  * @param Player_Lost
  * @text プレイヤーロスト時設定
  * @desc 探索者がプレイヤーをロストした時の設定です。
- * @type struct<Alert>
- * @default {"Ballon":"0","Se":"{\"Name\":\"\",\"Volume\":\"90\",\"Pitch\":\"100\",\"Pan\":\"0\"}","Common_Event":"0","Delay":"0"}
+ * @type struct<AlertLost>
+ * @default {"Ballon":"0","Se":"{\"Name\":\"\",\"Volume\":\"90\",\"Pitch\":\"100\",\"Pan\":\"0\"}","Common_Event":"0","Delay":"0","Invalid":"false"}
  *
  * @param マップ設定
  * @default ====================================
@@ -749,7 +778,7 @@
  * @parent マップ設定
  *
 */
-/*~struct~Alert:
+/*~struct~AlertFound:
  *
  * @param Ballon
  * @text [初期値] フキダシ表示
@@ -802,10 +831,80 @@
  *
  * @param Delay
  * @text [初期値] 状態移行遅延
- * @desc プレイヤー発見/ロスト状態に移行するタイミングを指定したフレーム分遅らせます(60フレーム=1秒)。デフォルト:0
+ * @desc プレイヤー発見状態に移行するタイミングを指定した
+ * フレーム分遅らせます(60フレーム=1秒)。デフォルト:0
  * @type number
  * @min 0
  * @default 0
+ *
+*/
+/*~struct~AlertLost:
+ *
+ * @param Ballon
+ * @text [初期値] フキダシ表示
+ * @desc 探索者にフキダシを表示させる場合はアイコン番号を指定します。デフォルト:表示しない
+ * @type select
+ * @option 表示しない
+ * @value 0
+ * @option びっくり
+ * @value 1
+ * @option はてな
+ * @value 2
+ * @option 音符
+ * @value 3
+ * @option ハート
+ * @value 4
+ * @option 怒り
+ * @value 5
+ * @option 汗
+ * @value 6
+ * @option くしゃくしゃ
+ * @value 7
+ * @option 沈黙
+ * @value 8
+ * @option 電球
+ * @value 9
+ * @option Zzz
+ * @value 10
+ * @option ユーザー定義1
+ * @value 11
+ * @option ユーザー定義2
+ * @value 12
+ * @option ユーザー定義3
+ * @value 13
+ * @option ユーザー定義4
+ * @value 14
+ * @option ユーザー定義5
+ * @value 15
+ * @default 0
+ *
+ * @param Se
+ * @text SE設定
+ * @desc Seに関する設定です。
+ * @type struct<Se>
+ *
+ * @param Common_Event
+ * @text [初期値] コモン実行
+ * @desc コモンイベントを実行させる場合は指定します。デフォルト:0(なし)
+ * @type common_event
+ * @default 0
+ *
+ * @param Delay
+ * @text [初期値] 状態移行遅延
+ * @desc プレイヤーロスト状態に移行するタイミングを指定した
+ * フレーム分遅らせます(60フレーム=1秒)。デフォルト:0
+ * @type number
+ * @min 0
+ * @default 0
+ *
+ * @param Invalid
+ * @text [初期値] 状態移行無効機能
+ * @desc プレイヤーをロストした場合に状態を移行させません
+ * (スクリプト等による手動移行は可能)。デフォルト:無効
+ * @type boolean
+ * @on 有効
+ * @off 無効
+ * @default false
  *
 */
 /*~struct~Se:
@@ -1051,7 +1150,7 @@
         DefAutoSensor, DefEventDecision, DefRegionDecisions,
         DefRealRangeX, DefRealRangeY, DefLostSensorSwitch,
         DefFoundBallon, DefFoundCommon, DefFoundDelay, DefFoundSe,
-        DefLostBallon, DefLostCommon, DefLostDelay, DefLostSe,
+        DefLostBallon, DefLostCommon, DefLostDelay, DefLostSe, DefLostInvalid,
         DefRangePosition, DefTrackingPriority, DefFollowerThrough, DefLocationReset;
     DefSensorSwitch = CheckParam("switch", "Sensor_Switch", Parameters["Sensor_Switch"], "D");
     DefLostSensorSwitch = CheckParam("switch", "Lost_Sensor_Switch", Parameters["Lost_Sensor_Switch"]);
@@ -1087,6 +1186,7 @@
         "pitch" : CheckParam("num", "Player_Lost.Se.Pitch", Parameters["Player_Lost"]["Se"]["Pitch"], 100, 50, 150)[0],
         "pan" : CheckParam("num", "Player_Lost.Se.Pan", Parameters["Player_Lost"]["Se"]["Pan"], 0, -100, 100)[0],
     }
+    DefLostInvalid = CheckParam("bool", "Player_Lost.Invalid", Parameters["Player_Lost"]["Invalid"], false);
     DefTrackingPriority = CheckParam("bool", "Tracking_Priority", Parameters["Tracking_Priority"], false);
     DefFollowerThrough = CheckParam("bool", "Follower_Through", Parameters["Follower_Through"], false);
     DefLocationReset = CheckParam("bool", "Location_Reset", Parameters["Location_Reset"], false);
@@ -1123,6 +1223,9 @@
                 case "lost":// 発見状態の探索者を強制ロスト状態に移行させる
                     $gameSystem.allForceLost();
                     break;
+                case "found":// 未発見状態の探索者を強制発見状態に移行させる
+                    $gameSystem.allForceFound();
+                    break;
                 case "t_start":// 対象探索者を探索開始状態にする
                     $gameSystem.onSensor(this.eventId());
                     break;
@@ -1137,6 +1240,9 @@
                     break;
                 case "t_lost":// 対象探索者を強制ロスト状態に移行させる
                     $gameSystem.forceLost(this.eventId());
+                    break;
+                case "t_found":// 対象探索者を強制発見状態に移行させる
+                    $gameSystem.forceFound(this.eventId());
                     break;
             }
         }
@@ -1402,6 +1508,30 @@
         event.setForceLost(1);
     };
 
+    Game_System.prototype.allForceFound = function() {
+        if(!this.isSensorStart()) return false;
+
+        $gameMap.events().filter(function(event) {
+            return event.getFoundStatus() == 0;
+        }).forEach(function(event) {
+            event.setForceFound(1);
+        });
+    };
+
+    Game_System.prototype.forceFound = function(eventId) {
+        let event;
+
+        if(!this.isSensorStart()) return false;
+        if(!eventId || !isFinite(eventId) || !$gameMap.event(eventId)) {
+            return ;
+        }
+
+        event = $gameMap.event(eventId);
+        if(event.getFoundStatus() != 0) return false;
+
+        event.setForceFound(1);
+    };
+
 
     //=========================================================================
     // Game_Player
@@ -1445,7 +1575,7 @@
         _Game_CharacterBaseInitMembers.call(this);
 
         let foundBallon, foundCommon, foundSe, foundDelay,
-            lostBallon, lostCommon, lostSe, lostDelay;
+            lostBallon, lostCommon, lostSe, lostDelay, lostInvalid;
         foundBallon = DefFoundBallon[0];
         foundCommon = DefFoundCommon[0];
         foundSe = DefFoundSe;
@@ -1454,6 +1584,7 @@
         lostCommon = DefLostCommon[0];
         lostSe = DefLostSe;
         lostDelay = DefLostDelay[0];
+        lostInvalid = DefLostInvalid[0];
 
         this._foundStatus = 0;
         this._sensorStatus = -2;
@@ -1483,8 +1614,10 @@
         this._lostSe = lostSe;
         this._lostMaxDelay = lostDelay;
         this._lostDelay = this._lostMaxDelay;
+        this._lostInvalid = lostInvalid;
         this._activeMode = 0;
         this._forceLost = 0;
+        this._forceFound = 0;
     };
 
     const _Game_CharacterBaseMoveStraight = Game_CharacterBase.prototype.moveStraight;
@@ -1796,6 +1929,14 @@
         return parseInt(ConvVb(this._lostMaxDelay), 10);
     };
 
+    Game_CharacterBase.prototype.setLostInvalid = function(invalid) {
+        this._lostInvalid = invalid;
+    }
+
+    Game_CharacterBase.prototype.getLostInvalid = function() {
+        return this._lostInvalid;
+    }
+
     Game_CharacterBase.prototype.setActiveMode = function(mode) {
         this._activeMode = mode;
     };
@@ -1810,6 +1951,14 @@
 
     Game_CharacterBase.prototype.getForceLost = function() {
         return this._forceLost;
+    };
+
+    Game_CharacterBase.prototype.setForceFound = function(forceFound) {
+        this._forceFound = forceFound;
+    };
+
+    Game_CharacterBase.prototype.getForceFound = function() {
+        return this._forceFound;
     };
 
     Game_CharacterBase.prototype.isSensorFound = function() {
@@ -1935,6 +2084,8 @@
                                 m = op.match(/^ld(\d+|\x1bv\[(\d+)\])$/);
                                 this.setLostMaxDelay(m[1]);
                                 this.setLostDelay(m[1]);
+                            } else if(op.match(/^li$/)) { // ロスト状態移行無効
+                                this.setLostInvalid(true);
                             } else if(op.match(/^am([0-1]|\x1bs\[(\d+|[a-d])\])$/)) { // 探索続行指定
                                 m = op.match(/^am([0-1]|\x1bs\[(\d+|[a-d])\])$/);
                                 this.setActiveMode(m[1]);
@@ -1975,6 +2126,9 @@
                     this.resetFoundDelay();
                     this.setForceLost(0);
                 }
+            // 強制発見が有効
+            } else if(this.getForceFound() > 0) {
+                this.foundPlayer(true);
             } else {
                 if(this.getFoundDelay() < this.getFoundMaxDelay()) {
                     this.resetFoundDelay();
@@ -1982,6 +2136,36 @@
                 }
             }
         }
+
+        // if(this.getSensorStatus() == 1 && (!this.isStarting() || this.getActiveMode() == 1)){
+        //     // プレイヤーを発見して、かつ強制ロストが無効
+        //     if(this.isFoundPlayer() && this.getForceLost() == 0) {
+        //         if(this.getFoundStatus() == 0 && !this.getFoundUnlimited()) {
+        //             this.foundPlayer();
+        //         }
+        //         if(this.getLostDelay() < this.getLostMaxDelay()) this.resetLostDelay();
+        //     // 強制ロストが有効
+        //     } else if(this.getForceLost() > 0) {
+        //         this.lostPlayer(true);
+        //     // プレイヤー発見状態
+        //     } else if(this.getFoundStatus() == 1 && !this.getLostUnlimited()) {
+        //         this.lostPlayer();
+        //         if(this.getFoundDelay() < this.getFoundMaxDelay()) {
+        //             this.resetFoundDelay();
+        //             this.setForceLost(0);
+        //         }
+        //     // 強制発見が有効
+        //     } else if(this.getForceFound() > 0) {
+        //         this.foundPlayer(true);
+        //     } else {
+        //         if(this.getFoundDelay() < this.getFoundMaxDelay() && !this.getLostUnlimited()) {
+        //             this.resetFoundDelay();
+        //             this.setForceLost(0);
+        //         }
+        //     }
+        // }
+
+
         // // 探索中のイベントであること
         // if(this.getSensorStatus() == 1){
         //     // マップイベント実行中でないこと or 探索続行オプションが付与されている
@@ -2001,16 +2185,17 @@
         // }
     };
 
-    Game_Event.prototype.foundPlayer = function() {
+    Game_Event.prototype.foundPlayer = function(forceFound = false) {
         let mapId, eventId, sw, key, sensorSwitch, delay, lostSensorSwitch;
         delay = this.getFoundDelay();
 
-        if(delay <= 0) {
+        if(delay <= 0 || forceFound) {
             sensorSwitch = DefSensorSwitch[0];
             lostSensorSwitch = DefLostSensorSwitch[0];
             mapId = $gameMap.mapId();
             eventId = this.eventId();
 
+            this.setForceFound(0);
             this.setFoundStatus(1);
             this.resetFoundDelay();
             this.resetLostDelay();
@@ -2058,7 +2243,6 @@
             }
         } else {
             this.setFoundDelay(--delay);
-            // console.log("foundDelay:"+this.getFoundDelay());
         }
     };
 
@@ -2119,9 +2303,8 @@
                     $gameMap._interpreter.setupReservedCommonEventEx(this.eventId());
                 }
             }
-        } else {
+        } else if(!this.getLostInvalid()){
             this.setLostDelay(--delay);
-            // console.log("lostDelay:"+this.getLostDelay());
         }
     };
 
