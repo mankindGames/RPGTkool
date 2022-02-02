@@ -6,7 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
-// 0.0.1 2022/02/02 試作版公開。
+// 0.1.0 2022/02/02 ・YEP_BattleEngineCoreとの併用に対応。
+//
+// 0.0.1 2022/02/02 ・試作版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -15,7 +17,7 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v0.0.1) 複数コモンイベント効果
+ * @plugindesc (v0.1.0) 複数コモンイベント効果
  * @author マンカインド
  *
  * @help = 複数コモンイベント効果 =
@@ -24,6 +26,12 @@
  * 使用効果として複数のコモンイベントを設定した場合に
  * 一番最後に設定したコモンイベントしか呼び出されない問題を改善し
  * 設定順にコモンイベントを呼び出すようにします。
+ *
+ *
+ * ＜YEP_BattleEngineCore.jsと併用する場合＞
+ *   ・プラグイン管理画面で本プラグインを
+ *     YEP_BattleEngineCoreより下に配置してください。
+ *   ・プラグインファイル名は変更しないでください。
  *
  *
  * プラグインパラメーター:
@@ -98,6 +106,15 @@
         return SceneManager._scene.constructor === Scene_Battle;
     }
 
+    /**
+     * 指定したプラグインが読み込まれているか判定
+     * @param {String} name プラグインファイル名(拡張子抜き)
+     * @returns プラグインが読み込まれているか？
+     */
+    function isLoadedPlugin(name) {
+        return $plugins.some(plugin => plugin.name === name && plugin.status);
+    }
+
 
     //=========================================================================
     // Variable
@@ -154,6 +171,33 @@
     };
 
     /**
+     * 指定したアイテムが持つコモンイベントを予約(キューに格納)する
+     * @param {RPG.Item | RPG.Skill} item アイテムかスキルオブジェクト
+     * @returns {Boolean} 予約結果
+     */
+    Game_Temp.prototype.reserveMultiCommonEventByItem = function(item) {
+        if(!item || !item.effects) {
+            return false;
+        }
+
+        let effectList = [];
+
+        if(isItemScene() || isBattleScene()) {
+            effectList = item.effects.filter(effect => effect.code === Game_Action.EFFECT_COMMON_EVENT && effect.dataId !== $gameTemp.commonEventId());
+        }
+
+        if(!effectList || effectList.length <= 0) {
+            return false;
+        }
+
+        needMultiCommonEvent = true;
+        effectList.forEach(effect => $gameTemp.reserveMultiCommonEvent(effect.dataId));
+
+        return true;
+    };
+
+
+    /**
      * コモンイベントキューを返す
      * @returns {Number[]} コモンイベント番号配列
      */
@@ -193,18 +237,27 @@
     Game_Action.prototype.applyGlobal = function() {
         _Game_Action_applyGlobal.call(this);
 
-        let effectList = [];
-
-        if(isItemScene() || isBattleScene()) {
-            effectList = this.item().effects.filter(effect => effect.code === Game_Action.EFFECT_COMMON_EVENT && effect.dataId !== $gameTemp.commonEventId());
-        }
-
-        if(!effectList || effectList.length <= 0) {
-            return;
-        }
-
-        needMultiCommonEvent = true;
-        effectList.forEach(effect => $gameTemp.reserveMultiCommonEvent(effect.dataId));
+        $gameTemp.reserveMultiCommonEventByItem(this.item());
     };
+
+
+
+    //=========================================================================
+    // BattleManager
+    //  ・複数コモンイベント予約用の処理を追加(YEP_BattleEngineCore用)
+    //
+    //=========================================================================
+    // YEP_BattleEngineCore対応
+    if(isLoadedPlugin("YEP_BattleEngineCore")) {
+        const _BattleManager_actionActionCommonEvent = BattleManager.actionActionCommonEvent;
+        BattleManager.actionActionCommonEvent = function() {
+            const ret = _BattleManager_actionActionCommonEvent.call(this);
+
+            $gameTemp.reserveMultiCommonEventByItem(this._action.item());
+
+            return ret;
+        };
+    }
+
 
 })();
