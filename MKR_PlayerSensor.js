@@ -1,11 +1,16 @@
 //=============================================================================
 // MKR_PlayerSensor.js
 //=============================================================================
-// Copyright (c) 2021 マンカインド
+// Copyright (c) 2022 マンカインド
 // This software is released under the MIT License.
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+//
+// 3.1.1 2022/02/19 ・プレイヤーロスト状態遅延が0のとき、
+//                    プレイヤーロスト状態移行無効機能が
+//                    正しく動作していなかった問題を修正
+//
 // 3.1.0 2022/01/29 ・プレイヤー未発見状態の探索者を
 //                    強制的に発見状態に移行させる機能を追加
 //                  ・プレイヤーロスト状態へと移行させない機能を追加
@@ -153,7 +158,7 @@
 
 /*:
  *
- * @plugindesc (v3.1.0) プレイヤー探索プラグイン
+ * @plugindesc (v3.1.1) プレイヤー探索プラグイン
  * @author マンカインド
  *
  * @help = プレイヤー探索プラグイン =
@@ -736,14 +741,14 @@
  * @parent 視界設定
  *
  * @param Player_Found
- * @text プレイヤー発見時設定
- * @desc 探索者がプレイヤーを発見した時の設定です。
+ * @text プレイヤー発見設定
+ * @desc 探索者のプレイヤー発見に関する設定です。
  * @type struct<AlertFound>
  * @default {"Ballon":"0","Se":"{\"Name\":\"\",\"Volume\":\"90\",\"Pitch\":\"100\",\"Pan\":\"0\"}","Common_Event":"0","Delay":"0"}
  *
  * @param Player_Lost
- * @text プレイヤーロスト時設定
- * @desc 探索者がプレイヤーをロストした時の設定です。
+ * @text プレイヤーロスト設定
+ * @desc 探索者のプレイヤーロストに関する設定です。
  * @type struct<AlertLost>
  * @default {"Ballon":"0","Se":"{\"Name\":\"\",\"Volume\":\"90\",\"Pitch\":\"100\",\"Pan\":\"0\"}","Common_Event":"0","Delay":"0","Invalid":"false"}
  *
@@ -2250,7 +2255,7 @@
         let mapId, eventId, sw, key, sensorSwitch, delay, lostSensorSwitch;
         delay = this.getLostDelay();
 
-        if(delay <= 0 || forceLost) {
+        if((delay <= 0 && !this.getLostInvalid()) || forceLost) {
             sensorSwitch = DefSensorSwitch[0];
             lostSensorSwitch = DefLostSensorSwitch[0];
             mapId = $gameMap.mapId();
