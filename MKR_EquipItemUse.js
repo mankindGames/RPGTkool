@@ -6,7 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
-// 1.0.0 2022/02/13 初版公開。
+// 2.0.0 2022/02/19 ・アイテム用スキルの設定方法を変更。
+//
+// 1.0.0 2022/02/13 ・初版公開。
 // ------------------------------------------------------------------------------
 // [Twitter] https://twitter.com/mankind_games/
 //  [GitHub] https://github.com/mankindGames/
@@ -15,20 +17,27 @@
 
 /*:
  * ==============================================================================
- * @plugindesc (v1.0.0) 装備アイテム使用プラグイン
+ * @plugindesc (v2.0.0) 装備アイテム使用プラグイン
  * @author マンカインド
  *
  * @help = 装備アイテム使用プラグイン =
  * MKR_EquipItemUse.js
  *
- * 追加スキル特徴を持つ装備(武器、防具)をアイテム欄に表示させ
- * その装備を使用することで追加スキルの効果が発動するようにします。
+ * アイテムスキルを持つ装備(武器、防具)をアイテム欄に表示させ
+ * その装備を使用することでアイテムスキルの効果が発動するようにします。
  *
  * アイテムとして使用した装備は通常アイテムと同じように数が1減ります。
  * また装備済みのアイテムはアイテム個数として数えません。
  *
- * 装備に複数の追加スキルが登録されている場合、
- * アイテムとして使用可能なのは先頭スキルのみです。
+ * 装備に複数のアイテムスキルが設定されている場合
+ * アイテムとして使用されるのは先頭スキルのみです。
+ *
+ *
+ * ＜アイテムスキルの設定方法＞
+ * 装備のメモ欄に下記のように記述します。
+ * (スキルID:12のスキルをアイテムスキルとして使用したい場合)
+ *
+ *   <アイテムスキル:12>
  *
  *
  * 利用規約:
@@ -53,23 +62,31 @@
 (() => {
     "use strict";
 
+
+    //=========================================================================
+    // Variable
+    //  ・ローカル変数
+    //
+    //=========================================================================
+    const tag = "アイテムスキル";
+
+
     //=========================================================================
     // Function
     //  ・ローカル関数
     //
     //=========================================================================
     /**
-     * 装備アイテムに追加スキル特徴が設定されているかを判定する
+     * 装備アイテムにアイテムスキルが設定されているかを判定する
      * @param {RPG.EquipItem} item アイテムオブジェクト
-     * @returns {Boolean} 追加スキル特徴が設定されているかどうか？
+     * @returns {Boolean} アイテムスキルが設定されているかどうか？
      */
-    function existsTraitAddSkill(item) {
-        return DataManager.isEquipItem(item)
-            && item.traits.some(trait => trait.code === Game_BattlerBase.TRAIT_SKILL_ADD);
+    function existsItemSkill(item) {
+        return DataManager.isEquipItem(item) && !!item.meta[tag];
     }
 
     /**
-     * 装備アイテムデータから追加スキルのデータリストを返す。
+     * 装備アイテムデータからアイテムスキルのデータリストを返す。
      * 返却するスキルオブジェクトには以下のプロパティを追加する。
      *   isCostIgnored : スキル発動の際に支払うコスト(MP/TP)、
      *                   スキル使用に必要な装備条件を無視するフラグ
@@ -77,16 +94,27 @@
      * @param {RPG.EquipItem} item アイテムオブジェクト
      * @returns {RPG.Skill[]} スキルデータリスト
      */
-    function getAddSkillDataList(item) {
-        return item.traits
-            .filter(trait => trait.code === Game_BattlerBase.TRAIT_SKILL_ADD)
-            .map(trait => {
-                const skillId = trait.dataId;
-                const skill = $dataSkills[skillId];
-                skill.isCostIgnored = true;
-                skill.baseItem = item;
-                return skill;
-            });
+    function getItemSkillDataList(item) {
+        const note = item.note.toLowerCase();
+        const noteList = note.split(/[ \n](?=<)/);
+        return noteList.filter(line => new RegExp(tag).test(line)).map(line => {
+            const [, value] = line.replace(/[<> ]/g, "").split(":");
+            const skillId = Number(value.trim());
+            const skillData = $dataSkills[skillId];
+            skillData.isCostIgnored = true;
+            skillData.baseItem = item;
+            return skillData;
+        })
+
+    }
+
+    /**
+     * 装備アイテムデータからアイテムスキルのデータを返す。
+     * @param {RPG.EquipItem} item アイテムオブジェクト
+     * @returns {RPG.Skill} スキルデータ
+     */
+    function getItemSkillData(item) {
+        return getItemSkillDataList(item).shift();
     }
 
 
@@ -97,12 +125,12 @@
     //=========================================================================
     DataManager.isEquipItem = function(item) {
         return this.isWeapon(item) || this.isArmor(item);
-    }
+    };
 
 
     //=========================================================================
     // Game_BattlerBase
-    //  ・装備をアイテムとして使用する場合にスキル使用可否判定を変更する
+    //  ・装備をアイテムとして使用する場合にスキル使用可否判定を行う
     //
     //=========================================================================
     const _Game_BattlerBase_meetsSkillConditions = Game_BattlerBase.prototype.meetsSkillConditions;
@@ -111,7 +139,7 @@
         if(skill.isCostIgnored) {
             // スキル使用可否判定:
             //   ・使用者が行動可能であること
-            //   ・スキルが使用シーンが適切であること
+            //   ・スキル使用シーンが適切であること
             //   ・ベースアイテム(装備アイテム)の個数が1以上であること
             return this.meetsUsableItemConditions(skill) && $gameParty.numItems(skill.baseItem) >= 1;
         }
@@ -160,16 +188,16 @@
         return this._category === "item";
     }
 
-    Window_ItemList.prototype.isAddSkillEnabled = function(item) {
+    Window_ItemList.prototype.isItemSkillEnabled = function(item) {
         // バトルシーンではカテゴリを選択しない
-        return existsTraitAddSkill(item) && ($gameParty.inBattle()) ? true : this.isSelectItemcategory();
+        return existsItemSkill(item) && ($gameParty.inBattle()) ? true : this.isSelectItemcategory();
     }
 
     const _Window_ItemList_includes = Window_ItemList.prototype.includes;
     Window_ItemList.prototype.includes = function(item) {
         const ret = _Window_ItemList_includes.call(this, item);
         // アイテムカテゴリを選択していて対象アイテムが追加スキルを持っている
-        if(!ret && this.isAddSkillEnabled(item)) {
+        if(!ret && this.isItemSkillEnabled(item)) {
             return true;
         }
 
@@ -179,11 +207,9 @@
     const _Window_ItemList_isEnabled = Window_ItemList.prototype.isEnabled;
     Window_ItemList.prototype.isEnabled = function(item) {
         const ret = _Window_ItemList_isEnabled.call(this, item);
-        // アイテムカテゴリを選択していて対象アイテムが追加スキルを持っている
-        if(!ret && this.isAddSkillEnabled(item)) {
-            // 追加スキルデータ配列
-            const addSkillDataList = getAddSkillDataList(item);
-            return $gameParty.canUse(addSkillDataList[0]);
+        if(!ret && this.isItemSkillEnabled(item)) {
+            // アイテムスキルデータ
+            return $gameParty.canUse(getItemSkillData(item));
         }
 
         return ret;
@@ -198,8 +224,8 @@
     const _Window_BattleItem_includes = Window_BattleItem.prototype.includes;
     Window_BattleItem.prototype.includes = function(item) {
         const ret = _Window_BattleItem_includes.call(this, item);
-        // 対象アイテムが追加スキルを持っている
-        if(!ret && this.isAddSkillEnabled(item)) {
+        // 対象のアイテムが装備であり、アイテムスキルを持っている
+        if(!ret && this.isItemSkillEnabled(item)) {
             return true;
         }
 
@@ -250,10 +276,9 @@
          * @type {RPG.Item}
          */
         const item = window.item();
-        if(window.isAddSkillEnabled(item)) {
-            // 追加スキルデータ配列
-            const addSkillDataList = getAddSkillDataList(item);
-            return addSkillDataList[0];
+        if(window.isItemSkillEnabled(item)) {
+            // アイテムスキルデータ
+            return getItemSkillData(item);
         }
 
         return _Scene_ItemBase_item.call(this);
@@ -276,12 +301,11 @@
           * @type {RPG.Item}
           */
         const item = this._itemWindow.item();
-        if(window.isAddSkillEnabled(item)) {
-            // 追加スキルデータ配列
-            const addSkillDataList = getAddSkillDataList(item);
-            const skillItem = addSkillDataList[0];
+        if(window.isItemSkillEnabled(item)) {
+            // アイテムスキルデータ
+            const itemSkill = getItemSkillData(item);
             const action = BattleManager.inputtingAction();
-            action.setSkill(skillItem.id);
+            action.setSkill(itemSkill.id);
             $gameParty.setLastItem(item);
             this.onSelectAction();
             return;
