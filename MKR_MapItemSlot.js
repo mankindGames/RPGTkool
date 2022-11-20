@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.6.0  2022/11/20・マップアイテムスロットが透明状態の時、
+//                    スロットの操作を行えるようになるプラグインパラメータを追加
+//
 // 1.5.1  2021/10/25・1つしか持っていないアイテムを使用後、
 //                    同じアイテムを同じスロットに1個追加した場合に
 //                    スロット上の表示が変化しない場合がある問題を修正
@@ -147,7 +150,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.5.1) マップアイテムスロットプラグイン
+ * @plugindesc (v1.6.0) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -764,6 +767,15 @@
  * @default false
  * @parent map_setting
  *
+ * @param Use_Transparent_Slot
+ * @text 透明スロット使用モード
+ * @desc 透明状態のスロット(=不透明度が0)を使用可能にします。(デフォルト:無効)
+ * @type boolean
+ * @on 有効
+ * @off 無効
+ * @default false
+ * @parent map_setting
+ *
  * @param key_config
  * @text キーコンフィグ
  * @default ====================================
@@ -1317,6 +1329,7 @@ Imported.MKR_MapItemSlot = true;
         },
         "UseBuzzer": CheckParam("bool", "Use_Buzzer", Parameters["Use_Buzzer"], true),
         "UseArrowKey": CheckParam("bool", "Use_ArrowKey", Parameters["Use_ArrowKey"], false),
+        "UseTransparentSlot": CheckParam("bool", "Use_Transparent_Slot", Parameters["Use_Transparent_Slot"], false),
     };
 
     const ITEM = "item";
@@ -3260,7 +3273,7 @@ Imported.MKR_MapItemSlot = true;
             }
         }
 
-        if($gameParty.isItemSlotHide() || win.isHide()) {
+        if(!isEnableTransparentSlot() && ($gameParty.isItemSlotHide() || win.isHide())) {
             return;
         }
 
@@ -4023,6 +4036,10 @@ Imported.MKR_MapItemSlot = true;
 
     function isEnableArrowKeySelect() {
         return Params.UseArrowKey[0];
+    }
+
+    function isEnableTransparentSlot() {
+        return Params.UseTransparentSlot[0];
     }
 
 })();
