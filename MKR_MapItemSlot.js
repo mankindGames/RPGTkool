@@ -6,6 +6,9 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.7.0  2022/11/29・アイテムスロットの表示を１つのみに固定できる
+//                    プラグインパラメータを追加
+//
 // 1.6.0  2022/11/20・マップアイテムスロットが透明状態の時、
 //                    スロットの操作を行えるようになるプラグインパラメータを追加
 //
@@ -150,7 +153,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.6.0) マップアイテムスロットプラグイン
+ * @plugindesc (v1.7.0) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -343,7 +346,7 @@
  *       ONの場合、スロットにスキルが登録可能になります。
  *       登録できるスキルは回復系のものに限られます。
  *
- *     ・アイテム削除モード(Item_Remove_Mode)
+ *     ・アイテム消去モード(Item_Remove_Mode)
  *       ONの場合、スロットにセットされたアイテムの個数が0個になると
  *       スロットからアイテムが自動的に削除されます。
  *       OFFにすると、アイテムは個数0の状態でグレー表示になります。
@@ -365,6 +368,16 @@
  *       設定個数より多くのアイテムを使うことができなくなります。
  *       再び使いたい場合は手動登録をもう1度行ってください。
  *       (アイテム登録モードがOFFの場合のみ機能します。)
+ *
+ *     ・透明スロット使用モード(Use_Transparent_Slot)
+ *       スロットの不透明度が0のときに
+ *       スロットの操作を行えるようになります。
+ *
+ *     ・ワンスロットモード(One_Slot)
+ *       マップ上のスロット表示数を1つのみにします。
+ *       キー、マウスホイールなどによるスロット選択を行うと
+ *       1つしかないスロット上で登録されたアイテムが切り替わり表示されます。
+ *       なお、本モードはタッチ操作によるスロット選択に対応しません。
  *
  *
  * スロットサイズ倍率について:
@@ -775,6 +788,16 @@
  * @off 無効
  * @default false
  * @parent map_setting
+ *
+ * @param One_Slot
+ * @text ワンスロットモード
+ * @desc マップ上の表示スロットを1つに固定し、アイテムを切り替えて表示させるようにします。(デフォルト:無効)
+ * @type boolean
+ * @on 有効
+ * @off 無効
+ * @default false
+ * @parent map_setting
+ *
  *
  * @param key_config
  * @text キーコンフィグ
@@ -1330,6 +1353,7 @@ Imported.MKR_MapItemSlot = true;
         "UseBuzzer": CheckParam("bool", "Use_Buzzer", Parameters["Use_Buzzer"], true),
         "UseArrowKey": CheckParam("bool", "Use_ArrowKey", Parameters["Use_ArrowKey"], false),
         "UseTransparentSlot": CheckParam("bool", "Use_Transparent_Slot", Parameters["Use_Transparent_Slot"], false),
+        "OneSlot": CheckParam("bool", "One_Slot", Parameters["One_Slot"], false),
     };
 
     const ITEM = "item";
@@ -2692,6 +2716,68 @@ Imported.MKR_MapItemSlot = true;
 
 
     //=========================================================================
+    // Window_MapItemSlotOne
+    //  ・マップ画面のアイテムスロットウィンドウを定義します。
+    //
+    //=========================================================================
+    function Window_MapItemSlotOne() {
+        this.initialize.apply(this, arguments);
+    }
+
+    Window_MapItemSlotOne.prototype = Object.create(Window_MapItemSlot.prototype);
+    Window_MapItemSlotOne.prototype.constructor = Window_MapItemSlotOne;
+
+    Window_MapItemSlotOne.prototype.initialize = function(x, y, kind) {
+        Window_MapItemSlot.prototype.initialize.call(this, x, y, kind);
+    };
+
+    Window_MapItemSlotOne.prototype.maxCols = function() {
+        return 1;
+    };
+
+    Window_MapItemSlotOne.prototype.getTouchToIndex = function() {
+        let x, y, width, height, touchX, touchY, padding, spacing, i, rect, beforeRect;
+        x = this.x;
+        y = this.y;
+        width = this.width;
+        height = this.height;
+        touchX = TouchInput.x;
+        touchY = TouchInput.y;
+        padding = this.standardPadding();
+        spacing = this.spacing();
+
+        // クリック位置がウィンドウ余白部分か判定
+        if(touchX <= x + padding || touchX >= x + width - padding || touchY <= y + padding || touchY >= y + height - padding) {
+            return -1;
+        }
+
+        // クリック位置判定
+        // for(i = 0; i < Params.SlotNumber[0]; i++) {
+        //     rect = this.itemRect(i);
+        //     if(touchX >= x + rect.x + padding && touchX <= x + rect.x + rect.width + padding) {
+        //         return i;
+        //     }
+        //     continue;
+        // }
+        // ワンスロットの場合、クリック位置は常に選択中のスロットにする
+        return this.index();
+
+        return -1;
+    };
+
+    Window_MapItemSlotOne.prototype.redrawItem = function(index) {
+        if (index >= 0 && index === this.index()) {
+            this.clearItem(index);
+            this.drawItem(index);
+        }
+    };
+
+    // ワンスロットモードではスロット選択カーソルを表示させない
+    Window_MapItemSlotOne.prototype.updateArrows = function() {
+    };
+
+
+    //=========================================================================
     // Window_ItemSlotHelp
     //  ・アイテムスロット画面のヘルプウィンドウを再定義します。
     //
@@ -3226,7 +3312,11 @@ Imported.MKR_MapItemSlot = true;
         let kind;
         kind = 1; // マップ用は1
 
-        this._mapItemSlotWindow = new Window_MapItemSlot(Params.SlotX[0], Params.SlotY[0], kind);
+        if(isEnableOneSlot()) {
+            this._mapItemSlotWindow = new Window_MapItemSlotOne(Params.SlotX[0], Params.SlotY[0], kind);
+        } else {
+            this._mapItemSlotWindow = new Window_MapItemSlot(Params.SlotX[0], Params.SlotY[0], kind);
+        }
         this._mapItemSlotWindow.setHandler("ok", this.onItemSlotOk.bind(this));
         this._mapItemSlotWindow.opacity = Params.MapSlotOpacity[0];
         this._mapItemSlotWindow.contentsOpacity = Params.MapSlotOpacity[0];
@@ -4040,6 +4130,10 @@ Imported.MKR_MapItemSlot = true;
 
     function isEnableTransparentSlot() {
         return Params.UseTransparentSlot[0];
+    }
+
+    function isEnableOneSlot() {
+        return Params.OneSlot[0];
     }
 
 })();
