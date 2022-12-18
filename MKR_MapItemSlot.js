@@ -6,6 +6,11 @@
 // http://opensource.org/licenses/mit-license.php
 // ------------------------------------------------------------------------------
 // Version
+// 1.8.0  2022/12/18・アイテムスロットの左右を選択するキーを設定する
+//                    プラグインパラメータを追加
+//                  ・アイテムが設定されたスロットのみ選択対象にすることができる
+//                    プラグインパラメータを追加
+//
 // 1.7.0  2022/11/29・アイテムスロットの表示を１つのみに固定できる
 //                    プラグインパラメータを追加
 //
@@ -153,7 +158,7 @@
 //===============================================================================
 
 /*:
- * @plugindesc (v1.7.0) マップアイテムスロットプラグイン
+ * @plugindesc (v1.8.0) マップアイテムスロットプラグイン
  * @author マンカインド
  *
  * @help = マップアイテムスロットプラグイン =
@@ -378,6 +383,10 @@
  *       キー、マウスホイールなどによるスロット選択を行うと
  *       1つしかないスロット上で登録されたアイテムが切り替わり表示されます。
  *       なお、本モードはタッチ操作によるスロット選択に対応しません。
+ *
+ *     ・スロット選択モード(Slot_Select)
+ *       マップ上のスロットを選択するとき、
+ *       アイテムが設定されているスロットのみ選択対象にします。
  *
  *
  * スロットサイズ倍率について:
@@ -719,6 +728,15 @@
  * @default true
  * @parent map_setting
  *
+ * @param Slot_Select
+ * @text スロット選択モード
+ * @desc マップ上のスロット選択時、アイテムが設定されているスロットのみ選択可能にします。(デフォルト:無効)
+ * @type boolean
+ * @on 有効
+ * @off 無効
+ * @default false
+ * @parent map_setting
+ *
  * @param Item_Use_Mode
  * @text アイテム使用モード
  * @desc アイテムの登録されたスロットにカーソルを移動後、自動的にそのアイテムを使用するか選択します。(デフォルト:使用しない)
@@ -878,6 +896,20 @@
  * @desc アイテムスロット１０番を選択するキーを指定してください。(デフォルト:0) ※括弧内はキー名
  * @type struct<Key>
  * @default {"Key":"0"}
+ * @parent key_config
+ *
+ * @param Slot_Left_Key
+ * @text 左スロット選択キー
+ * @desc 左にあるアイテムスロットを選択するキーを指定してください。(デフォルト:E) ※括弧内はキー名
+ * @type struct<Key>
+ * @default {"Key":"E"}
+ * @parent key_config
+ *
+ * @param Slot_Right_Key
+ * @text 右スロット選択キー
+ * @desc 右にあるアイテムスロットを選択するキーを指定してください。(デフォルト:R) ※括弧内はキー名
+ * @type struct<Key>
+ * @default {"Key":"R"}
  * @parent key_config
  *
  *
@@ -1275,9 +1307,7 @@ Imported.MKR_MapItemSlot = true;
     };
 
     const Parameters = paramParse(PluginManager.parameters(PN));
-    let Params = {};
-
-    Params = {
+    let Params = {
         "SlotVisible": CheckParam("bool", "Slot_Visible", Parameters["Slot_Visible"], true),
         "SlotOpacityOffset": CheckParam("num", "Slot_Opacity_Offset", Parameters["Slot_Opacity_Offset"], 16, 1, 255),
         "SlotBackground": CheckParam("string", "Slot_Background", Parameters["Slot_Background"], ""),
@@ -1333,6 +1363,8 @@ Imported.MKR_MapItemSlot = true;
             "Slot8Key": CheckParam("string", "Slot_8_Key", Parameters["Slot_8_Key"]["Key"], "8", null, null, ["lower"]),
             "Slot9Key": CheckParam("string", "Slot_9_Key", Parameters["Slot_9_Key"]["Key"], "9", null, null, ["lower"]),
             "Slot10Key": CheckParam("string", "Slot_10_Key", Parameters["Slot_10_Key"]["Key"], "0", null, null, ["lower"]),
+            "SlotLeftKey": CheckParam("string", "Slot_Left_Key", Parameters["Slot_Left_Key"]["Key"], "Q", null, null, ["lower"]),
+            "SlotRightKey": CheckParam("string", "Slot_Right_Key", Parameters["Slot_Right_Key"]["Key"], "R", null, null, ["lower"]),
         },
         "KeyboardMode": {
             "UseEnable": CheckParam("bool", "KeyboardMode.Use_Enable", Parameters["Keyboard_Mode"]["Use_Enable"], true),
@@ -1354,6 +1386,7 @@ Imported.MKR_MapItemSlot = true;
         "UseArrowKey": CheckParam("bool", "Use_ArrowKey", Parameters["Use_ArrowKey"], false),
         "UseTransparentSlot": CheckParam("bool", "Use_Transparent_Slot", Parameters["Use_Transparent_Slot"], false),
         "OneSlot": CheckParam("bool", "One_Slot", Parameters["One_Slot"], false),
+        "SlotSelect": CheckParam("bool", "Slot_Select", Parameters["Slot_Select"], false),
     };
 
     const ITEM = "item";
@@ -1618,8 +1651,8 @@ Imported.MKR_MapItemSlot = true;
             }
         }
 
+        this._itemSlotMapLastIndex = -1;
         this._itemSlotLastIndex = -1;
-        this._itemSlotSetIndex = -1;
         this._itemSlotVisible = Params.SlotVisible[0];
         if(this._menuSlotStatus == undefined || this._menuSlotStatus == null) {
             this._menuSlotStatus = Params.MenuSlotMode[0];
@@ -1923,11 +1956,18 @@ Imported.MKR_MapItemSlot = true;
     };
 
     Game_Party.prototype.getItemSlotLastIndex = function() {
+        if(SceneManager._scene.constructor === Scene_ItemSlot) {
+            return this._itemSlotMapLastIndex;
+        }
         return this._itemSlotLastIndex;
     };
 
     Game_Party.prototype.setItemSlotLastIndex = function(index) {
-        this._itemSlotLastIndex = index;
+        if(SceneManager._scene.constructor === Scene_ItemSlot) {
+            this._itemSlotMapLastIndex = index;
+        } else {
+            this._itemSlotLastIndex = index;
+        }
     };
 
     Game_Party.prototype.getItemSlotForceIndex = function() {
@@ -2713,6 +2753,17 @@ Imported.MKR_MapItemSlot = true;
     Window_MapItemSlot.prototype.isShow = function() {
         return this.opacity > 0;
     };
+
+    Window_MapItemSlot.prototype.select = function(index) {
+        if(isEnableSlotSelect()) {
+            if($gameParty.getItemSlotType(index + 1)) {
+                Window_ItemSlotBase.prototype.select.call(this, index);
+            }
+        } else {
+            Window_ItemSlotBase.prototype.select.call(this, index);
+        }
+    };
+
 
 
     //=========================================================================
@@ -3737,38 +3788,48 @@ Imported.MKR_MapItemSlot = true;
 
     Scene_ItemSlot.prototype.updateItemSlot = function() {
         let pressKey, index, win, itemSlot, item, actor, lastIndex;
+        actor = $gameParty.leader();
         win = this._itemSlotWindow;
         index = win.index();
-        actor = $gameParty.leader();
+        // lastIndex = win.lastIndex();
+        lastIndex = $gameParty.getItemSlotLastIndex();
 
         // アイテムスロット選択
         updateSlotSelect(win, index, false);
         index = win.index();
 
+
+        // アイテムスロット画面で装備変更を行うとマップ画面との整合性が取れないため廃止
         // 装備アイテム
-        lastIndex = $gameParty.getItemSlotLastIndex();
-        itemSlot = $gameParty.getItemSlot(lastIndex);
-        item = win.item(lastIndex);
-        if(itemSlot && lastIndex === index) {
-            if(itemSlot.type == WEAPON) {
-                if(!actor.isEquipped(item)) {
-                    actor.changeEquipById(item.etypeId, item.id);
-                    win.redrawItem($gameParty.getItemSlotLastIndex());
-                }
-            } else if(actor.weapons().length > 0) {
-                // actor.changeEquipById(1, 0);
-                // win.redrawItem($gameParty.getItemSlotLastIndex());
-            }
-            if(itemSlot.type == ARMOR) {
-                if(!actor.isEquipped(item)) {
-                    actor.changeEquipById(item.etypeId, item.id);
-                    win.redrawItem($gameParty.getItemSlotLastIndex());
-                }
-            } else if(actor.armors().length > 0) {
-                // actor.changeEquipById(1, 0);
-                // win.redrawItem($gameParty.getItemSlotLastIndex());
-            }
-        }
+        // itemSlot = $gameParty.getItemSlot(lastIndex);
+        // if(itemSlot && ((Params.SlotSetW[0] && itemSlot.type == WEAPON) || (Params.SlotSetA[0] && itemSlot.type == ARMOR))) {
+        //     // lastIndex の装備を先に外すこと
+        //     if(lastIndex != index) {
+        //         item = win.item(lastIndex);
+        //         if(actor.isEquipped(item)) {
+        //             actor.changeEquipById(item.etypeId, 0);
+        //             win.redrawItem(lastIndex);
+        //         }
+        //     }
+        // }
+        // itemSlot = $gameParty.getItemSlot(index);
+        // if(itemSlot && ((Params.SlotSetW[0] && itemSlot.type == WEAPON) || (Params.SlotSetA[0] && itemSlot.type == ARMOR))) {
+        //     item = win.item();
+        //     if(!actor.isEquipped(item)) {
+        //         actor.changeEquipById(item.etypeId, item.id);
+        //         $gameParty.setSlotEquipItem(item);
+        //         win.redrawCurrentItem();
+        //     }
+        // }
+        // if((itemSlot == null || itemSlot.type == ITEM) && ((Params.SlotSetW[0] && actor.weapons().length > 0) || (Params.SlotSetA[0] && actor.armors().length > 0))) {
+        //     // 装備アイテム以外のスロット選択時に装備を確実に外す
+        //     item = win.item(lastIndex);
+        //     if(item && (DataManager.isWeapon(item) || DataManager.isArmor(item))) {
+        //         actor.changeEquipById(item.etypeId, 0);
+        //     }
+        // }
+
+        $gameParty.setItemSlotLastIndex(index);
     };
 
 
@@ -3917,6 +3978,40 @@ Imported.MKR_MapItemSlot = true;
         return ret;
     }
 
+    // 現在スロットから左方向にある、アイテムが登録されているスロットインデックスを返す
+    function getLeftItemSlotIndex() {
+        let tempIndex = slotToIndex("left");
+
+        for(let i = 0; i < Params.SlotNumber[0]; i++) {
+            tempIndex = slotToIndex("left") - i;
+            if(tempIndex < 0) {
+                tempIndex += Params.SlotNumber[0];
+            }
+            if($gameParty.getItemSlotType(tempIndex + 1)) {
+                break;
+            }
+        }
+
+        return tempIndex;
+    }
+
+    // 現在スロットから右方向にある、アイテムが登録されているスロットインデックスを返す
+    function getRightItemSlotIndex() {
+        let tempIndex = slotToIndex("right");
+
+        for(let i = 0; i < Params.SlotNumber[0]; i++) {
+            tempIndex = slotToIndex("right") + i;
+            if(tempIndex + 1 > Params.SlotNumber[0]) {
+                tempIndex -= Params.SlotNumber[0];
+            }
+            if($gameParty.getItemSlotType(tempIndex + 1)) {
+                break;
+            }
+        }
+
+        return tempIndex;
+    }
+
     // スロット使用キーを取得する
     function getUseKey() {
         let keys;
@@ -3928,7 +4023,7 @@ Imported.MKR_MapItemSlot = true;
 
     // スロットウィンドウselect
     function updateSlotSelect(win, index, useFlg) {
-        let item, pushFlg, keys, touchIndex;
+        let item, pushFlg, keys, touchIndex, tempIndex, i;
         pushFlg = false;
         keys = Params.KeyConfig;
 
@@ -3993,6 +4088,22 @@ Imported.MKR_MapItemSlot = true;
                 win.select(slotToIndex(10));
                 pushFlg = true;
             }
+            if(Input.isTriggered(keys.SlotLeftKey[0]) && slotToIndex("left") != -1) {
+                if(isEnableSlotSelect()) {
+                    win.select(getLeftItemSlotIndex());
+                } else {
+                    win.select(slotToIndex("left"));
+                }
+                pushFlg = true;
+            }
+            if(Input.isTriggered(keys.SlotRightKey[0]) && slotToIndex("right") != -1) {
+                if(isEnableSlotSelect()) {
+                    win.select(getRightItemSlotIndex());
+                } else {
+                    win.select(slotToIndex("right"));
+                }
+                pushFlg = true;
+            }
         }
 
         // マウスクリック/画面タッチ
@@ -4015,31 +4126,18 @@ Imported.MKR_MapItemSlot = true;
         // マウスホイール
         if(isEnableEventToSelect() && isEnableMouseToSelect()) {
             if(TouchInput.wheelY > 0) {
-                if(index <= 0) {
-                    win.select(Params.SlotNumber[0] - 1);
+                if(isEnableSlotSelect()) {
+                    win.select(getLeftItemSlotIndex());
                 } else {
-                    win.select(index - 1);
+                    win.select(slotToIndex("left"));
                 }
             } else if(TouchInput.wheelY < 0) {
-                if(index >= Params.SlotNumber[0] - 1) {
-                    win.select(0);
+                if(isEnableSlotSelect()) {
+                    win.select(getRightItemSlotIndex());
                 } else {
-                    win.select(index + 1);
+                    win.select(slotToIndex("right"));
                 }
             }
-            // if(TouchInput.wheelY > 0) {
-            //     if(index >= Params.SlotNumber[0] - 1) {
-            //         win.select(0);
-            //     } else {
-            //         win.select(index + 1);
-            //     }
-            // } else if(TouchInput.wheelY < 0) {
-            //     if(index <= 0) {
-            //         win.select(Params.SlotNumber[0] - 1);
-            //     } else {
-            //         win.select(index - 1);
-            //     }
-            // }
         }
     }
 
@@ -4134,6 +4232,10 @@ Imported.MKR_MapItemSlot = true;
 
     function isEnableOneSlot() {
         return Params.OneSlot[0];
+    }
+
+    function isEnableSlotSelect() {
+        return Params.SlotSelect[0];
     }
 
 })();
